@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-set -o errexit
-set -o nounset
-
 main() {
 
   # TODO  - take builder, entry point 
@@ -10,7 +7,7 @@ main() {
   spago build
   
     parcel ./index.html &
-    inotifywait  -m ./src -e modify -e close_write -e delete -e move | while read path action file; do
+    inotifywait  -m ./src -e modify -e delete -e move | while read path action file; do
       echo "pureHMR- updating $action"
       spago build
     done
