@@ -22,12 +22,16 @@ You must have inotifywatch installed - in linux:
 
 2. Usage:
 
-   Copy the following files into your project directory.
+Copy the following files into your project directory.
 
-   ./index.html
-   ./index.js
+./index.html
+./index.js
 
-   If you're in an established project and you have an existing entry point, you may need to merge your existing code into these files, maintaining the import statement and script tag.
+If you're in an established project and you have an existing entry point, you may need to merge your existing code into these files, maintaining the import statement and script tag.
+
+now run:
+
+    ./purehmr
 
 Happy Hacking!
 
