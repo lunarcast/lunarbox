@@ -1,19 +1,15 @@
 import Main from './output/Main';
 
 function main() {
-  const body = document.querySelector('body');
-  Array.from(body.children).forEach(element => {
-    body.removeChild(element);
-  });
+  // put environment variables here, pass them into Main.main
   Main.main();
 }
 
-// if (module.hot) {
-//   module.hot.accept(function() {
-//     // console.log('running main again');
-//     // main();
-//   });
-// }
+if (module.hot) {
+  module.hot.accept(function() {
+    location.reload();
+  });
+}
 
 console.log('starting');
 main();
