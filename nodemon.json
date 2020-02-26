@@ -1,6 +1,6 @@
 {
   "$schema": "http://json.schemastore.org/nodemon",
-  "exec": "parcel ./index.html --port 8080 & spago build",
+  "exec": "spago build",
   "watch": ["src"],
   "ext": "purs"
 }

@@ -3,7 +3,7 @@ dependencies:
   react-dom: 16.12.0_react@16.12.0
 devDependencies:
   nodemon: 2.0.2
-  parcel: 1.12.4
+  parcel-bundler: 1.12.4
   spago: 0.14.0
 lockfileVersion: 5.1
 packages:
@@ -3953,7 +3953,7 @@ packages:
     dev: true
     resolution:
       integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==
-  /parcel/1.12.4:
+  /parcel-bundler/1.12.4:
     dependencies:
       '@babel/code-frame': 7.8.3
       '@babel/core': 7.8.4
@@ -4005,7 +4005,7 @@ packages:
       postcss-value-parser: 3.3.1
       posthtml: 0.11.6
       posthtml-parser: 0.4.2
-      posthtml-render: 1.1.5
+      posthtml-render: 1.2.0
       resolve: 1.15.1
       semver: 5.7.1
       serialize-to-js: 3.1.1
@@ -4020,7 +4020,7 @@ packages:
     hasBin: true
     requiresBuild: true
     resolution:
-      integrity: sha512-qfc74e2/R4pCoU6L/ZZnK9k3iDS6ir4uHea0e9th9w52eehcAGf2ido/iABq9PBXdsIOe4NSY3oUm7Khe7+S3w==
+      integrity: sha512-G+iZGGiPEXcRzw0fiRxWYCKxdt/F7l9a0xkiU4XbcVRJCSlBnioWEwJMutOCCpoQmaQtjB4RBHDGIHN85AIhLQ==
   /parse-asn1/5.1.5:
     dependencies:
       asn1.js: 4.10.1
@@ -4492,6 +4492,12 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-yvt54j0zCBHQVEFAuR+yHld8CZrCa/E1Z/OcFNCV1IEWTLVxT8O7nYnM4IIw1CD4r8kaRd3lc42+0lgCKgm87w==
+  /posthtml-render/1.2.0:
+    dev: true
+    engines:
+      node: '>=6'
+    resolution:
+      integrity: sha512-dQB+hoAKDtnI94RZm/wxBUH9My8OJcXd0uhWmGh2c7tVtQ85A+OS3yCN3LNbFtPz3bViwBJXAeoi+CBGMXM0DA==
   /posthtml/0.11.6:
     dependencies:
       posthtml-parser: 0.4.2
@@ -5976,7 +5982,7 @@ packages:
       integrity: sha512-/4ld+4VV5RnrynMhPZJ/ZpOCGSCeghMykZ3BhdFBDa9Wy/RH6uEGNWDJog+aUlq+9OM1CFTgtYRW5Is1Po9NOA==
 specifiers:
   nodemon: ^2.0.2
-  parcel: ^1.12.4
+  parcel-bundler: ^1.12.4
   react: ^16.12.0
   react-dom: ^16.12.0
   spago: ^0.14.0

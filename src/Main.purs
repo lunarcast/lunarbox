@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import React.Basic (Component, JSX, createComponent, make)
+import React.Basic (Component, JSX, createComponent, fragment, make)
 import React.Basic.DOM as R
 import React.Basic.DOM.Events (capture_)
 
@@ -18,7 +18,15 @@ counter = make component { initialState, render }
   initialState = { counter: 0 }
 
   render self =
-    R.button
-      { onClick: capture_ $ self.setState \s -> s { counter = s.counter + 1 }
-      , children: [ R.text (self.props.label <> ": " <> show self.state.counter) ]
-      }
+    fragment
+      [ R.button
+          { onClick: capture_ $ self.setState \s -> s { counter = s.counter + 1 }
+          , children: [ R.text "Increment" ]
+          }
+      , R.button
+          { onClick: capture_ $ self.setState \s -> s { counter = s.counter - 1 }
+          , children: [ R.text "Decrement" ]
+          }
+      , R.text
+          (self.props.label <> ": " <> show self.state.counter)
+      ]
