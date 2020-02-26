@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "dev": "nodemon"
+  },
+  "dependencies": {
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.2",
+    "parcel": "^1.12.4",
+    "spago": "^0.14.0"
+  }
+}

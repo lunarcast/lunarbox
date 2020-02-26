@@ -2,8 +2,6 @@
 
 main() {
 
-  # TODO  - take builder, entry point 
-  # TODO  - dependency management
   spago build
   
     parcel ./index.html &
