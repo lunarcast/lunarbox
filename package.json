@@ -9,6 +9,7 @@
   "devDependencies": {
     "nodemon": "^2.0.2",
     "parcel-bundler": "^1.12.4",
+    "purty": "^5.0.1",
     "spago": "^0.14.0"
   }
 }
