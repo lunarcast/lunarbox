@@ -1,16 +1,16 @@
 module Dataflow.Core where
 
-import Control.Monad (bind, pure)
-import Control.Monad.Except (Except, throwError)
-import Control.Monad.RWS (RWST, local, tell, ask)
-import Control.Monad.State (put, get)
-import Data.Array (zip)
+import Control.Monad (class Functor, bind, pure, (>>=))
+import Control.Monad.Except (Except, runExceptT, throwError)
+import Control.Monad.RWS (RWST, ask, evalRWST, get, local, put, tell)
+import Data.Array (fold, head, tail, zip)
 import Data.Boolean (otherwise)
+import Data.Either (Either)
 import Data.Eq (class Eq, (==))
-import Data.Foldable (foldr)
+import Data.Foldable (class Foldable, foldr)
 import Data.Function (const, (#), ($), (<<<))
 import Data.Functor ((<$>), (<#>), map)
-import Data.List (List)
+import Data.Identity (Identity(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, over)
@@ -19,7 +19,7 @@ import Data.Semigroup ((<>))
 import Data.Set as Set
 import Data.Show (class Show, show)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, snd)
 import Prelude (Unit, discard, (+))
 
 data Literal
@@ -96,6 +96,10 @@ typeBool = TConstant "Bool"
 data Scheme
   = Forall (Array TVar) Type
 
+instance showScheme :: Show Scheme where
+  show (Forall [] t) = show t
+  show (Forall quantifiers t) = "forall" <> fold (quantifiers <#> (\(TV n) -> " " <> n)) <> ". " <> show t
+
 newtype TypeEnv
   = TypeEnv (Map.Map TVar Scheme)
 
@@ -114,8 +118,15 @@ type InferState
 type Constraint
   = Tuple Type Type
 
+type Unifier
+  = Tuple Substitution (Array Constraint)
+
 type Infer a
   = RWST TypeEnv (Array Constraint) InferState (Except String) a
+
+-- | Constraint solver monad
+type Solve a
+  = Either TypeError a
 
 type Substitution
   = Map.Map TVar Type
@@ -141,7 +152,7 @@ instance schemeSubst :: Substituable Scheme where
     newScheme = foldr Map.delete scheme quantifiers
   ftv (Forall as t) = ftv t `Set.difference` (Set.fromFoldable as)
 
-instance arrSubst :: Substituable a => Substituable (List a) where
+instance arrSubst :: (Substituable a, Foldable f, Functor f) => Substituable (f a) where
   apply = map <<< apply
   ftv = foldr (Set.union <<< ftv) Set.empty
 
@@ -163,9 +174,9 @@ isRecursive subst t = subst `Set.member` ftv t
 nullSubst :: Substitution
 nullSubst = Map.empty
 
-bindVariable :: TVar -> Type -> Infer Substitution
+bindVariable :: TVar -> Type -> Solve Substitution
 bindVariable a t
-  | t == TVarariable a = pure nullSubst
+  | t == TVarariable a = nullSubst # pure
   | isRecursive a t = throwError $ "Recursive type: " <> show a <> show t
   | otherwise = pure $ Map.singleton a t
 
@@ -181,21 +192,6 @@ createClosure name scheme m = do
       where
       cleaned = over TypeEnv (Map.delete name) env
   local scope m
-
-unify :: Type -> Type -> Infer Substitution
-unify (TArrow f t) (TArrow f' t') = do
-  s1 <- unify f f'
-  s2 <- unify (apply s1 t) (apply s1 t')
-  pure $ s1 `compose` s2
-
-unify t (TVarariable a) = bindVariable a t
-
-unify (TVarariable a) t = bindVariable a t
-
-unify (TConstant t1) (TConstant t2)
-  | t1 == t2 = pure nullSubst
-
-unify t1 t2 = throwError ("Cannot unify' " <> show t1 <> " with type " <> show t2)
 
 instantiate :: Scheme -> Infer Type
 instantiate (Forall q t) = do
@@ -249,3 +245,73 @@ infer = case _ of
     pure tv
   Literal (LInt _) -> pure typeInt
   Literal (LBool _) -> pure typeBool
+
+emptyUnifier :: Unifier
+emptyUnifier = Tuple nullSubst []
+
+unifyMany :: Array Type -> Array Type -> Solve Substitution
+unifyMany [] [] = pure nullSubst
+
+unifyMany types types' = fromMaybe error subst
+  where
+  error = throwError $ "Cannot unify type " <> show types <> " with type " <> show types'
+
+  subst = do
+    t1s <- tail types
+    t2s <- tail types'
+    t1 <- head types
+    t2 <- head types'
+    pure
+      $ do
+          substitution <- unifies t1 t2
+          substitution' <- unifyMany (apply substitution $ t1s) (apply substitution $ t2s)
+          pure (substitution' `compose` substitution)
+
+unifies :: Type -> Type -> Solve Substitution
+unifies t1 t2
+  | t1 == t2 = pure nullSubst
+
+unifies (TVarariable v) t = v `bindVariable` t
+
+unifies t (TVarariable v) = v `bindVariable` t
+
+unifies (TArrow f t) (TArrow f' t') = unifyMany [ f, t ] [ f', t' ]
+
+unifies t1 t2 = throwError $ "Cannot unify type " <> show t1 <> " with type " <> show t2
+
+solver :: Unifier -> Solve Substitution
+solver (Tuple oldSubst constraints) = fromMaybe (pure oldSubst) newSubst
+  where
+  newSubst = do
+    (Tuple t1 t2) <- head constraints
+    c' <- tail constraints
+    pure do
+      subst1 <- unifies t1 t2
+      Tuple (subst1 `compose` oldSubst) (apply subst1 c') # solver
+
+initInfer :: InferState
+initInfer = { count: 0 }
+
+-- | Run the constraint solver
+runSolve :: (Array Constraint) -> Either TypeError Substitution
+runSolve cs = (Tuple nullSubst cs) # solver
+
+runInfer :: forall a. TypeEnv -> Infer a -> Either TypeError (Tuple a (Array Constraint))
+runInfer env m = result
+  where
+  (Identity result) = evalRWST m env initInfer # runExceptT
+
+solveExpression :: TypeEnv -> Expression -> Either TypeError Type
+solveExpression env expr = result
+  where
+  inferResult = infer expr # runInfer env
+
+  solveResult = inferResult <#> snd >>= runSolve
+
+  result = do
+    t <- inferResult <#> fst
+    subst <- solveResult
+    pure $ apply subst t
+
+emptyEnv :: TypeEnv
+emptyEnv = TypeEnv Map.empty
