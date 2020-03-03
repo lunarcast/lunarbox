@@ -1,115 +1,29 @@
 module Dataflow.Core where
 
-import Control.Monad (class Functor, bind, pure, (>>=))
+import Control.Monad (bind, pure, (>>=))
 import Control.Monad.Except (Except, runExceptT, throwError)
 import Control.Monad.RWS (RWST, ask, evalRWST, get, local, put, tell)
-import Data.Array (fold, head, tail, zip)
+import Data.Array (head, tail, zip)
 import Data.Boolean (otherwise)
 import Data.Either (Either)
-import Data.Eq (class Eq, (==))
-import Data.Foldable (class Foldable, foldr)
-import Data.Function (const, (#), ($), (<<<))
-import Data.Functor ((<$>), (<#>), map)
+import Data.Eq ((==))
+import Data.Function (const, (#), ($))
+import Data.Functor ((<#>))
 import Data.Identity (Identity(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (class Newtype, over)
-import Data.Ord (class Ord)
+import Data.Newtype (over)
 import Data.Semigroup ((<>))
 import Data.Set as Set
-import Data.Show (class Show, show)
+import Data.Show (show)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
+import Dataflow.Error (TypeError(..))
+import Dataflow.Type (Type(..), TVar(..), Scheme(..), typeBool, typeInt)
 import Prelude (Unit, discard, (+))
-
-data Literal
-  = LInt Int
-  | LBool Boolean
-
-derive instance literalEq :: Eq Literal
-
-derive instance literalOrd :: Ord Literal
-
-data Expression
-  = Variable TVar
-  | FunctionCall Expression Expression
-  | Lambda TVar Expression
-  | Literal Literal
-  | Let TVar Expression Expression
-  | If Expression Expression Expression
-  | FixPoint Expression
-
-derive instance expressinEq :: Eq Expression
-
-type Declaration
-  = Tuple String Expression
-
-data Program
-  = Program (Array Declaration) Expression
-
-derive instance programEq :: Eq Program
-
-newtype TVar
-  = TV String
-
-derive instance tvarEq :: Eq TVar
-
-derive instance tvarOrd :: Ord TVar
-
-instance tvarShow :: Show TVar where
-  show (TV name) = name
-
-data Type
-  = TConstant String
-  | TArrow Type Type
-  | TVarariable TVar
-
-derive instance typeEq :: Eq Type
-
-derive instance typeOrd :: Ord Type
-
-isArrow :: Type -> Boolean
-isArrow = case _ of
-  TArrow _ _ -> true
-  _ -> false
-
-printType :: Boolean -> Type -> String
-printType _ (TVarariable v) = show v
-
-printType _ (TConstant s) = s
-
-printType p (TArrow from to) = if p then "(" <> result <> ")" else result
-  where
-  prefix = printType (isArrow from) from
-
-  result = prefix <> " -> " <> show to
-
-instance typeShow :: Show Type where
-  show = printType false
-
-typeInt :: Type
-typeInt = TConstant "Int"
-
-typeBool :: Type
-typeBool = TConstant "Bool"
-
-data Scheme
-  = Forall (Array TVar) Type
-
-instance showScheme :: Show Scheme where
-  show (Forall [] t) = show t
-  show (Forall quantifiers t) = "forall" <> fold (quantifiers <#> (\(TV n) -> " " <> n)) <> ". " <> show t
-
-newtype TypeEnv
-  = TypeEnv (Map.Map TVar Scheme)
-
-derive instance teNewType :: Newtype TypeEnv _
-
-extend :: TypeEnv -> Tuple TVar Scheme -> TypeEnv
-extend (TypeEnv env) (Tuple x s) = TypeEnv $ Map.insert x s env
-
-type TypeError
-  = String
+import Dataflow.Expression (Expression(..), Literal(..))
+import Dataflow.Substitution (Substitution, compose, apply, class Substituable, ftv)
+import Dataflow.TypeEnv (TypeEnv(..), extend)
 
 type InferState
   = { count :: Int
@@ -122,43 +36,11 @@ type Unifier
   = Tuple Substitution (Array Constraint)
 
 type Infer a
-  = RWST TypeEnv (Array Constraint) InferState (Except String) a
+  = RWST TypeEnv (Array Constraint) InferState (Except TypeError) a
 
 -- | Constraint solver monad
 type Solve a
   = Either TypeError a
-
-type Substitution
-  = Map.Map TVar Type
-
-compose :: Substitution -> Substitution -> Substitution
-compose s1 s2 = ((apply s1) <$> s2) `Map.union` s1
-
-class Substituable a where
-  apply :: Substitution -> a -> a
-  ftv :: a -> Set.Set TVar
-
-instance typeSubst :: Substituable Type where
-  apply _ t@(TConstant _) = t
-  apply s t@(TVarariable a) = (Map.lookup a s) # fromMaybe t
-  apply s (TArrow t1 t2) = apply s t1 `TArrow` apply s t2
-  ftv (TConstant _) = Set.empty
-  ftv (TVarariable a) = Set.singleton a
-  ftv (TArrow t1 t2) = ftv t1 `Set.union` ftv t2
-
-instance schemeSubst :: Substituable Scheme where
-  apply scheme (Forall quantifiers t) = Forall quantifiers $ apply newScheme t
-    where
-    newScheme = foldr Map.delete scheme quantifiers
-  ftv (Forall as t) = ftv t `Set.difference` (Set.fromFoldable as)
-
-instance arrSubst :: (Substituable a, Foldable f, Functor f) => Substituable (f a) where
-  apply = map <<< apply
-  ftv = foldr (Set.union <<< ftv) Set.empty
-
-instance envSusbt :: Substituable TypeEnv where
-  apply s (TypeEnv env) = env <#> (apply s) # TypeEnv
-  ftv (TypeEnv env) = ftv $ Map.values env
 
 fresh :: Infer Type
 fresh = do
@@ -177,7 +59,7 @@ nullSubst = Map.empty
 bindVariable :: TVar -> Type -> Solve Substitution
 bindVariable a t
   | t == TVarariable a = nullSubst # pure
-  | isRecursive a t = throwError $ "Recursive type: " <> show a <> show t
+  | isRecursive a t = throwError $ RecursiveType a t
   | otherwise = pure $ Map.singleton a t
 
 createConstraint :: Type -> Type -> Infer Unit
@@ -211,7 +93,7 @@ lookupEnv :: TVar -> Infer Type
 lookupEnv var = do
   (TypeEnv env) <- ask
   case Map.lookup var env of
-    Nothing -> throwError $ "Unbound variable" <> show var
+    Nothing -> throwError $ UnboundVariable var
     Just s -> instantiate s
 
 infer :: Expression -> Infer Type
@@ -254,7 +136,7 @@ unifyMany [] [] = pure nullSubst
 
 unifyMany types types' = fromMaybe error subst
   where
-  error = throwError $ "Cannot unify type " <> show types <> " with type " <> show types'
+  error = throwError $ DifferentLength types types'
 
   subst = do
     t1s <- tail types
@@ -277,7 +159,7 @@ unifies t (TVarariable v) = v `bindVariable` t
 
 unifies (TArrow f t) (TArrow f' t') = unifyMany [ f, t ] [ f', t' ]
 
-unifies t1 t2 = throwError $ "Cannot unify type " <> show t1 <> " with type " <> show t2
+unifies t1 t2 = throwError $ TypeMissmatch t1 t2
 
 solver :: Unifier -> Solve Substitution
 solver (Tuple oldSubst constraints) = fromMaybe (pure oldSubst) newSubst
