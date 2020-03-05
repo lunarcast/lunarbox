@@ -4,7 +4,6 @@ import Prelude
 import Data.Either (hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Class (class MonadEffect)
-import Effect.Class.Console (logShow)
 import Halogen (Component, liftEffect, HalogenM, defaultEval, get, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
@@ -48,9 +47,6 @@ component =
   handleAction :: Action -> ComponentM m Unit
   handleAction = case _ of
     Initialize -> do
-      liftEffect $ logShow $ (hush <<< parseRoute) "/"
-      h <- liftEffect getHash
-      liftEffect $ logShow h
       initialRoute <- hush <<< parseRoute <$> liftEffect getHash
       navigate $ fromMaybe Home initialRoute
 
