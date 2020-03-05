@@ -1,9 +1,7 @@
 import Main from "./output/Main";
-import React from "react";
-import { render } from "react-dom";
 
 function main() {
-  render(<Main.counter />, document.getElementById("app"));
+  Main.main();
 }
 
 if (module.hot) {
@@ -11,5 +9,6 @@ if (module.hot) {
     location.reload();
   });
 }
+
 console.clear();
 main();

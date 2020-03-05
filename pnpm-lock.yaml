@@ -4,7 +4,7 @@ dependencies:
 devDependencies:
   nodemon: 2.0.2
   parcel-bundler: 1.12.4
-  purty: 5.0.1
+  purty: 6.0.0
   spago: 0.14.0
 lockfileVersion: 5.1
 packages:
@@ -4603,7 +4603,7 @@ packages:
     hasBin: true
     resolution:
       integrity: sha512-hkOreFTgiyMHMmC2BxzdIw5DuC6kxAbP/gGOGd3MEsF3+5m69rIvUEPaxrnoUtfODTFKe9hcXjGwC6jcjoyhOw==
-  /purty/5.0.1:
+  /purty/6.0.0:
     dev: true
     hasBin: true
     os:
@@ -4611,7 +4611,7 @@ packages:
       - darwin
       - win32
     resolution:
-      integrity: sha512-nTMJsGmsrrt6OG/LoiXK5WXs9G778GuTi6XTw6sa1KE9RLpZmO6IyP7XgIHQTihZL/hYZb8qVVJlGu3huorLIQ==
+      integrity: sha512-Rf/RuEIhc9p8iTIU2gQ2cBWvDt9tWl0cox97QUhSSddZw+5EM2Ao5xjq1l2k7XFnZSLjQjzjJOUT6ZLTFmwpNw==
   /q/1.5.1:
     dev: true
     engines:
@@ -5993,7 +5993,7 @@ packages:
 specifiers:
   nodemon: ^2.0.2
   parcel-bundler: ^1.12.4
-  purty: ^5.0.1
+  purty: ^6.0.0
   react: ^16.12.0
   react-dom: ^16.12.0
   spago: ^0.14.0

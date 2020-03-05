@@ -2,13 +2,18 @@
 Welcome to a Spago project!
 You can edit this file as you like.
 -}
-{ name = "my-project"
+{ name = "lunarbox"
 , dependencies =
-  [ "console"
+  [ "aff"
+  , "aff-bus"
+  , "console"
   , "effect"
+  , "generics-rep"
+  , "halogen"
   , "ordered-collections"
   , "psci-support"
-  , "react-basic"
+  , "routing"
+  , "routing-duplex"
   , "tuples"
   ]
 , packages = ./packages.dhall

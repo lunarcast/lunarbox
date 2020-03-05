@@ -1,32 +1,38 @@
 module Main where
 
 import Prelude
-import React.Basic (Component, JSX, createComponent, fragment, make)
-import React.Basic.DOM as R
-import React.Basic.DOM.Events (capture_)
+import Data.Maybe (Maybe(..))
+import Effect (Effect)
+import Effect.Aff (Aff, launchAff_)
+import Effect.Class (liftEffect)
+import Halogen (Component, hoist, tell)
+import Halogen.Aff (awaitBody, runHalogenAff)
+import Halogen.HTML (HTML)
+import Halogen.VDom.Driver (runUI)
+import Lunarbox.AppM (runAppM)
+import Lunarbox.Component.Router as Router
+import Lunarbox.Config (EnvType(..), Config)
+import Lunarbox.Data.Route (routingCodec)
+import Routing.Duplex (parse)
+import Routing.PushState (makeInterface, matchesWith)
 
-component :: Component Props
-component = createComponent "Counter"
+main :: Effect Unit
+main =
+  runHalogenAff do
+    nav <- liftEffect makeInterface
+    body <- awaitBody
+    -- TODO: make this depend on some .env file
+    let
+      env :: Config
+      env = { envType: Development }
 
-type Props
-  = { label :: String
-    }
-
-counter :: Props -> JSX
-counter = make component { initialState, render }
-  where
-  initialState = { counter: 0 }
-
-  render self =
-    fragment
-      [ R.button
-          { onClick: capture_ $ self.setState \s -> s { counter = s.counter + 1 }
-          , children: [ R.text "Increment" ]
-          }
-      , R.button
-          { onClick: capture_ $ self.setState \s -> s { counter = s.counter - 1 }
-          , children: [ R.text "Decrement" ]
-          }
-      , R.text
-          (self.props.label <> ": " <> show self.state.counter)
-      ]
+      rootComponent :: Component HTML Router.Query {} Void Aff
+      rootComponent = hoist (runAppM env) Router.component
+    halogenIO <- runUI rootComponent {} body
+    let
+      onRouteChange = \old new ->
+        when (old /= Just new) do
+          launchAff_ $ halogenIO.query $ tell $ Router.Navigate $ new
+    void $ liftEffect
+      $ matchesWith (parse routingCodec) onRouteChange nav
+    pure unit
