@@ -1,0 +1,11 @@
+// I curently have only one theme so using hardcoded scss variables is ok
+// In the future I might take a more complex aproach if I want to allow multiple themes
+
+$primary: #54759e;
+$on-primary: #e2e2e2;
+$primary-dark: #13255c;
+$on-dark: #ffffff;
+$on-dark-pale: #d7c9aa;
+$secondary: #5dd9c1;
+
+$transition-time: 0.2s;

@@ -1,0 +1,17 @@
+// This file was sponsored by RAID SHADOW LEGEND!
+// (Vyctor said I should let this here so here you go)
+
+@mixin stack {
+  display: block;
+  position: relative;
+}
+
+@mixin layer {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}

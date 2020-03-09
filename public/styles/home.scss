@@ -1,0 +1,94 @@
+@use "sass:math";
+@use "./fonts.scss";
+@use "./utils/utils";
+@import "./theme.scss";
+
+#home {
+  /* 
+  The cool thing is the tangent is calculated at compile time. 
+  Thx sass, rly cool.
+  */
+  $angle: -7deg;
+  $tangent: math.tan($angle);
+  $bg-height: calc(50vh + #{$tangent} * -50vw);
+
+  @include utils.stack;
+
+  background: $primary;
+  height: 100%;
+  z-index: 1;
+
+  #bg {
+    @include utils.layer;
+
+    background-color: $primary-dark;
+    transform-origin: top left;
+    z-index: -1;
+
+    transform: skewY($angle);
+    height: $bg-height;
+  }
+
+  #title-text {
+    @include utils.center;
+
+    height: $bg-height;
+    font-family: fonts.$oxanium;
+
+    #title {
+      color: $on-dark;
+      font-size: 4rem;
+    }
+
+    #description {
+      color: rgba($on-dark-pale, 0.7);
+      font-size: 1.2rem;
+    }
+  }
+
+  #cta {
+    @include utils.center;
+
+    height: calc(100% - #{$bg-height});
+    font-family: fonts.$oxanium;
+
+    #cta-text {
+      color: $on-primary;
+      font-size: 3rem;
+      filter: brightness(0.8);
+
+      #free {
+        font-weight: bold;
+        filter: brightness(1.7);
+      }
+    }
+
+    #action-buttons {
+      @include utils.center;
+
+      flex-direction: row;
+
+      button {
+        font-family: fonts.$oxanium;
+        margin: 1rem;
+        padding: 1rem;
+        font-size: 1.5rem;
+        width: 10rem;
+        border: none;
+        outline: none;
+        border-radius: 0.3rem;
+        transition: filter $transition-time, box-shadow $transition-time;
+      }
+
+      button:hover {
+        box-shadow: 0.3rem 0.3rem 0.3rem 0.1rem rgba(0, 0, 0, 0.4);
+        filter: brightness(1.2);
+      }
+
+      button#signup {
+        color: white;
+        background: darken($secondary, 20%);
+      }
+    }
+  }
+}

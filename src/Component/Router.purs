@@ -10,6 +10,7 @@ import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Data.Route (Route(..), parseRoute)
 import Routing.Hash (getHash)
+import Lunarbox.Page.Home (home)
 
 type State
   = { route :: Maybe Route
@@ -22,8 +23,7 @@ data Action
   = Initialize
 
 type ChildSlots
-  = ( home :: OpaqueSlot Unit
-    , playground :: OpaqueSlot Unit
+  = ( playground :: OpaqueSlot Unit
     , settings :: OpaqueSlot Unit
     )
 
@@ -36,12 +36,12 @@ component =
     { initialState: const { route: Nothing }
     , render
     , eval:
-        mkEval
-          $ defaultEval
-              { handleQuery = handleQuery
-              , handleAction = handleAction
-              , initialize = Just Initialize
-              }
+      mkEval
+        $ defaultEval
+            { handleQuery = handleQuery
+            , handleAction = handleAction
+            , initialize = Just Initialize
+            }
     }
   where
   handleAction :: Action -> ComponentM m Unit
@@ -64,7 +64,7 @@ component =
   render { route } =
     route
       <#> case _ of
-          Home -> HH.text "home"
+          Home -> home unit
           Settings -> HH.text "settings"
           Playground -> HH.text "playground"
       # fromMaybe notFound
