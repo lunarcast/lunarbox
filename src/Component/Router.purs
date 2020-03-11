@@ -3,14 +3,16 @@ module Lunarbox.Component.Router where
 import Prelude
 import Data.Either (hush)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Symbol (SProxy(..))
 import Effect.Class (class MonadEffect)
-import Halogen (Component, liftEffect, HalogenM, defaultEval, get, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Data.Route (Route(..), parseRoute)
-import Routing.Hash (getHash)
 import Lunarbox.Page.Home (home)
+import Routing.Hash (getHash)
 
 type State
   = { route :: Maybe Route
@@ -23,7 +25,7 @@ data Action
   = Initialize
 
 type ChildSlots
-  = ( playground :: OpaqueSlot Unit
+  = ( editor :: Slot Editor.Query Void Unit
     , settings :: OpaqueSlot Unit
     )
 
@@ -66,5 +68,5 @@ component =
       <#> case _ of
           Home -> home unit
           Settings -> HH.text "settings"
-          Playground -> HH.text "playground"
+          Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
       # fromMaybe notFound

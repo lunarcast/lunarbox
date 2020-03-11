@@ -1,0 +1,71 @@
+@use "../utils/utils";
+@import "../theme.scss";
+
+#editor {
+  display: flex;
+  height: 100vh;
+
+  * > {
+    height: 100%;
+  }
+}
+
+#editor > #sidebar {
+  @include utils.center;
+
+  $icon-size: 4rem;
+
+  justify-content: start;
+
+  width: $icon-size;
+  background: $very-dark;
+
+  .sidebar-icon {
+    @include utils.center;
+
+    user-select: none;
+    cursor: pointer;
+
+    width: 100%;
+    height: $icon-size;
+
+    color: $on-dark-pale;
+    filter: brightness(0.7);
+
+    border: 0.2rem solid transparent;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+
+    transition: filter $transition-time, color $transition-time,
+      border-left $transition-time;
+
+    * {
+      font-size: 2rem;
+    }
+  }
+
+  .sidebar-icon:hover,
+  .sidebar-icon.active {
+    filter: none;
+
+    * {
+      color: $on-dark;
+    }
+  }
+
+  .sidebar-icon.active {
+    border-left: 0.2rem solid $on-dark;
+  }
+}
+
+#editor > #panel {
+  width: 0;
+  display: block;
+  background: $primary-dark;
+
+  transition: width $transition-time;
+}
+
+#editor > #panel.active {
+  width: 15rem;
+}
