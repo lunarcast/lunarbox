@@ -1,4 +1,4 @@
-module Dataflow.Core where
+module Lunarbox.Dataflow.Core where
 
 import Control.Monad (bind, pure, (>>=))
 import Control.Monad.Except (Except, runExceptT, throwError)
@@ -18,12 +18,12 @@ import Data.Set as Set
 import Data.Show (show)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import Dataflow.Error (TypeError(..))
-import Dataflow.Type (Type(..), TVar(..), Scheme(..), typeBool, typeInt)
+import Lunarbox.Dataflow.Error (TypeError(..))
+import Lunarbox.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..))
+import Lunarbox.Dataflow.Substitution (Substitution, compose, apply, class Substituable, ftv)
+import Lunarbox.Dataflow.Type (Type(..), TVar(..), Scheme(..), typeBool, typeInt)
+import Lunarbox.Dataflow.TypeEnv (TypeEnv(..), extend)
 import Prelude (Unit, discard, (+))
-import Dataflow.Expression (Expression(..), Literal(..))
-import Dataflow.Substitution (Substitution, compose, apply, class Substituable, ftv)
-import Dataflow.TypeEnv (TypeEnv(..), extend)
 
 type InferState
   = { count :: Int
@@ -125,13 +125,18 @@ infer = case _ of
     tv <- fresh
     createConstraint (tv `TArrow` tv) t
     pure tv
+  Native (NativeExpression t _) -> pure t
   Literal (LInt _) -> pure typeInt
   Literal (LBool _) -> pure typeBool
 
 emptyUnifier :: Unifier
 emptyUnifier = Tuple nullSubst []
 
-unifyMany :: Array Type -> Array Type -> Solve Substitution
+unifyMany ::
+  Array Type ->
+  Array
+    Type ->
+  Solve Substitution
 unifyMany [] [] = pure nullSubst
 
 unifyMany types types' = fromMaybe error subst

@@ -1,4 +1,5 @@
 @use "../utils/utils";
+@use "../fonts";
 @import "../theme.scss";
 
 #editor {
@@ -17,7 +18,6 @@
 
   justify-content: start;
 
-  width: $icon-size;
   background: $very-dark;
 
   .sidebar-icon {
@@ -26,10 +26,10 @@
     user-select: none;
     cursor: pointer;
 
-    width: 100%;
+    width: $icon-size;
     height: $icon-size;
 
-    color: $on-dark-pale;
+    color: $disabled;
     filter: brightness(0.7);
 
     border: 0.2rem solid transparent;
@@ -60,12 +60,28 @@
 
 #editor > #panel {
   width: 0;
-  display: block;
-  background: $primary-dark;
 
+  box-sizing: border-box;
+  display: block;
+
+  background: $primary-dark;
   transition: width $transition-time;
+
+  div {
+    padding: 0.5rem;
+    #title {
+      font-size: 2rem;
+      font-family: fonts.$oxanium;
+    }
+  }
 }
 
 #editor > #panel.active {
-  width: 15rem;
+  width: 30rem;
+  color: $on-dark;
+}
+
+#editor > #simulation {
+  background: $primary;
+  width: 100%;
 }

@@ -78,13 +78,20 @@ component =
     where
     icon = sidebarIcon currentTab
 
-  render { currentTab, panelIsOpen } =
+  panel s@{ currentTab } = case currentTab of
+    Settings ->
+      HH.div_
+        [ container "title" [ HH.text "Project settings" ]
+        ]
+    _ -> HH.text "not implemented"
+
+  render s@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"
           $ tabs currentTab
       , HH.div
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
-          []
+          [ panel s ]
       , container "simulation"
           [ HH.text "simulation"
           ]

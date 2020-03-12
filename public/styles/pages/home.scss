@@ -89,6 +89,10 @@
         color: white;
         background: darken($secondary, 20%);
       }
+
+      button#login {
+        background: $bright;
+      }
     }
   }
 }

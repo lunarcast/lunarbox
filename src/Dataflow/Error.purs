@@ -1,7 +1,7 @@
-module Dataflow.Error (TypeError(..)) where
+module Lunarbox.Dataflow.Error (TypeError(..)) where
 
 import Prelude
-import Dataflow.Type (Type, TVar)
+import Lunarbox.Dataflow.Type (Type, TVar)
 
 data TypeError
   = TypeMissmatch Type Type
