@@ -6,6 +6,7 @@ You can edit this file as you like.
 , dependencies =
   [ "aff"
   , "aff-bus"
+  , "colehaus-graphs"
   , "console"
   , "effect"
   , "generics-rep"
