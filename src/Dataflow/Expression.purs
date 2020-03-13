@@ -1,7 +1,9 @@
 module Lunarbox.Dataflow.Expression where
 
 import Prelude
-import Lunarbox.Dataflow.Type (TVar, Type)
+import Data.Maybe (Maybe, fromMaybe)
+import Data.Newtype (class Newtype, unwrap)
+import Lunarbox.Dataflow.Type (TVar(..), Type)
 
 data Literal
   = LInt Int
@@ -28,3 +30,22 @@ data Expression
   | Native (forall a b. NativeExpression a b)
 
 derive instance expressinEq :: Eq Expression
+
+-- HELPERS
+nullExpr :: Expression
+nullExpr = Variable $ TV $ "__nothing"
+
+class Expressible a where
+  toExpression :: a -> Expression
+
+instance expressibleString :: Expressible String where
+  toExpression = Variable <<< TV
+
+instance expressibleMaybe :: Expressible a => Expressible (Maybe a) where
+  toExpression = fromMaybe nullExpr <<< (toExpression <$> _)
+
+instance expressibleExpression :: Expressible Expression where
+  toExpression = identity
+
+newtypeToExpression :: forall a t. Newtype a t => Expressible t => a -> Expression
+newtypeToExpression = toExpression <<< unwrap
