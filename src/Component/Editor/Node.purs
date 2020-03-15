@@ -1,4 +1,4 @@
-module Lunarbox.Component.Node where
+module Lunarbox.Component.Editor.Node where
 
 import Prelude
 import Effect.Class (class MonadEffect)
@@ -25,10 +25,10 @@ component =
     { initialState: const { selected: false }
     , render
     , eval:
-      mkEval
-        $ defaultEval
-            { handleAction = handleAction
-            }
+        mkEval
+          $ defaultEval
+              { handleAction = handleAction
+              }
     }
   where
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit

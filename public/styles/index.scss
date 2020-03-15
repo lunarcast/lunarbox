@@ -1,6 +1,7 @@
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
+@import "normalize.css";
 
-body {
-  margin: 0;
+img {
+  -webkit-user-drag: none;
 }

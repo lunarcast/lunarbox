@@ -1,6 +1,7 @@
 @use "../utils/utils";
 @use "../fonts";
 @import "../theme.scss";
+@import "./tree.scss";
 
 #editor {
   display: flex;
@@ -70,9 +71,10 @@
 
   div {
     padding: 0.5rem;
+
     #title {
       font-size: 2rem;
-      font-family: fonts.$oxanium;
+      font-family: fonts.$montserrat;
     }
   }
 }

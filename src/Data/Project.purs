@@ -1,13 +1,11 @@
 module Lunarbox.Data.Project where
 
 import Prelude
-import Data.Graph as G
+import Data.Graph (Graph, lookup, topologicalSort, vertices) as G
 import Data.List (List, foldl, reverse, (\\))
-import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
-import Data.Set as Set
-import Data.Tuple (Tuple(..))
+import Lunarbox.Data.Graph (singleton) as G
 import Lunarbox.Dataflow.Expression (class Expressible, Expression(..), NativeExpression, newtypeToExpression, toExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
 
@@ -35,6 +33,9 @@ derive instance ordFunctionName :: Ord FunctionName
 
 derive instance newtypeFunctionName :: Newtype FunctionName _
 
+instance showFunctionName :: Show FunctionName where
+  show (FunctionName f) = f
+
 instance expressibleFunctionName :: Expressible FunctionName where
   toExpression = newtypeToExpression
 
@@ -51,6 +52,7 @@ newtype NodeGroup
   { inputs :: List NodeId
   , nodes :: G.Graph NodeId Node
   , output :: NodeId
+  , visible :: Boolean
   }
 
 data VisualFunction
@@ -110,12 +112,19 @@ compileProject project = toExpression <$> G.vertices project.functions
 emptyProject :: NodeId -> Project
 emptyProject id =
   { main: FunctionName "main"
-  , functions: G.fromMap $ Map.singleton (FunctionName "main") (Tuple emptyFunction Set.empty)
+  , functions: G.singleton (FunctionName "main") emptyFunction
   }
   where
   emptyFunction =
     DataflowFunction $ NodeGroup
       $ { inputs: mempty
-        , nodes: G.empty
+        , nodes: G.singleton id $ OutputNode Nothing
         , output: id
+        , visible: true
         }
+
+isVisible :: VisualFunction -> Boolean
+isVisible (DataflowFunction (NodeGroup { visible }))
+  | visible = true
+
+isVisible _ = false
