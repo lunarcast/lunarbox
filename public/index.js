@@ -3,6 +3,7 @@ import "./styles/index.scss";
 
 function main() {
   console.clear();
+
   Main.main();
 }
 

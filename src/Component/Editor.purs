@@ -3,14 +3,18 @@ module Lunarbox.Component.Editor where
 import Prelude
 import Control.Monad.State (modify)
 import Control.MonadZero (guard)
-import Data.Maybe (Maybe(..))
+import Data.Graph as G
+import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Class (class MonadEffect)
-import Halogen (ClassName(..), Component, HalogenM, defaultEval, mkComponent, mkEval)
+import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
 import Lunarbox.Component.Icon (icon)
+import Lunarbox.Component.Node as Node
 import Lunarbox.Component.Utils (container)
+import Lunarbox.Data.Project (FunctionName(..), NodeGroup(..), NodeId(..), Project, VisualFunction(..), emptyProject)
+import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
   = Settings
@@ -30,6 +34,9 @@ tabIcon = case _ of
 type State
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
+    , project :: Project
+    , lastId :: Int
+    , currentFunction :: FunctionName
     }
 
 data Action
@@ -39,12 +46,20 @@ data Query a
   = Void
 
 type ChildSlots
-  = ()
+  = ( node :: Slot Node.Query Void Unit
+    )
 
 component :: forall m. MonadEffect m => Component HH.HTML Query {} Void m
 component =
   mkComponent
-    { initialState: const { currentTab: Settings, panelIsOpen: false }
+    { initialState:
+      const
+        { currentTab: Settings
+        , panelIsOpen: false
+        , project: emptyProject $ NodeId $ "firstOutput"
+        , lastId: 0
+        , currentFunction: FunctionName "nothing"
+        }
     , render
     , eval:
       mkEval
@@ -85,6 +100,14 @@ component =
         ]
     _ -> HH.text "not implemented"
 
+  simulationContent { project, currentFunction } =
+    fromMaybe
+      (emptyEditor unit) do
+      function <- G.lookup currentFunction project.functions
+      case function of
+        NativeVF _ -> Nothing
+        DataflowFunction (NodeGroup { output }) -> Just $ HH.text $ show $ output
+
   render s@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"
@@ -93,6 +116,5 @@ component =
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel s ]
       , container "simulation"
-          [ HH.text "simulation"
-          ]
+          [ simulationContent s ]
       ]

@@ -64,6 +64,7 @@
   box-sizing: border-box;
   display: block;
 
+  color: $on-dark;
   background: $primary-dark;
   transition: width $transition-time;
 
@@ -78,10 +79,32 @@
 
 #editor > #panel.active {
   width: 30rem;
-  color: $on-dark;
 }
 
 #editor > #simulation {
   background: $primary;
   width: 100%;
+}
+
+#editor > #simulation > #empty {
+  @include utils.center;
+  height: 100%;
+
+  #illustration {
+    width: 40vw;
+
+    img {
+      width: 100%;
+    }
+  }
+
+  #text {
+    width: 100%;
+    text-align: center;
+    font-size: 1.5rem;
+    padding: 2rem;
+    box-sizing: border-box;
+    font-family: fonts.$oxanium;
+    color: $disabled;
+  }
 }

@@ -3,10 +3,11 @@ module Lunarbox.Data.Project where
 import Prelude
 import Data.Graph as G
 import Data.List (List, foldl, reverse, (\\))
-import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set as Set
+import Data.Tuple (Tuple(..))
 import Lunarbox.Dataflow.Expression (class Expressible, Expression(..), NativeExpression, newtypeToExpression, toExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
 
@@ -47,8 +48,7 @@ data Node
 
 newtype NodeGroup
   = NodeGroup
-  { visible :: Boolean
-  , inputs :: List NodeId
+  { inputs :: List NodeId
   , nodes :: G.Graph NodeId Node
   , output :: NodeId
   }
@@ -58,7 +58,7 @@ data VisualFunction
   | DataflowFunction NodeGroup
 
 type Project
-  = { functions :: Map FunctionName VisualFunction
+  = { functions :: G.Graph FunctionName VisualFunction
     , main :: FunctionName
     }
 
@@ -105,4 +105,17 @@ instance expressibleVisualFunction :: Expressible VisualFunction where
     DataflowFunction g -> toExpression g
 
 compileProject :: Project -> List Expression
-compileProject project = toExpression <$> Map.values project.functions
+compileProject project = toExpression <$> G.vertices project.functions
+
+emptyProject :: NodeId -> Project
+emptyProject id =
+  { main: FunctionName "main"
+  , functions: G.fromMap $ Map.singleton (FunctionName "main") (Tuple emptyFunction Set.empty)
+  }
+  where
+  emptyFunction =
+    DataflowFunction $ NodeGroup
+      $ { inputs: mempty
+        , nodes: G.empty
+        , output: id
+        }
