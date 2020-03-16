@@ -48,8 +48,11 @@ type Input
     }
 
 data Output
-  -- This notifies the parent whena  new function was created
-  = CreatedFunction FunctionName
+  -- This notifies the parent when  new function was created
+  = CreatedFunction
+    FunctionName
+  -- This notifies the parent when the selected function changed
+  | SelectedFunction (Maybe FunctionName)
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
@@ -74,6 +77,7 @@ component =
       modify_ (_ { creating = false })
     SelectFunction name -> do
       modify_ (_ { selected = Just name })
+      raise $ SelectedFunction $ Just name
     CreateFunction -> do
       { creating, functions } <- get
       -- if creating would be false we would get undefined behavior

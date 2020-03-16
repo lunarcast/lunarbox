@@ -49,6 +49,7 @@ type State
 data Action
   = ChangeTab Tab
   | CreateFunction FunctionName
+  | SelectFunction (Maybe FunctionName)
   | StartFunctionCreation
 
 data Query a
@@ -97,10 +98,13 @@ component =
       pure unit
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit (TreeC.StartCreation unit)
+    SelectFunction function -> do
+      modify_ (_ { currentFunction = function })
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
     TreeC.CreatedFunction name -> Just $ CreateFunction name
+    TreeC.SelectedFunction name -> Just $ SelectFunction name
 
   sidebarIcon activeTab current =
     HH.div
