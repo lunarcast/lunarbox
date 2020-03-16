@@ -1,12 +1,10 @@
 {
   "scripts": {
-    "dev": "parcel ./public/index.html --port 8080 && nodemon"
+    "dev": "parcel ./public/index.html --port 8080 && nodemon",
+    "fresh-build": "rm -rf output && spago build -d"
   },
   "dependencies": {
-    "normalize.css": "^8.0.1",
-    "react": "^16.12.0",
-    "react-dom": "^16.12.0",
-    "src": "^1.1.2"
+    "normalize.css": "^8.0.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.2",
