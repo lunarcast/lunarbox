@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dev": "parcel ./public/index.html --port 8080 && nodemon",
-    "fresh-build": "rm -rf output && spago build -d"
+    "fresh-build": "rm -rf output && spago build"
   },
   "dependencies": {
     "normalize.css": "^8.0.1"

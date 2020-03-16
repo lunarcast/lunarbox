@@ -7,20 +7,23 @@ import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (Component, HalogenM, RefLabel(..), defaultEval, get, getHTMLElementRef, mkComponent, mkEval, modify_, raise)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), defaultEval, get, getHTMLElementRef, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onBlur, onKeyUp)
-import Halogen.HTML.Properties as Hp
+import Halogen.HTML.Events (onBlur, onClick, onKeyUp)
+import Halogen.HTML.Properties (classes)
+import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (StaticHtml, container)
+import Lunarbox.Data.Project (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.KeyboardEvent as KE
 
 type State
-  = { functions :: List String
+  = { functions :: List FunctionName
     , creating :: Boolean
+    , selected :: Maybe FunctionName
     }
 
 data Action
@@ -28,6 +31,8 @@ data Action
   = CreateFunction
   -- If the used blurs out of the input it means he canceled the creation
   | CancelCreation
+  -- This runs when the user clicks on a function
+  | SelectFunction FunctionName
 
 data Query a
   -- This is a message from the parent meaning we can start the cretion process
@@ -37,17 +42,19 @@ type ChildSlots
   = ()
 
 type Input
-  -- The initial function list
-  = List String
+  -- The initial function list and selected function
+  = { functions :: List FunctionName
+    , selected :: Maybe FunctionName
+    }
 
 data Output
   -- This notifies the parent whena  new function was created
-  = CreatedFunction String
+  = CreatedFunction FunctionName
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
   mkComponent
-    { initialState: (\input -> { functions: input, creating: false })
+    { initialState: (\{ functions, selected } -> { functions, selected, creating: false })
     , render
     , eval:
         mkEval
@@ -65,6 +72,8 @@ component =
   handleAction = case _ of
     CancelCreation -> do
       modify_ (_ { creating = false })
+    SelectFunction name -> do
+      modify_ (_ { selected = Just name })
     CreateFunction -> do
       { creating, functions } <- get
       -- if creating would be false we would get undefined behavior
@@ -78,10 +87,10 @@ component =
               -- get the text in the input box
               name <- liftEffect $ InputElement.value element
               -- this saves the new function in the list
-              modify_ (_ { creating = false, functions = functions <> pure name })
+              modify_ (_ { creating = false, functions = functions <> (pure $ FunctionName name) })
               -- this notifies the parent element we just created a new function
               -- the parent ususally has to add the function to the graph
-              raise $ CreatedFunction name
+              raise $ CreatedFunction $ FunctionName name
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -96,14 +105,20 @@ component =
 
   -- renders an element in the list
   -- I'll have to update it when I'll add support for recursive functions
-  displayFunction :: forall a b. StaticHtml String a b
-  displayFunction name = HH.div_ [ icon "code", HH.text name ]
+  displayFunction :: forall a. Maybe FunctionName -> StaticHtml FunctionName a Action
+  displayFunction selected name =
+    HH.div
+      [ onClick $ const $ Just $ SelectFunction name
+      , classes $ ClassName <$> ("selected" <$ guard (Just name == selected))
+      , HP.id_ "function"
+      ]
+      [ icon "code", HH.text $ show name ]
 
   render :: forall a. State -> HTML a Action
-  render { functions, creating } = container "functions" (existingFunctions <> newFunctionTextBox)
+  render { functions, creating, selected } = container "functions" (existingFunctions <> newFunctionTextBox)
     where
     -- this is the html for the list of existing functions
-    existingFunctions = List.toUnfoldable $ displayFunction <$> functions
+    existingFunctions = List.toUnfoldable $ (displayFunction selected) <$> functions
 
     -- this is a list which may contain the input box for creating new functions
     newFunctionTextBox =
@@ -111,7 +126,7 @@ component =
         $> container "create-function-input-container"
             [ icon "code"
             , HH.input
-                [ Hp.id_ "create-function-input"
+                [ HP.id_ "create-function-input"
                 , onKeyUp \event -> do
                     -- when the user presses enter we create the function
                     guard (KE.key event == "Enter")
@@ -119,8 +134,8 @@ component =
                 -- if the user clicks outside the input we can cancel the creation
                 , onBlur $ const $ Just $ CancelCreation
                 -- this will only work for the first function creation, but it's still good to haves
-                , Hp.autofocus true
+                , HP.autofocus true
                 -- the ref is necessary to solve focus issues
-                , Hp.ref inputRef
+                , HP.ref inputRef
                 ]
             ]

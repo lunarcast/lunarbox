@@ -31,7 +31,8 @@
     height: 100%;
     width: 100%;
 
-    div {
+    #function,
+    #create-function-input-container {
       display: flex;
       align-items: center;
 
@@ -53,8 +54,12 @@
       transition: filter $transition-time;
     }
 
-    div:hover {
-      filter: brightness(1.3);
+    #function:hover {
+      filter: brightness(1.2);
+    }
+
+    #function.selected {
+      filter: brightness(1.4);
     }
 
     #create-function-input-container {
@@ -62,7 +67,7 @@
       padding-bottom: 0;
     }
 
-    div > #create-function-input {
+    #create-function-input-container > #create-function-input {
       background: $dark-input-bg;
       border: none;
       outline: none;

@@ -20,7 +20,7 @@ import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
-import Lunarbox.Data.Project (FunctionName(..), NodeGroup(..), NodeId(..), Project, VisualFunction(..), emptyProject, isVisible)
+import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId(..), Project, VisualFunction(..), emptyProject, isVisible)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
@@ -43,12 +43,12 @@ type State
     , panelIsOpen :: Boolean
     , project :: Project
     , lastId :: Int
-    , currentFunction :: FunctionName
+    , currentFunction :: Maybe FunctionName
     }
 
 data Action
   = ChangeTab Tab
-  | CreateFunction String
+  | CreateFunction FunctionName
   | StartFunctionCreation
 
 data Query a
@@ -68,7 +68,7 @@ component =
           , panelIsOpen: false
           , project: emptyProject $ NodeId $ "firstOutput"
           , lastId: 0
-          , currentFunction: FunctionName "nothing"
+          , currentFunction: Nothing
           }
     , render
     , eval:
@@ -122,7 +122,7 @@ component =
     where
     icon = sidebarIcon currentTab
 
-  panel s@{ currentTab, project } = case currentTab of
+  panel { currentTab, project, currentFunction } = case currentTab of
     Settings ->
       HH.div_
         [ container "title" [ HH.text "Project settings" ]
@@ -135,22 +135,25 @@ component =
                 [ HH.hr [ HP.id_ "line" ]
                 , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
                 ]
-            , HH.slot (SProxy :: _ "tree") unit TreeC.component elements handleTreeOutput
+            , HH.slot (SProxy :: _ "tree") unit TreeC.component
+                { functions, selected: currentFunction
+                }
+                handleTreeOutput
             ]
         ]
       where
-      elements =
+      functions =
         G.toMap project.functions
           <#> fst
           # Map.filter isVisible
           # Map.keys
           # (Set.toUnfoldable :: forall a. Set.Set a -> List a)
-          <#> show
     _ -> HH.text "not implemented"
 
-  simulationContent { project, currentFunction } =
+  simulationContent { project, currentFunction: maybeCurrentFunction } =
     fromMaybe
       (emptyEditor unit) do
+      currentFunction <- maybeCurrentFunction
       function <- G.lookup currentFunction project.functions
       case function of
         NativeVF _ -> Nothing
