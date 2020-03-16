@@ -10,7 +10,7 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, RefLabel(..), defaultEval, get, getHTMLElementRef, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onKeyUp)
+import Halogen.HTML.Events (onBlur, onKeyUp)
 import Halogen.HTML.Properties as Hp
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (StaticHtml, container)
@@ -26,6 +26,8 @@ type State
 data Action
   -- Uusally runs when the user presses enter while focused on the input box
   = CreateFunction
+  -- If the used blurs out of the input it means he canceled the creation
+  | CancelCreation
 
 data Query a
   -- This is a message from the parent meaning we can start the cretion process
@@ -61,6 +63,8 @@ component =
 
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
+    CancelCreation -> do
+      modify_ (_ { creating = false })
     CreateFunction -> do
       { creating, functions } <- get
       -- if creating would be false we would get undefined behavior
@@ -107,11 +111,13 @@ component =
         $> container "create-function-input-container"
             [ icon "code"
             , HH.input
-                [ onKeyUp \event -> do
+                [ Hp.id_ "create-function-input"
+                , onKeyUp \event -> do
                     -- when the user presses enter we create the function
                     guard (KE.key event == "Enter")
                     pure CreateFunction
-                , Hp.id_ "create-function-input"
+                -- if the user clicks outside the input we can cancel the creation
+                , onBlur $ const $ Just $ CancelCreation
                 -- this will only work for the first function creation, but it's still good to haves
                 , Hp.autofocus true
                 -- the ref is necessary to solve focus issues
