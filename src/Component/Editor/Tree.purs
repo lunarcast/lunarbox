@@ -22,11 +22,20 @@ import Web.HTML.HTMLElement (blur, focus)
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.KeyboardEvent as KE
 
+data ValidationError
+  = Duplicate String
+  | Empty
+
+validationErrorToHtml :: forall a b. ValidationError -> HTML a b
+validationErrorToHtml (Duplicate s) = HH.span_ [ HH.text "Function ", HH.strong_ [ HH.text s ], HH.text " already exists." ]
+
+validationErrorToHtml Empty = HH.text "Function names cannot be empty"
+
 type State
   = { functions :: List FunctionName
     , creating :: Boolean
     , selected :: Maybe FunctionName
-    , validationError :: Maybe String
+    , validationError :: Maybe ValidationError
     }
 
 data Action
@@ -76,6 +85,25 @@ component =
   inputRef :: RefLabel
   inputRef = RefLabel "create-function-input"
 
+  validate :: HalogenM State Action ChildSlots Output m Unit
+  validate = do
+    -- this gives the the element from the dom if it exists
+    maybeElement <- getHTMLElementRef inputRef
+    -- this is here in case the selected element isnt an input element
+    maybeElement >>= InputElement.fromHTMLElement
+      # traverse_ \element -> do
+          -- this gives us the inner value of the input box so we can validate it
+          name <- liftEffect $ InputElement.value element
+          { functions } <- get
+          -- here we check if the validation fails and if it does we display the error
+          if (Maybe.isJust $ (_ == FunctionName name) `find` functions) then
+            modify_ (_ { validationError = Just $ Duplicate name })
+          else
+            if (name == "") then
+              modify_ (_ { validationError = Just $ Empty })
+            else
+              modify_ (_ { validationError = Nothing })
+
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     CancelCreation -> do
@@ -83,21 +111,11 @@ component =
     SelectFunction name -> do
       modify_ (_ { selected = Just name })
       raise $ SelectedFunction $ Just name
-    ValidateFunctionName -> do
-      -- this gives the the element from the dom if it exists
-      maybeElement <- getHTMLElementRef inputRef
-      -- this is here in case the selected element isnt an input element
-      maybeElement >>= InputElement.fromHTMLElement
-        # traverse_ \element -> do
-            -- this gives us the inner value of the input box so we can validate it
-            name <- liftEffect $ InputElement.value element
-            { functions } <- get
-            -- here we check if the validation fails and if it does we display the error
-            if (Maybe.isJust $ (_ == FunctionName name) `find` functions) then
-              modify_ (_ { validationError = Just $ "Function " <> name <> " already exists." })
-            else
-              modify_ (_ { validationError = Nothing })
+    ValidateFunctionName -> validate
     CreateFunction -> do
+      -- validate in case the user pressed enter right away
+      validate
+      -- we get the data after vaildating to be sure the validationError is up to date
       { creating, functions, validationError } <- get
       -- if creating would be false we would get undefined behavior
       when creating do
@@ -154,7 +172,7 @@ component =
       guard creating
         $> container "create-function-input-container"
             [ icon "code"
-            , maybeTooltip (HH.text <$> validationError)
+            , maybeTooltip (validationErrorToHtml <$> validationError)
                 $ HH.input
                     [ HP.id_ "create-function-input"
                     , onKeyUp \event -> do

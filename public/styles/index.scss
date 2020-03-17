@@ -1,3 +1,5 @@
+@use "./fonts";
+
 // Pages
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
@@ -11,4 +13,8 @@
 // Prevent default drag behavior on images
 img {
   -webkit-user-drag: none;
+}
+
+* {
+  font-family: fonts.$montserrat;
 }
