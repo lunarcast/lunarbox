@@ -1,7 +1,7 @@
 module Lunarbox.Data.Project where
 
 import Prelude
-import Data.Graph (Graph, lookup, topologicalSort, vertices) as G
+import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -109,22 +109,29 @@ instance expressibleVisualFunction :: Expressible VisualFunction where
 compileProject :: Project -> List Expression
 compileProject project = toExpression <$> G.vertices project.functions
 
-emptyProject :: NodeId -> Project
-emptyProject id =
-  { main: FunctionName "main"
-  , functions: G.singleton (FunctionName "main") emptyFunction
-  }
-  where
-  emptyFunction =
-    DataflowFunction $ NodeGroup
-      $ { inputs: mempty
+createEmptyFunction :: NodeId -> VisualFunction
+createEmptyFunction id =
+  DataflowFunction
+    $ NodeGroup
+        { inputs: mempty
         , nodes: G.singleton id $ OutputNode Nothing
         , output: id
         , visible: true
         }
+
+emptyProject :: NodeId -> Project
+emptyProject id =
+  { main: FunctionName "main"
+  , functions: G.singleton (FunctionName "main") $ createEmptyFunction id
+  }
 
 isVisible :: VisualFunction -> Boolean
 isVisible (DataflowFunction (NodeGroup { visible }))
   | visible = true
 
 isVisible _ = false
+
+createFunction :: FunctionName -> NodeId -> Project -> Project
+createFunction name outputId project@{ functions } = project { functions = G.insertVertex name function functions }
+  where
+  function = (createEmptyFunction outputId)

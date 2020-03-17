@@ -90,11 +90,16 @@ component =
           # traverse_ \element -> do
               -- get the text in the input box
               name <- liftEffect $ InputElement.value element
+              let
+                functionName = FunctionName name
               -- this saves the new function in the list
-              modify_ (_ { creating = false, functions = functions <> (pure $ FunctionName name) })
+              -- we also automatically select the new function
+              modify_ (_ { creating = false, functions = functions <> (pure functionName), selected = Just functionName })
               -- this notifies the parent element we just created a new function
               -- the parent ususally has to add the function to the graph
-              raise $ CreatedFunction $ FunctionName name
+              raise $ CreatedFunction functionName
+              -- we also need to make the parent select this function too
+              raise $ SelectedFunction $ Just functionName
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -136,7 +141,7 @@ component =
                     guard (KE.key event == "Enter")
                     pure CreateFunction
                 -- if the user clicks outside the input we can cancel the creation
-                , onBlur $ const $ Just $ CancelCreation
+                , onBlur $ const $ Just CancelCreation
                 -- this will only work for the first function creation, but it's still good to haves
                 , HP.autofocus true
                 -- the ref is necessary to solve focus issues

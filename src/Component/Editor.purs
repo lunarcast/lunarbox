@@ -20,7 +20,7 @@ import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
-import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId(..), Project, VisualFunction(..), emptyProject, isVisible)
+import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId(..), Project, VisualFunction(..), emptyProject, isVisible, createFunction)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
@@ -42,7 +42,7 @@ type State
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
     , project :: Project
-    , lastId :: Int
+    , nextId :: Int
     , currentFunction :: Maybe FunctionName
     }
 
@@ -68,7 +68,7 @@ component =
           { currentTab: Settings
           , panelIsOpen: false
           , project: emptyProject $ NodeId $ "firstOutput"
-          , lastId: 0
+          , nextId: 0
           , currentFunction: Nothing
           }
     , render
@@ -79,6 +79,12 @@ component =
               }
     }
   where
+  createId :: HalogenM State Action ChildSlots Void m NodeId
+  createId = do
+    { nextId } <- get
+    modify_ (_ { nextId = nextId + 1 })
+    pure $ NodeId $ show nextId
+
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
     ChangeTab tab -> do
@@ -94,7 +100,8 @@ component =
               }
         )
     CreateFunction name -> do
-      state <- get
+      id <- createId
+      modify_ (\state@{ project } -> state { project = createFunction name id project })
       pure unit
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit (TreeC.StartCreation unit)
