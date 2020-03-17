@@ -2,10 +2,11 @@ module Lunarbox.Component.Editor.Tree where
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, find)
 import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), defaultEval, get, getHTMLElementRef, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML (HTML)
@@ -83,8 +84,6 @@ component =
       -- if creating would be false we would get undefined behavior
       when creating do
         maybeElement <- getHTMLElementRef inputRef
-        -- move the element out of focus
-        liftEffect $ traverse_ blur maybeElement
         -- this is here in case the selected element isnt an input element
         maybeElement >>= InputElement.fromHTMLElement
           # traverse_ \element -> do
@@ -92,14 +91,17 @@ component =
               name <- liftEffect $ InputElement.value element
               let
                 functionName = FunctionName name
-              -- this saves the new function in the list
-              -- we also automatically select the new function
-              modify_ (_ { creating = false, functions = functions <> (pure functionName), selected = Just functionName })
-              -- this notifies the parent element we just created a new function
-              -- the parent ususally has to add the function to the graph
-              raise $ CreatedFunction functionName
-              -- we also need to make the parent select this function too
-              raise $ SelectedFunction $ Just functionName
+              when (Maybe.isNothing $ (_ == functionName) `find` functions) do
+                -- move the element out of focus
+                liftEffect $ traverse_ blur maybeElement
+                -- this saves the new function in the list
+                -- we also automatically select the new function
+                modify_ (_ { creating = false, functions = functions <> (pure functionName), selected = Just functionName })
+                -- this notifies the parent element we just created a new function
+                -- the parent ususally has to add the function to the graph
+                raise $ CreatedFunction functionName
+                -- we also need to make the parent select this function too
+                raise $ SelectedFunction $ Just functionName
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
