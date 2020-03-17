@@ -1,42 +1,46 @@
-## Pure HMR
+# Lunarbox
 
-This is a nifty little executable script that will quickly get a minimal hot reloading Purescript project going.
+Tool to help begginers learn functional programming
 
-This runs the spago build system, as well as the parcel bundler. support for other build systems is in our roadmap.
+## Contributing
 
-This also assumes that your entry point is index.html. Flexible entry points are also in our roadmap
+Fork this repo, write some code and submit a pull request.
 
-Props to justinwoo - https://github.com/justinwoo/purescript-parcel-example
+## Tehnologies:
 
-### Setup:
+This project is mostly made in the [puresciprt](https://www.purescript.org) programming language using [haolgen](https://github.com/purescript-halogen/purescript-halogen) for web rendering.
 
-1. Global dependancies
+For installing dependencies this project uses:
 
-You must have the purescript compiler installed, as well as:
+- [pnpm](https://pnpm.js.org) for the js dependencies
+- [spago](https://github.com/purescript/spago) for the purescript dependencies
 
-    npm i -g parcel spago
+For the compilation this project uses [parcel](https://parceljs.org) to bundle the js, [scss](https://sass-lang.com) and the assets and [spago](https://github.com/purescript/spago) to compile the purescript.
 
-You must have inotifywatch installed - in linux:
+## Installing locally
 
-    sudo apt install inotify-tools
+### Installing the dependencies
 
-2. Usage:
+Clone this repo. Install the dependencies with:
 
-Copy the following files into your project directory.
+```sh
+pnpm install
+```
 
-./index.html
-./index.js
+> Note: this project uses [pnpm](https://pnpm.js.org), pull requests using npm or yarn will be ignored
 
-If you're in an established project and you have an existing entry point, you may need to merge your existing code into these files, maintaining the import statement and script tag.
+> Note: You also need to have purescript installed, in the future I might add purescript as a dev dependency, but I'm not sure if that would break anything.
 
-now run:
+### Running the dev server:
 
-    ./purehmr
+To start the dev server use the `dev` command:
 
-Happy Hacking!
+```sh
+pnpm run dev
+```
 
-### Roadmap Features
+> Note: the first build might take a long time, this is caused by the fact spago will have to install all it's dependencies
 
-- allow the user to provide the build script as an argument
+## Strucure & architecture
 
-- allow the user to specify an entry point and watch folder.
+TODO
