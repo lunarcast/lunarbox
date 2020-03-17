@@ -1,0 +1,26 @@
+{
+  "projectName": "lunarbox",
+  "projectOwner": "Mateiadrielrafael",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "Mateiadrielrafael",
+      "name": "Matei Adriel",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/39400800?v=4",
+      "profile": "https://github.com/Mateiadrielrafael",
+      "contributions": [
+        "code",
+        "design",
+        "infra"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}
