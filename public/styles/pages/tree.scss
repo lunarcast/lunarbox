@@ -2,8 +2,7 @@
 @use "../fonts";
 @import "../theme.scss";
 
-#editor > #panel > div > #tree {
-  padding: 0;
+#editor > #panel > #panel-container > #tree {
   overflow: hidden;
   width: 100%;
 
@@ -27,25 +26,25 @@
   #functions {
     display: flex;
     flex-direction: column;
+
     overflow-x: hidden;
     height: 100%;
-    width: 100%;
 
     #function,
     #create-function-input-container {
       display: flex;
       align-items: center;
 
-      width: 100%;
       font-size: 1.5rem;
+      height: 2.5rem;
 
-      padding: 0.5rem;
+      padding-left: 1rem;
+
       box-sizing: border-box;
-
       background: $primary-dark;
 
       .material-icons {
-        margin-right: 1rem;
+        margin-right: 1.5rem;
       }
 
       cursor: pointer;
@@ -62,18 +61,26 @@
       filter: brightness(1.4);
     }
 
-    #create-function-input-container {
-      padding-top: 0;
-      padding-bottom: 0;
+    #function {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
     }
 
-    #create-function-input-container > #create-function-input {
+    #create-function-input-container > .material-icons {
+      margin-right: 1rem;
+    }
+
+    #create-function-input-container > * > #create-function-input {
       background: $dark-input-bg;
+      color: white;
+
       border: none;
       outline: none;
-      color: white;
+
       height: 2.5rem;
       width: 100%;
+
+      padding-left: 0.5rem;
     }
   }
 }

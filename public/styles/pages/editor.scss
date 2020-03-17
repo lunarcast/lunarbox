@@ -70,13 +70,10 @@
   background: $primary-dark;
   transition: width $transition-time;
 
-  div {
+  #panel-container > #title {
     padding: 0.5rem;
-
-    #title {
-      font-size: 2rem;
-      font-family: fonts.$montserrat;
-    }
+    font-size: 2rem;
+    font-family: fonts.$montserrat;
   }
 }
 

@@ -1,7 +1,14 @@
+// Pages
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
+
+// Components
+@import "./components/tooltip.scss";
+
+// Libraries
 @import "normalize.css";
 
+// Prevent default drag behavior on images
 img {
   -webkit-user-drag: none;
 }

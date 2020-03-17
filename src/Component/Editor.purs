@@ -135,11 +135,11 @@ component =
 
   panel { currentTab, project, currentFunction } = case currentTab of
     Settings ->
-      HH.div_
+      container "panel-container"
         [ container "title" [ HH.text "Project settings" ]
         ]
     Tree ->
-      HH.div_
+      container "panel-container"
         [ container "title" [ HH.text "Explorer" ]
         , container "tree"
             [ container "actions"

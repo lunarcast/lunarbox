@@ -11,10 +11,11 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), defaultEval, get, getHTMLElementRef, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onBlur, onClick, onKeyUp)
+import Halogen.HTML.Events (onBlur, onClick, onInput, onKeyUp)
 import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
+import Lunarbox.Component.Tooltip (maybeTooltip)
 import Lunarbox.Component.Utils (StaticHtml, container)
 import Lunarbox.Data.Project (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
@@ -25,6 +26,7 @@ type State
   = { functions :: List FunctionName
     , creating :: Boolean
     , selected :: Maybe FunctionName
+    , validationError :: Maybe String
     }
 
 data Action
@@ -34,6 +36,8 @@ data Action
   | CancelCreation
   -- This runs when the user clicks on a function
   | SelectFunction FunctionName
+  -- This runs when the user types anything
+  | ValidateFunctionName
 
 data Query a
   -- This is a message from the parent meaning we can start the cretion process
@@ -58,7 +62,7 @@ data Output
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
   mkComponent
-    { initialState: (\{ functions, selected } -> { functions, selected, creating: false })
+    { initialState: (\{ functions, selected } -> { functions, selected, creating: false, validationError: Nothing })
     , render
     , eval:
         mkEval
@@ -75,12 +79,26 @@ component =
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     CancelCreation -> do
-      modify_ (_ { creating = false })
+      when false $ modify_ (_ { creating = false })
     SelectFunction name -> do
       modify_ (_ { selected = Just name })
       raise $ SelectedFunction $ Just name
+    ValidateFunctionName -> do
+      -- this gives the the element from the dom if it exists
+      maybeElement <- getHTMLElementRef inputRef
+      -- this is here in case the selected element isnt an input element
+      maybeElement >>= InputElement.fromHTMLElement
+        # traverse_ \element -> do
+            -- this gives us the inner value of the input box so we can validate it
+            name <- liftEffect $ InputElement.value element
+            { functions } <- get
+            -- here we check if the validation fails and if it does we display the error
+            if (Maybe.isJust $ (_ == FunctionName name) `find` functions) then
+              modify_ (_ { validationError = Just $ "Function " <> name <> " already exists." })
+            else
+              modify_ (_ { validationError = Nothing })
     CreateFunction -> do
-      { creating, functions } <- get
+      { creating, functions, validationError } <- get
       -- if creating would be false we would get undefined behavior
       when creating do
         maybeElement <- getHTMLElementRef inputRef
@@ -91,7 +109,7 @@ component =
               name <- liftEffect $ InputElement.value element
               let
                 functionName = FunctionName name
-              when (Maybe.isNothing $ (_ == functionName) `find` functions) do
+              when (Maybe.isNothing validationError) do
                 -- move the element out of focus
                 liftEffect $ traverse_ blur maybeElement
                 -- this saves the new function in the list
@@ -126,7 +144,7 @@ component =
       [ icon "code", HH.text $ show name ]
 
   render :: forall a. State -> HTML a Action
-  render { functions, creating, selected } = container "functions" (existingFunctions <> newFunctionTextBox)
+  render { functions, creating, selected, validationError } = container "functions" (existingFunctions <> newFunctionTextBox)
     where
     -- this is the html for the list of existing functions
     existingFunctions = List.toUnfoldable $ (displayFunction selected) <$> functions
@@ -136,17 +154,21 @@ component =
       guard creating
         $> container "create-function-input-container"
             [ icon "code"
-            , HH.input
-                [ HP.id_ "create-function-input"
-                , onKeyUp \event -> do
-                    -- when the user presses enter we create the function
-                    guard (KE.key event == "Enter")
-                    pure CreateFunction
-                -- if the user clicks outside the input we can cancel the creation
-                , onBlur $ const $ Just CancelCreation
-                -- this will only work for the first function creation, but it's still good to haves
-                , HP.autofocus true
-                -- the ref is necessary to solve focus issues
-                , HP.ref inputRef
-                ]
+            , maybeTooltip (HH.text <$> validationError)
+                $ HH.input
+                    [ HP.id_ "create-function-input"
+                    , onKeyUp \event -> do
+                        -- when the user presses enter we create the function
+                        guard (KE.key event == "Enter")
+                        pure CreateFunction
+                    -- if the user clicks outside the input we can cancel the creation
+                    , onBlur $ const $ Just CancelCreation
+                    , onInput $ const $ Just ValidateFunctionName
+                    -- this will only work for the first function creation, but it's still good to haves
+                    , HP.autofocus true
+                    -- the ref is necessary to solve focus issues
+                    , HP.ref inputRef
+                    -- we don't want autocomplete for function names
+                    , HP.autocomplete false
+                    ]
             ]
