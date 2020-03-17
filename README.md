@@ -1,6 +1,6 @@
 # Lunarbox
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Tool to help begginers learn functional programming
@@ -59,6 +59,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://github.com/Mateiadrielrafael"><img src="https://avatars0.githubusercontent.com/u/39400800?v=4" width="100px;" alt=""/><br /><sub><b>Matei Adriel</b></sub></a><br /><a href="https://github.com/Mateiadrielrafael/lunarbox/commits?author=Mateiadrielrafael" title="Code">💻</a> <a href="#design-Mateiadrielrafael" title="Design">🎨</a> <a href="#infra-Mateiadrielrafael" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     <td align="center"><a href="http://xwafl.github.io/portfolio"><img src="https://avatars2.githubusercontent.com/u/35458851?v=4" width="100px;" alt=""/><br /><sub><b>xWafl</b></sub></a><br /><a href="#design-xWafl" title="Design">🎨</a> <a href="#ideas-xWafl" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://discordapp.com/users/270972671490129921"><img src="https://avatars0.githubusercontent.com/u/49570123?v=4" width="100px;" alt=""/><br /><sub><b>Sandu Victor</b></sub></a><br /><a href="#design-Vyctor661" title="Design">🎨</a> <a href="#ideas-Vyctor661" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
