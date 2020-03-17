@@ -1,21 +1,14 @@
 .tooltip-container {
   position: relative;
-  width: inherit;
-  height: inherit;
 
   .tooltip-content {
     visibility: hidden;
 
-    // TODO: remove
-    background-color: #912f3f;
-    color: #fff;
-    // text-align: center;
     padding: 1rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
     box-sizing: border-box;
 
-    // width: 100vw;
+    width: 100%;
+
     position: absolute;
     z-index: 10;
   }
