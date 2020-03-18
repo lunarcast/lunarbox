@@ -1,18 +1,17 @@
-#  Action which:
-#   - deploys to github pages
-#   - creates a changelog
-#   - creates a new release
-#   - runs on each merge into master
+#  Action which builds the thing every time someone opens a pr
 
-name: Build and deploy 🚀
+name: Build 👷
 
 on:
   push:
     branches:
+      - develop
+  pull_request:
+    branches:
       - master
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     strategy:
@@ -39,23 +38,3 @@ jobs:
         run: pnpm i
       - name: Build project
         run: pnpm run build
-
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: dist
-  tag:
-    runs-on: ubuntu-latest
-
-    needs: [deploy]
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Generate changelog
-        uses: TriPSs/conventional-changelog-action@v1.2.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          git-message: "chore(release): {version}"
-          changelog-release-count: 0
