@@ -1,0 +1,47 @@
+---
+to: src/<%= folder %>/<%= name.replace(/\./g, "/") %>.purs
+---
+
+module Lunarbox.<%= folder %>.<%= name %> where
+
+import Prelude
+import Control.Monad.Reader (class MonadAsk)
+import Effect.Class (class MonadEffect)
+import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval)
+import Halogen.HTML as HH
+import Lunarbox.Config (Config)
+
+type State
+  = {}
+
+data Action
+  = SomeAction
+
+data Query a
+  = Void
+
+type Output
+  = Void
+
+type ChildSlots
+  = ()
+
+type Input = Unit
+
+component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
+component =
+  mkComponent
+    { initialState: const {}
+    , render
+    , eval:
+        mkEval
+          $ defaultEval
+              { handleAction = handleAction
+              }
+    }
+  where
+  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
+  handleAction = case _ of
+    SomeAction -> pure unit
+
+  render _ = HH.text "unimplemented"

@@ -12,3 +12,4 @@
 dist
 .env.*
 ./deploy
+pnpm-debug.log

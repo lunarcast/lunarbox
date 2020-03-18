@@ -1,0 +1,96 @@
+@use "../utils/utils";
+@use "../fonts";
+@import "../theme.scss";
+
+#editor > #panel > #panel-container > #tree {
+  overflow: hidden;
+  width: 100%;
+
+  #actions {
+    * {
+      margin-right: 0.5rem;
+    }
+
+    #line {
+      flex-grow: 1;
+      margin-right: 1rem;
+    }
+
+    .material-icons {
+      cursor: pointer;
+    }
+
+    padding-bottom: 1rem;
+    display: flex;
+  }
+
+  #functions {
+    display: flex;
+    flex-direction: column;
+
+    overflow-x: hidden;
+    height: 100%;
+
+    #function,
+    #create-function-input-container {
+      display: flex;
+      align-items: center;
+
+      font-size: 1.5rem;
+      height: 2.5rem;
+
+      padding-left: 1rem;
+
+      box-sizing: border-box;
+      background: $primary-dark;
+
+      .material-icons {
+        margin-right: 1.5rem;
+      }
+
+      cursor: pointer;
+      user-select: none;
+
+      transition: filter $transition-time;
+    }
+
+    #function:hover {
+      filter: brightness(1.2);
+    }
+
+    #function.selected {
+      filter: brightness(1.4);
+    }
+
+    #function {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+
+    #create-function-input-container > .material-icons {
+      margin-right: 1rem;
+    }
+
+    #create-function-input-container > .tooltip-container > .tooltip-content {
+      background-color: #912f3f;
+      color: #fff;
+
+      font-size: 1rem;
+    }
+
+    #create-function-input-container
+      > .tooltip-container
+      > #create-function-input {
+      background: $dark-input-bg;
+      color: white;
+
+      border: none;
+      outline: none;
+
+      height: 2.5rem;
+      width: 100%;
+
+      padding-left: 0.5rem;
+    }
+  }
+}

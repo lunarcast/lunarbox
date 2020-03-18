@@ -1,7 +1,7 @@
 module Lunarbox.AppM where
 
 import Prelude
-import Control.Monad.Reader (ReaderT, runReaderT)
+import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, runReaderT)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -34,6 +34,10 @@ derive newtype instance monadAppM :: Monad AppM
 derive newtype instance monadEffectAppM :: MonadEffect AppM
 
 derive newtype instance monadAffAppM :: MonadAff AppM
+
+derive newtype instance monadAskAppM :: MonadAsk Config AppM
+
+derive newtype instance monadReaderAppM :: MonadReader Config AppM
 
 instance navigateAppM :: Navigate AppM where
   navigate = liftEffect <<< setHash <<< print routingCodec

@@ -1,9 +1,9 @@
-module Dataflow.TypeEnv (TypeEnv(..), extend) where
+module Lunarbox.Dataflow.TypeEnv (TypeEnv(..), extend) where
 
 import Data.Map as Map
 import Data.Newtype (class Newtype)
 import Data.Tuple (Tuple(..))
-import Dataflow.Type (Scheme, TVar)
+import Lunarbox.Dataflow.Type (Scheme, TVar)
 import Data.Function (($))
 
 newtype TypeEnv

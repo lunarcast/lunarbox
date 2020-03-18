@@ -1,12 +1,12 @@
-module Dataflow.Substitution (Substitution, compose, class Substituable, apply, ftv) where
+module Lunarbox.Dataflow.Substitution where
 
 import Prelude
 import Data.Foldable (class Foldable, foldr)
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Set as Set
-import Dataflow.TypeEnv (TypeEnv(..))
-import Dataflow.Type (Scheme(..), TVar, Type(..))
+import Lunarbox.Dataflow.TypeEnv (TypeEnv(..))
+import Lunarbox.Dataflow.Type (Scheme(..), TVar, Type(..))
 
 type Substitution
   = Map.Map TVar Type

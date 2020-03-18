@@ -6,10 +6,13 @@ You can edit this file as you like.
 , dependencies =
   [ "aff"
   , "aff-bus"
+  , "colehaus-graphs"
   , "console"
   , "effect"
   , "generics-rep"
   , "halogen"
+  , "halogen-svg"
+  , "halogen-vdom"
   , "ordered-collections"
   , "psci-support"
   , "routing"

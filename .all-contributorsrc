@@ -1,0 +1,46 @@
+{
+  "projectName": "lunarbox",
+  "projectOwner": "Mateiadrielrafael",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "Mateiadrielrafael",
+      "name": "Matei Adriel",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/39400800?v=4",
+      "profile": "https://github.com/Mateiadrielrafael",
+      "contributions": [
+        "code",
+        "design",
+        "infra"
+      ]
+    },
+    {
+      "login": "xWafl",
+      "name": "xWafl",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/35458851?v=4",
+      "profile": "http://xwafl.github.io/portfolio",
+      "contributions": [
+        "design",
+        "ideas"
+      ]
+    },
+    {
+      "login": "Vyctor661",
+      "name": "Sandu Victor",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/49570123?v=4",
+      "profile": "https://discordapp.com/users/270972671490129921",
+      "contributions": [
+        "design",
+        "ideas"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}

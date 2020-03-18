@@ -1,4 +1,4 @@
-module Dataflow.Type (Type(..), TVar(..), typeInt, typeBool, Scheme(..)) where
+module Lunarbox.Dataflow.Type (Type(..), TVar(..), typeInt, typeBool, Scheme(..)) where
 
 import Prelude
 import Data.Foldable (fold)

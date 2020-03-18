@@ -123,6 +123,28 @@ let upstream =
 
 let overrides = {=}
 
-let additions = {=}
+let additions = 
+    { colehaus-graphs = 
+        { dependencies = 
+            [ "ordered-collections"
+            , "catenable-lists"
+            ]
+        , repo =
+            "https://github.com/colehaus/purescript-graphs"
+        , version =
+            "v7.0.0"
+        }
+    , halogen-svg = 
+        { dependencies =
+            [ "strings"
+            , "halogen"
+            , "dom-indexed"
+            ]
+        , repo =
+            "https://github.com/statebox/purescript-halogen-svg"
+        , version =
+            "master"
+        }
+    }
 
 in  upstream // overrides // additions

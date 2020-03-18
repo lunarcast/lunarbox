@@ -1,16 +1,20 @@
 module Lunarbox.Component.Router where
 
 import Prelude
+import Control.Monad.Reader (class MonadReader)
 import Data.Either (hush)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Symbol (SProxy(..))
 import Effect.Class (class MonadEffect)
-import Halogen (Component, liftEffect, HalogenM, defaultEval, get, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Utils (OpaqueSlot)
+import Lunarbox.Config (Config)
 import Lunarbox.Data.Route (Route(..), parseRoute)
-import Routing.Hash (getHash)
 import Lunarbox.Page.Home (home)
+import Routing.Hash (getHash)
 
 type State
   = { route :: Maybe Route
@@ -23,25 +27,25 @@ data Action
   = Initialize
 
 type ChildSlots
-  = ( playground :: OpaqueSlot Unit
+  = ( editor :: Slot Editor.Query Void Unit
     , settings :: OpaqueSlot Unit
     )
 
 type ComponentM m a
   = HalogenM State Action ChildSlots Void m a
 
-component :: forall m. MonadEffect m => Navigate m => Component HH.HTML Query {} Void m
+component :: forall m. MonadEffect m => Navigate m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState: const { route: Nothing }
     , render
     , eval:
-      mkEval
-        $ defaultEval
-            { handleQuery = handleQuery
-            , handleAction = handleAction
-            , initialize = Just Initialize
-            }
+        mkEval
+          $ defaultEval
+              { handleQuery = handleQuery
+              , handleAction = handleAction
+              , initialize = Just Initialize
+              }
     }
   where
   handleAction :: Action -> ComponentM m Unit
@@ -66,5 +70,5 @@ component =
       <#> case _ of
           Home -> home unit
           Settings -> HH.text "settings"
-          Playground -> HH.text "playground"
+          Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
       # fromMaybe notFound

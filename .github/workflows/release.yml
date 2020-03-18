@@ -1,0 +1,64 @@
+#  Action which:
+#   - deploys to github pages
+#   - creates a changelog
+#   - creates a new release
+#   - runs on each merge into master
+
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install pnpm
+        run: npm i -g pnpm
+      - name: Config pnpm for ci
+        run: pnpm config verify-store-integrity false
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: ~/.pnpm-store
+          key: ${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install dependencies
+        run: pnpm i
+      - name: Build project
+        run: pnpm run build
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: dist
+  tag:
+    runs-on: ubuntu-latest
+
+    needs: [deploy]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Generate changelog
+        uses: TriPSs/conventional-changelog-action@v1.2.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          git-message: "chore(release): {version}"
+          changelog-release-count: 0
