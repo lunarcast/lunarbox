@@ -85,7 +85,7 @@ component =
   where
   -- we need a ref to access the content of the input element
   inputRef :: RefLabel
-  inputRef = RefLabel "create-function-input"
+  inputRef = RefLabel "create-function-input-box"
 
   validate :: HalogenM State Action ChildSlots Output m Unit
   validate = do

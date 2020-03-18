@@ -58,4 +58,5 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           git-message: "chore(release): {version}"
-          changelog-release-count: 0
+          # for some reason 0 didnt work
+          changelog-release-count: 1000
