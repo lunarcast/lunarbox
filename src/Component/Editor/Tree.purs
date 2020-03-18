@@ -18,7 +18,7 @@ import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Tooltip (maybeTooltip)
 import Lunarbox.Component.Utils (StaticHtml, container)
-import Lunarbox.Config (Config, shouldBlurInputs)
+import Lunarbox.Config (Config, shouldCancelOnBlur)
 import Lunarbox.Data.Project (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
 import Web.HTML.HTMLInputElement as InputElement
@@ -109,7 +109,7 @@ component =
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     CancelCreation -> do
-      shouldCancel <- shouldBlurInputs
+      shouldCancel <- shouldCancelOnBlur
       when shouldCancel $ modify_ (_ { creating = false })
     SelectFunction name -> do
       modify_ (_ { selected = Just name })

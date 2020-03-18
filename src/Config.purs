@@ -1,4 +1,4 @@
-module Lunarbox.Config (Config(..), DevOptions(..), shouldBlurInputs) where
+module Lunarbox.Config (Config(..), DevOptions(..), shouldCancelOnBlur) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, asks)
@@ -18,8 +18,8 @@ newtype Config
 
 derive instance newtypeConfig :: Newtype Config _
 
-shouldBlurInputs :: forall m. Monad m => MonadAsk Config m => m Boolean
-shouldBlurInputs = do
+shouldCancelOnBlur :: forall m. Monad m => MonadAsk Config m => m Boolean
+shouldCancelOnBlur = do
   { devOptions } <- asks unwrap
   case devOptions of
     Just { cancelInputsOnBlur } -> pure cancelInputsOnBlur
