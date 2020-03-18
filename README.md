@@ -1,6 +1,9 @@
 # Lunarbox
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+
 [![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
+
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Tool to help begginers learn functional programming
@@ -42,7 +45,23 @@ To start the dev server use the `dev` command:
 pnpm run dev
 ```
 
-> Note: the first build might take a long time, this is caused by the fact spago will have to install all it's dependencies
+> Note: the first build might take a long time. This is caused by the fact spago will install and build all purescript dependencies
+
+### Creating components / pages
+
+This project uses [hygen](http://www.hygen.io/) for code generation.
+
+> If you want to contribute a new generator add it to the `_templates` folder
+
+To create a component you can run:
+
+```
+pnpx hygen purescript component Foo.Bar
+```
+
+This will create an empty halogen component in `src/Component/Foo/Bar.purs` which lives in a module called `Lunarbox.Component.Foo.Bar`.
+
+> Note: you can add the -p flag at the end to generate a page instead (lives in `src/Page` and has the module name prefixed with `Lunarbox.Page`)
 
 ## Strucure & architecture
 
@@ -65,6 +84,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 <!-- markdownlint-enable -->
 <!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
