@@ -133,7 +133,18 @@ let additions =
             "https://github.com/colehaus/purescript-graphs"
         , version =
             "v7.0.0"
-        } 
+        }
+    , halogen-svg = 
+        { dependencies =
+            [ "strings"
+            , "halogen"
+            , "dom-indexed"
+            ]
+        , repo =
+            "https://github.com/statebox/purescript-halogen-svg"
+        , version =
+            "master"
+        }
     }
 
 in  upstream // overrides // additions

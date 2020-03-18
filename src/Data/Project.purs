@@ -5,7 +5,8 @@ import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
-import Lunarbox.Data.Graph (singleton) as G
+import Data.Unfoldable (class Unfoldable)
+import Lunarbox.Data.Graph (singleton, keys, filterValues) as G
 import Lunarbox.Dataflow.Expression (class Expressible, Expression(..), NativeExpression, newtypeToExpression, toExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
 
@@ -135,3 +136,6 @@ createFunction :: FunctionName -> NodeId -> Project -> Project
 createFunction name outputId project@{ functions } = project { functions = G.insertVertex name function functions }
   where
   function = (createEmptyFunction outputId)
+
+getFunctions :: forall u. Unfoldable u => Project -> u FunctionName
+getFunctions project = G.filterValues isVisible project.functions # G.keys

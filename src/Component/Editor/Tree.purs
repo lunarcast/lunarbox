@@ -1,6 +1,7 @@
 module Lunarbox.Component.Editor.Tree where
 
 import Prelude
+import Control.Monad.Reader (class MonadReader)
 import Control.MonadZero (guard)
 import Data.Foldable (traverse_, find)
 import Data.List (List)
@@ -17,6 +18,7 @@ import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Tooltip (maybeTooltip)
 import Lunarbox.Component.Utils (StaticHtml, container)
+import Lunarbox.Config (Config, shouldBlurInputs)
 import Lunarbox.Data.Project (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
 import Web.HTML.HTMLInputElement as InputElement
@@ -68,7 +70,7 @@ data Output
   -- This notifies the parent when the selected function changed
   | SelectedFunction (Maybe FunctionName)
 
-component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
+component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query Input Output m
 component =
   mkComponent
     { initialState: (\{ functions, selected } -> { functions, selected, creating: false, validationError: Nothing })
@@ -107,7 +109,8 @@ component =
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     CancelCreation -> do
-      when false $ modify_ (_ { creating = false })
+      shouldCancel <- shouldBlurInputs
+      when shouldCancel $ modify_ (_ { creating = false })
     SelectFunction name -> do
       modify_ (_ { selected = Just name })
       raise $ SelectedFunction $ Just name
@@ -181,6 +184,7 @@ component =
                         pure CreateFunction
                     -- if the user clicks outside the input we can cancel the creation
                     , onBlur $ const $ Just CancelCreation
+                    -- this is called on each keystroke to validate the input
                     , onInput $ const $ Just ValidateFunctionName
                     -- this will only work for the first function creation, but it's still good to haves
                     , HP.autofocus true

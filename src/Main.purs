@@ -11,7 +11,7 @@ import Halogen.HTML (HTML)
 import Halogen.VDom.Driver (runUI)
 import Lunarbox.AppM (runAppM)
 import Lunarbox.Component.Router as Router
-import Lunarbox.Config (EnvType(..), Config)
+import Lunarbox.Config (Config(..))
 import Lunarbox.Data.Route (routingCodec)
 import Routing.Duplex (parse)
 import Routing.PushState (makeInterface, matchesWith)
@@ -24,7 +24,7 @@ main =
     -- TODO: make this depend on some .env file
     let
       env :: Config
-      env = { envType: Development }
+      env = Config { devOptions: Just { cancelInputsOnBlur: true } }
 
       rootComponent :: Component HTML Router.Query {} Void Aff
       rootComponent = hoist (runAppM env) Router.component

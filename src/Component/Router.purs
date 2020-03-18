@@ -1,6 +1,7 @@
 module Lunarbox.Component.Router where
 
 import Prelude
+import Control.Monad.Reader (class MonadReader)
 import Data.Either (hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
@@ -10,6 +11,7 @@ import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Utils (OpaqueSlot)
+import Lunarbox.Config (Config)
 import Lunarbox.Data.Route (Route(..), parseRoute)
 import Lunarbox.Page.Home (home)
 import Routing.Hash (getHash)
@@ -32,18 +34,18 @@ type ChildSlots
 type ComponentM m a
   = HalogenM State Action ChildSlots Void m a
 
-component :: forall m. MonadEffect m => Navigate m => Component HH.HTML Query {} Void m
+component :: forall m. MonadEffect m => Navigate m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState: const { route: Nothing }
     , render
     , eval:
-      mkEval
-        $ defaultEval
-            { handleQuery = handleQuery
-            , handleAction = handleAction
-            , initialize = Just Initialize
-            }
+        mkEval
+          $ defaultEval
+              { handleQuery = handleQuery
+              , handleAction = handleAction
+              , initialize = Just Initialize
+              }
     }
   where
   handleAction :: Action -> ComponentM m Unit

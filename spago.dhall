@@ -11,6 +11,8 @@ You can edit this file as you like.
   , "effect"
   , "generics-rep"
   , "halogen"
+  , "halogen-svg"
+  , "halogen-vdom"
   , "ordered-collections"
   , "psci-support"
   , "routing"

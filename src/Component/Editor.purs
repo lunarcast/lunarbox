@@ -1,15 +1,13 @@
 module Lunarbox.Component.Editor where
 
 import Prelude
+import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, modify_)
 import Control.MonadZero (guard)
-import Data.Graph as G
-import Data.List (List)
-import Data.Map as Map
+import Data.Graph (lookup) as G
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Tuple (fst)
+import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query)
 import Halogen.HTML as HH
@@ -20,8 +18,11 @@ import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
-import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId(..), Project, VisualFunction(..), emptyProject, isVisible, createFunction)
+import Lunarbox.Config (Config)
+import Lunarbox.Data.Graph (entries) as G
+import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId(..), Project, VisualFunction(..), createFunction, emptyProject, getFunctions)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
+import Svg.Elements as SE
 
 data Tab
   = Settings
@@ -56,11 +57,11 @@ data Query a
   = Void
 
 type ChildSlots
-  = ( node :: Slot Node.Query Void Unit
+  = ( node :: Slot Node.Query Void NodeId
     , tree :: Slot TreeC.Query TreeC.Output Unit
     )
 
-component :: forall m. MonadEffect m => Component HH.HTML Query {} Void m
+component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState:
@@ -147,18 +148,11 @@ component =
                 , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
                 ]
             , HH.slot (SProxy :: _ "tree") unit TreeC.component
-                { functions, selected: currentFunction
+                { functions: getFunctions project, selected: currentFunction
                 }
                 handleTreeOutput
             ]
         ]
-      where
-      functions =
-        G.toMap project.functions
-          <#> fst
-          # Map.filter isVisible
-          # Map.keys
-          # (Set.toUnfoldable :: forall a. Set.Set a -> List a)
     _ -> HH.text "not implemented"
 
   simulationContent { project, currentFunction: maybeCurrentFunction } =
@@ -168,7 +162,9 @@ component =
       function <- G.lookup currentFunction project.functions
       case function of
         NativeVF _ -> Nothing
-        DataflowFunction (NodeGroup { output }) -> Just $ HH.text ""
+        DataflowFunction (NodeGroup { nodes: nodeGraph }) -> Just $ SE.svg [] ((\(Tuple id node) -> HH.slot (SProxy :: _ "node") id Node.component {} absurd) <$> nodes)
+          where
+          nodes = G.entries nodeGraph
 
   render s@{ currentTab, panelIsOpen } =
     container "editor"
