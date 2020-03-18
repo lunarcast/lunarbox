@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.0.0...v1.0.1) (2020-03-18)
+
+
+### Bug Fixes
+
+* now the page finally renders (or at least I hope so) ([d96c0c3](https://github.com/Mateiadrielrafael/lunarbox/commit/d96c0c346241f107aa511175385605349c8cbe03))
+
 # 1.0.0 (2020-03-18)
 
 ### Bug Fixes
