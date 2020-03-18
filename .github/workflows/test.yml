@@ -1,14 +1,10 @@
-#  Action which builds the thing every time someone opens a pr
+#  Action which test (curently by just building) the code on each pull request
 
 name: Build 👷
 
 on:
-  push:
-    branches:
-      - develop
   pull_request:
-    branches:
-      - master
+    branches: [develop]
 
 jobs:
   build:

@@ -1,16 +1,19 @@
 {
-  "version": "0.0.3",
+  "version": "0.0.0-development",
   "scripts": {
     "prepare:purescript": "rm -rf output/bundle.js && hygen bundle prepare",
     "dev": "pnpm run prepare:purescript && parcel public/index.html --port 8080 && nodemon",
     "prebuild": "rm -rf dist",
     "bundle:purescript": "cross-env NODE_ENV=production pnpm run prepare:purescript && spago bundle-app -t output/prod-bundle.js",
-    "build": "pnpm run bundle:purescript && parcel build public/index.html"
+    "build": "pnpm run bundle:purescript && parcel build public/index.html",
+    "semantic-release": "semantic-release"
   },
   "dependencies": {
     "normalize.css": "^8.0.1"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^5.0.0",
+    "@semantic-release/git": "^9.0.0",
     "all-contributors-cli": "^6.14.0",
     "cross-env": "^7.0.2",
     "cssnano": "^4.1.10",
@@ -21,8 +24,13 @@
     "purescript": "^0.13.6",
     "purty": "^6.0.0",
     "sass": "^1.26.2",
+    "semantic-release": "^17.0.4",
     "spago": "^0.14.0",
     "terser": "^4.6.7"
   },
-  "license": "GPL-3.0"
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mateiadrielrafael/lunarbox.git"
+  }
 }
