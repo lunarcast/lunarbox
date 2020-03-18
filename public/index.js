@@ -1,16 +1,18 @@
-import Main from "../output/Main";
 import "./styles/index.scss";
 
-function main() {
+const Main = import("../output/bundle");
+
+if (process.env.NODE_ENV === "development" && module.hot) {
+  module.hot.accept(location.reload);
+}
+
+Main.then(({ main }) => {
   console.clear();
+  console.log("loaded purescript code");
 
-  Main.main();
-}
-
-if (module.hot) {
-  module.hot.accept(function() {
-    location.reload();
-  });
-}
-
-main();
+  try {
+    main();
+  } catch (err) {
+    console.err(err);
+  }
+});

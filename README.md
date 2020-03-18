@@ -35,8 +35,6 @@ pnpm install
 
 > Note: this project uses [pnpm](https://pnpm.js.org), pull requests using npm or yarn will be ignored
 
-> Note: You also need to have purescript installed, in the future I might add purescript as a dev dependency, but I'm not sure if that would break anything.
-
 ### Running the dev server:
 
 To start the dev server use the `dev` command:

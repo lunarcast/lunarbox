@@ -1,6 +1,6 @@
 {
   "$schema": "http://json.schemastore.org/nodemon",
-  "exec": "spago build",
+  "exec": "pnpm run prepare:purescript",
   "watch": ["src"],
   "ext": "purs"
 }
