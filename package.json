@@ -1,5 +1,5 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "scripts": {
     "prepare:purescript": "rm -rf output/bundle.js && hygen bundle prepare",
     "dev": "pnpm run prepare:purescript && parcel public/index.html --port 8080 && nodemon",
