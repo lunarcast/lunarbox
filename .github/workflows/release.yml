@@ -1,9 +1,3 @@
-#  Action which:
-#   - deploys to github pages
-#   - creates a changelog
-#   - creates a new release
-#   - runs on each merge into master
-
 name: Build and deploy 🚀
 
 on:
@@ -19,8 +13,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -40,23 +32,7 @@ jobs:
       - name: Build project
         run: pnpm run build
 
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: dist
-  tag:
-    runs-on: ubuntu-latest
-
-    needs: [deploy]
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Generate changelog
-        uses: TriPSs/conventional-changelog-action@v1.2.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          git-message: "chore(release): {version}"
-          # for some reason 0 didnt work
-          changelog-release-count: 1000
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpx semantic-release
