@@ -4,7 +4,7 @@
 #   - creates a new release
 #   - runs on each merge into master
 
-name: Node.js CI
+name: Build and deploy 🚀
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
       - name: Install pnpm
         run: npm i -g pnpm
       - name: Config pnpm for ci
-        run: pnpm config verify-store-integrity false
+        run: pnpm config set verify-store-integrity false
       - name: Cache node_modules
         uses: actions/cache@v1
         with:
