@@ -1,4 +1,8 @@
-# Action which creates a changelog and tags the commits every time a branch is merged into master.
+#  Action which:
+#   - deploys to github pages
+#   - creates a changelog
+#   - creates a new release
+#   - runs on each merge into master
 
 name: Node.js CI
 
@@ -11,7 +15,7 @@ on:
       - master
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,6 +28,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+
       - name: Install pnpm
         run: npm i -g pnpm
       - name: Config pnpm for ci
@@ -37,6 +42,20 @@ jobs:
         run: pnpm i
       - name: Build project
         run: pnpm run build
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: dist
+  tag:
+    runs-on: ubuntu-latest
+
+    needs: [deploy]
+
+    steps:
+      - uses: actions/checkout@v2
       - name: Generate changelog
         uses: TriPSs/conventional-changelog-action@v1.2.0
         with:
