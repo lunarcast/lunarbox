@@ -158,6 +158,6 @@ component =
       , HH.div
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel s ]
-      , container "simulation"
+      , container "scene"
           [ HH.slot (SProxy :: _ "scene") unit Scene.component { project, currentFunction } absurd ]
       ]

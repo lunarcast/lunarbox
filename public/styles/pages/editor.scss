@@ -1,7 +1,9 @@
 @use "../utils/utils";
 @use "../fonts";
 @import "../theme.scss";
-@import "./tree.scss";
+
+@import "./editor/tree.scss";
+@import "./editor/scene.scss";
 
 #editor {
   display: flex;
@@ -79,32 +81,4 @@
 
 #editor > #panel.active {
   width: 30rem;
-}
-
-#editor > #simulation {
-  background: $primary;
-  width: 100%;
-}
-
-#editor > #simulation > #empty {
-  @include utils.center;
-  height: 100%;
-
-  #illustration {
-    width: 40vw;
-
-    img {
-      width: 100%;
-    }
-  }
-
-  #text {
-    width: 100%;
-    text-align: center;
-    font-size: 1.5rem;
-    padding: 2rem;
-    box-sizing: border-box;
-    font-family: fonts.$oxanium;
-    color: $disabled;
-  }
 }
