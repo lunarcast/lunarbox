@@ -4,25 +4,20 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, modify_)
 import Control.MonadZero (guard)
-import Data.Graph (lookup) as G
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Component.Editor.Node as Node
+import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Graph (entries) as G
-import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId(..), Project, VisualFunction(..), createFunction, emptyProject, getFunctions)
-import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Svg.Elements as SE
+import Lunarbox.Data.Project (FunctionName, NodeId(..), Project, createFunction, emptyProject, getFunctions)
 
 data Tab
   = Settings
@@ -57,7 +52,7 @@ data Query a
   = Void
 
 type ChildSlots
-  = ( node :: Slot Node.Query Void NodeId
+  = ( scene :: Slot Scene.Query Void Unit
     , tree :: Slot TreeC.Query TreeC.Output Unit
     )
 
@@ -108,6 +103,7 @@ component =
       void $ query (SProxy :: _ "tree") unit (TreeC.StartCreation unit)
     SelectFunction function -> do
       modify_ (_ { currentFunction = function })
+      void $ query (SProxy :: _ "scene") unit (Scene.SelectFunction function)
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -155,18 +151,7 @@ component =
         ]
     _ -> HH.text "not implemented"
 
-  simulationContent { project, currentFunction: maybeCurrentFunction } =
-    fromMaybe
-      (emptyEditor unit) do
-      currentFunction <- maybeCurrentFunction
-      function <- G.lookup currentFunction project.functions
-      case function of
-        NativeVF _ -> Nothing
-        DataflowFunction (NodeGroup { nodes: nodeGraph }) -> Just $ SE.svg [] ((\(Tuple id node) -> HH.slot (SProxy :: _ "node") id Node.component {} absurd) <$> nodes)
-          where
-          nodes = G.entries nodeGraph
-
-  render s@{ currentTab, panelIsOpen } =
+  render s@{ currentTab, panelIsOpen, project, currentFunction } =
     container "editor"
       [ container "sidebar"
           $ tabs currentTab
@@ -174,5 +159,5 @@ component =
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel s ]
       , container "simulation"
-          [ simulationContent s ]
+          [ HH.slot (SProxy :: _ "scene") unit Scene.component { project, currentFunction } absurd ]
       ]
