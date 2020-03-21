@@ -1,9 +1,7 @@
 module Lunarbox.Dataflow.Expression where
 
 import Prelude
-import Data.Maybe (Maybe, fromMaybe)
-import Data.Newtype (class Newtype, unwrap)
-import Lunarbox.Dataflow.Type (TVar(..), Type)
+import Lunarbox.Dataflow.Type (TVar, Type)
 
 data Literal
   = LInt Int
@@ -45,22 +43,3 @@ instance showExpression :: Show Expression where
   show (If expr then' else') = "if " <> show expr <> " then " <> show then' <> " else " <> show else'
   show (FixPoint expr) = "<Recursive>( " <> show expr <> " )"
   show (Native (NativeExpression t _)) = "<Native>( " <> show t <> " )"
-
--- HELPERS
-nullExpr :: Expression
-nullExpr = Variable $ TV $ "__nothing"
-
-class Expressible a where
-  toExpression :: a -> Expression
-
-instance expressibleString :: Expressible String where
-  toExpression = Variable <<< TV
-
-instance expressibleMaybe :: Expressible a => Expressible (Maybe a) where
-  toExpression = fromMaybe nullExpr <<< (toExpression <$> _)
-
-instance expressibleExpression :: Expressible Expression where
-  toExpression = identity
-
-newtypeToExpression :: forall a t. Newtype a t => Expressible t => a -> Expression
-newtypeToExpression = toExpression <<< unwrap

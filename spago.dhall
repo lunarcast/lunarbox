@@ -19,6 +19,7 @@ You can edit this file as you like.
   , "routing"
   , "routing-duplex"
   , "sized-vectors"
+  , "spec"
   , "tuples"
   , "typelevel"
   ]

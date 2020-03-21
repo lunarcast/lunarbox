@@ -8,7 +8,8 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Graph (singleton, keys, filterValues) as G
-import Lunarbox.Dataflow.Expression (class Expressible, Expression(..), NativeExpression, newtypeToExpression, toExpression)
+import Lunarbox.Dataflow.Expressible (class Expressible, newtypeToExpression, toExpression)
+import Lunarbox.Dataflow.Expression (Expression(..), NativeExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
 
 newtype NodeId
