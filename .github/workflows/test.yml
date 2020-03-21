@@ -1,13 +1,13 @@
-#  Action which test (curently by just building) the code on each pull request
-
-name: Build 👷
+name: Test ⛳
 
 on:
-  pull_request:
+  push:
     branches: [develop]
+  pull_request:
+    branches: [develop, master]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -32,5 +32,7 @@ jobs:
           key: ${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install dependencies
         run: pnpm i
+      - name: Test project
+        run: pnpm test
       - name: Build project
         run: pnpm run build
