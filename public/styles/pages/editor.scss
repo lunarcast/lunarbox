@@ -5,6 +5,8 @@
 @import "./editor/tree.scss";
 @import "./editor/scene.scss";
 
+@import "../components/node.scss";
+
 #editor {
   display: flex;
   height: 100vh;

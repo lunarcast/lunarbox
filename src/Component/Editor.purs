@@ -18,6 +18,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Project (FunctionName, NodeId(..), Project, createFunction, emptyProject, getFunctions)
+import Lunarbox.Data.NodeData (NodeData)
 
 data Tab
   = Settings
@@ -37,7 +38,7 @@ tabIcon = case _ of
 type State
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
-    , project :: Project
+    , project :: Project NodeData
     , nextId :: Int
     , currentFunction :: Maybe FunctionName
     }
@@ -52,7 +53,7 @@ data Query a
   = Void
 
 type ChildSlots
-  = ( scene :: Slot Scene.Query Void Unit
+  = ( scene :: Slot Scene.Query Scene.Output Unit
     , tree :: Slot TreeC.Query TreeC.Output Unit
     )
 
@@ -63,7 +64,7 @@ component =
         const
           { currentTab: Settings
           , panelIsOpen: false
-          , project: emptyProject $ NodeId $ "firstOutput"
+          , project: emptyProject mempty $ NodeId "firstOutput"
           , nextId: 0
           , currentFunction: Nothing
           }
@@ -97,7 +98,17 @@ component =
         )
     CreateFunction name -> do
       id <- createId
-      modify_ (\state@{ project } -> state { project = createFunction name id project })
+      modify_
+        ( \state@{ project } ->
+            state
+              { project =
+                createFunction
+                  mempty
+                  name
+                  id
+                  project
+              }
+        )
       pure unit
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit (TreeC.StartCreation unit)
@@ -159,5 +170,11 @@ component =
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel s ]
       , container "scene"
-          [ HH.slot (SProxy :: _ "scene") unit Scene.component { project, currentFunction } absurd ]
+          [ HH.slot
+              (SProxy :: _ "scene")
+              unit
+              Scene.component
+              { project, currentFunction }
+              absurd
+          ]
       ]

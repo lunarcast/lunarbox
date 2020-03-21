@@ -14,10 +14,13 @@ You can edit this file as you like.
   , "halogen-svg"
   , "halogen-vdom"
   , "ordered-collections"
+  , "profunctor-lenses"
   , "psci-support"
   , "routing"
   , "routing-duplex"
+  , "sized-vectors"
   , "tuples"
+  , "typelevel"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

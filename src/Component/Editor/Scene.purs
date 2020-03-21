@@ -8,16 +8,18 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, modify_)
+import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Graph (entries) as G
-import Lunarbox.Data.Project (FunctionName, NodeGroup(..), NodeId, Project, VisualFunction(..))
+import Lunarbox.Data.NodeData (NodeData)
+import Lunarbox.Data.Project (FunctionName, NodeGroup(..), Node, NodeId, Project, VisualFunction(..))
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Svg.Elements as SE
 
 type State
-  = { project :: Project
+  = { project :: Project NodeData
     , currentFunction :: Maybe FunctionName
     }
 
@@ -59,6 +61,15 @@ component =
       modify_ (_ { currentFunction = name })
       pure Nothing
 
+  createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
+  createNodeComponent (Tuple id input) =
+    HH.slot
+      (SProxy :: _ "node")
+      id
+      Node.component
+      input
+      absurd
+
   render { project, currentFunction: maybeCurrentFunction } =
     fromMaybe
       (emptyEditor unit) do
@@ -66,6 +77,8 @@ component =
       function <- G.lookup currentFunction project.functions
       case function of
         NativeVF _ -> Nothing
-        DataflowFunction (NodeGroup { nodes: nodeGraph }) -> Just $ SE.svg [] ((\(Tuple id node) -> HH.slot (SProxy :: _ "node") id Node.component {} absurd) <$> nodes)
-          where
-          nodes = G.entries nodeGraph
+        DataflowFunction (NodeGroup { nodes: nodeGraph }) ->
+          pure
+            $ SE.svg []
+            $ createNodeComponent
+            <$> G.entries nodeGraph

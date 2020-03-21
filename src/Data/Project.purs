@@ -5,6 +5,7 @@ import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
+import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Graph (singleton, keys, filterValues) as G
 import Lunarbox.Dataflow.Expression (class Expressible, Expression(..), NativeExpression, newtypeToExpression, toExpression)
@@ -48,24 +49,24 @@ data Node
     }
   | OutputNode (Maybe NodeId)
 
-newtype NodeGroup
+newtype NodeGroup a
   = NodeGroup
   { inputs :: List NodeId
-  , nodes :: G.Graph NodeId Node
+  , nodes :: G.Graph NodeId (Tuple Node a)
   , output :: NodeId
   , visible :: Boolean
   }
 
-data VisualFunction
+data VisualFunction a
   = NativeVF (forall a b. NativeExpression a b)
-  | DataflowFunction NodeGroup
+  | DataflowFunction (NodeGroup a)
 
-type Project
-  = { functions :: G.Graph FunctionName VisualFunction
+type Project a
+  = { functions :: G.Graph FunctionName (VisualFunction a)
     , main :: FunctionName
     }
 
-orderNodes :: NodeGroup -> List NodeId
+orderNodes :: forall a. NodeGroup a -> List NodeId
 orderNodes (NodeGroup function) = G.topologicalSort function.nodes
 
 functionDeclaration :: Expression -> List TVar -> Expression
@@ -88,7 +89,7 @@ compileNode nodes maybeChild id =
           where
           value = functionCall (toExpression $ functionName) (toExpression <$> inputs)
 
-instance expressibleNodeGroup :: Expressible NodeGroup where
+instance expressibleNodeGroup :: Expressible (NodeGroup a) where
   toExpression group@(NodeGroup { nodes, inputs }) =
     toExpression do
       let
@@ -97,45 +98,47 @@ instance expressibleNodeGroup :: Expressible NodeGroup where
         body = ordered \\ inputs
       return <-
         foldl
-          (compileNode nodes)
+          (compileNode $ fst <$> nodes)
           Nothing
           body
       pure $ functionDeclaration return $ TV <$> unwrap <$> inputs
 
-instance expressibleVisualFunction :: Expressible VisualFunction where
+instance expressibleVisualFunction :: Expressible (VisualFunction a) where
   toExpression = case _ of
     NativeVF f -> Native f
     DataflowFunction g -> toExpression g
 
-compileProject :: Project -> List Expression
+compileProject :: forall a. Project a -> List Expression
 compileProject project = toExpression <$> G.vertices project.functions
 
-createEmptyFunction :: NodeId -> VisualFunction
-createEmptyFunction id =
+createEmptyFunction :: forall a. a -> NodeId -> VisualFunction a
+createEmptyFunction data' id =
   DataflowFunction
     $ NodeGroup
         { inputs: mempty
-        , nodes: G.singleton id $ OutputNode Nothing
+        , nodes: G.singleton id $ Tuple (OutputNode Nothing) data'
         , output: id
         , visible: true
         }
 
-emptyProject :: NodeId -> Project
-emptyProject id =
+emptyProject :: forall a. a -> NodeId -> Project a
+emptyProject data' id =
   { main: FunctionName "main"
-  , functions: G.singleton (FunctionName "main") $ createEmptyFunction id
+  , functions: G.singleton (FunctionName "main") $ createEmptyFunction data' id
   }
 
-isVisible :: VisualFunction -> Boolean
+isVisible :: forall a. VisualFunction a -> Boolean
 isVisible (DataflowFunction (NodeGroup { visible }))
   | visible = true
 
 isVisible _ = false
 
-createFunction :: FunctionName -> NodeId -> Project -> Project
-createFunction name outputId project@{ functions } = project { functions = G.insertVertex name function functions }
+createFunction :: forall a. a -> FunctionName -> NodeId -> Project a -> Project a
+createFunction data' name outputId project@{ functions } =
+  project
+    { functions = G.insertVertex name function functions }
   where
-  function = (createEmptyFunction outputId)
+  function = (createEmptyFunction data' outputId)
 
-getFunctions :: forall u. Unfoldable u => Project -> u FunctionName
+getFunctions :: forall u a. Unfoldable u => Project a -> u FunctionName
 getFunctions project = G.filterValues isVisible project.functions # G.keys
