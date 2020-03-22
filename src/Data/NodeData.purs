@@ -7,9 +7,7 @@ import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (D2)
 import Data.Vec (Vec)
-
-type Vec2 a
-  = Vec D2 a
+import Lunarbox.Data.Vector (Vec2)
 
 type MathVec2
   = Vec2 Number

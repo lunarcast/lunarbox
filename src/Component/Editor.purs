@@ -4,8 +4,11 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, modify_)
 import Control.MonadZero (guard)
-import Data.Maybe (Maybe(..))
+import Data.Foldable (sequence_)
+import Data.Graph as G
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query)
 import Halogen.HTML as HH
@@ -17,8 +20,9 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Project (FunctionName, NodeId(..), Project, createFunction, emptyProject, getFunctions)
 import Lunarbox.Data.NodeData (NodeData)
+import Lunarbox.Data.Project (FunctionName, NodeId(..), Project, VisualFunction(..), createFunction, emptyProject, getFunctions)
+import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
   = Settings
@@ -109,12 +113,28 @@ component =
                   project
               }
         )
-      pure unit
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit (TreeC.StartCreation unit)
-    SelectFunction function -> do
-      modify_ (_ { currentFunction = function })
-      void $ query (SProxy :: _ "scene") unit (Scene.SelectFunction function)
+    SelectFunction name -> do
+      -- we need the current function to lookup the function in the function graph
+      { project, currentFunction: oldName } <- get
+      -- Save the selected function in the state
+      modify_ (_ { currentFunction = name })
+      -- this is here to update the function the Scene component renders
+      when (name /= oldName)
+        $ sequence_ do
+            currentFunction <- name
+            function <-
+              G.lookup currentFunction project.functions
+            -- we only render DataflowFunctions
+            case function of
+              NativeVF _ -> Nothing
+              DataflowFunction group ->
+                pure
+                  $ query
+                      (SProxy :: _ "scene")
+                      unit
+                      (Scene.SelectFunction $ Tuple currentFunction group)
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -162,19 +182,30 @@ component =
         ]
     _ -> HH.text "not implemented"
 
-  render s@{ currentTab, panelIsOpen, project, currentFunction } =
+  scene { project, currentFunction: maybeCurrentFunction } =
+    fromMaybe
+      (emptyEditor unit) do
+      currentFunction <- maybeCurrentFunction
+      function <- G.lookup currentFunction project.functions
+      case function of
+        NativeVF _ -> Nothing
+        DataflowFunction group ->
+          pure
+            $ HH.slot
+                (SProxy :: _ "scene")
+                unit
+                Scene.component
+                { project, function: Tuple currentFunction group }
+                absurd
+
+  render state@{ currentTab, panelIsOpen, project, currentFunction } =
     container "editor"
       [ container "sidebar"
           $ tabs currentTab
       , HH.div
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
-          [ panel s ]
+          [ panel state ]
       , container "scene"
-          [ HH.slot
-              (SProxy :: _ "scene")
-              unit
-              Scene.component
-              { project, currentFunction }
-              absurd
+          [ scene { project, currentFunction }
           ]
       ]

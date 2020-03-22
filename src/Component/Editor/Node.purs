@@ -11,7 +11,7 @@ import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseDown, onMouseUp)
+import Halogen.HTML.Events (onMouseDown)
 import Lunarbox.Data.NodeData (NodeData(..), _NodeDataSelected)
 import Lunarbox.Data.Project (Node)
 import Svg.Attributes as SA
@@ -32,7 +32,7 @@ data Action
   = SetSelection Boolean
 
 data Query a
-  = Void
+  = Unselect a
 
 type ChildSlots
   = ()
@@ -57,6 +57,12 @@ component =
     SetSelection value -> do
       modify_ $ set _stateSelected value
 
+  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Void m (Maybe a)
+  handleQuery = case _ of
+    Unselect inner -> do
+      modify_ $ set _stateSelected false
+      pure $ Just inner
+
   render ({ nodeData: NodeData { position, selected } }) =
     SE.rect
       [ SA.width 100.0
@@ -64,7 +70,6 @@ component =
       , SA.fill $ Just $ SA.RGB 255 255 255
       , SA.x $ position !! d0
       , SA.y $ position !! d1
-      , SA.stroke $ Just $ SA.RGB 118 255 2
+      , SA.stroke $ Just $ if selected then SA.RGB 118 255 2 else SA.RGB 63 196 255
       , onMouseDown $ const $ Just $ SetSelection true
-      , onMouseUp $ const $ Just $ SetSelection false
       ]
