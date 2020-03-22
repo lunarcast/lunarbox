@@ -3,9 +3,11 @@ module Lunarbox.Component.Editor.Scene where
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (modify_)
-import Data.Lens (Lens')
+import Data.Graph (Graph) as G
+import Data.Lens (Lens', _1, _2, iso)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
@@ -16,11 +18,11 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Graph as G
+import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Data.Graph (entries) as G
 import Lunarbox.Data.NodeData (NodeData)
 import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project)
 import Lunarbox.Data.Vector (Vec2)
-import Lunarbox.Control.Monad.Effect (print)
 import Svg.Elements as SE
 
 type State
@@ -32,6 +34,19 @@ type State
 -- Lenses
 _lastMousePosition :: Lens' State (Maybe (Vec2 Number))
 _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
+
+_function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
+_function = prop (SProxy :: SProxy "function")
+
+_functionName :: Lens' State FunctionName
+_functionName = _function <<< _1
+
+_nodeGroup :: Lens' State (NodeGroup NodeData)
+_nodeGroup = _function <<< _2
+
+-- TODO: move this into the Project module
+_nodes :: Lens' State (G.Graph NodeId (Tuple Node NodeData))
+_nodes = _nodeGroup <<< (iso unwrap wrap) <<< (prop (SProxy :: SProxy "nodes"))
 
 data Action
   = MouseMove
@@ -97,7 +112,7 @@ component =
       input
       absurd
 
-  render { project, function: Tuple _ (NodeGroup { nodes }) } =
+  render { function: Tuple _ (NodeGroup { nodes }) } =
     SE.svg [ onMouseDown $ const $ Just MouseDown ]
       $ createNodeComponent
       <$> G.entries nodes
