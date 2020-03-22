@@ -5,6 +5,8 @@
 #editor > #scene {
   background: $primary;
   width: 100%;
+
+  overflow: hidden;
 }
 
 #editor > #scene > #empty {

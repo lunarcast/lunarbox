@@ -5,23 +5,27 @@ import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, modify_)
 import Data.Foldable (traverse_)
 import Data.Graph (Graph) as G
-import Data.Lens (Lens', _1, _2, view)
+import Data.Lens (Lens', _1, _2, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
+import Data.Unfoldable (class Unfoldable)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseUp)
+import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
+import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Graph (entries) as G
 import Lunarbox.Data.NodeData (NodeData)
 import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, _NodeGroup, _nodes)
 import Lunarbox.Data.Vector (Vec2)
+import Svg.Attributes as SA
 import Svg.Elements as SE
 
 type State
@@ -81,22 +85,21 @@ component =
               }
     }
   where
+  getNodeIds :: forall u. Unfoldable u => Functor u => HalogenM State Action ChildSlots Output m (u NodeId)
+  getNodeIds = (map fst) <$> G.entries <$> view _StateNodes <$> get
+
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     MouseMove -> do
-      pure unit
+      (ids :: Array _) <- getNodeIds
+      -- each node will move itself if it knows it's selected
+      ids # traverse_ (\id -> query (SProxy :: _ "node") id $ Node.Drag $ vec2 0.0 0.0)
     MouseDown -> do
-      modify_ (_ { lastMousePosition = Just $ vec2 0.0 0.0 })
+      modify_ $ set _lastMousePosition $ Just $ vec2 0.0 0.0
     MouseUp -> do
+      (ids :: Array _) <- getNodeIds
       -- forget mouse position
-      modify_ (_ { lastMousePosition = Nothing })
-      state <- get
-      let
-        nodes = view _StateNodes state
-
-        -- we need the type definition for purescript to know what Unfoldable instance to use
-        ids :: Array _
-        ids = fst <$> (G.entries nodes)
+      modify_ $ set _lastMousePosition Nothing
       -- query all nodes to unselect themselves
       ids
         # traverse_ \id -> do
@@ -105,10 +108,9 @@ component =
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
     SelectFunction new -> do
-      -- debugging only
-      let
-        Tuple name _ = new
-      modify_ (_ { function = new })
+      modify_ $ set _function new
+      -- Here to see if the thing actually works
+      print $ "Editing the " <> (show $ fst new) <> " function"
       pure Nothing
 
   createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
@@ -121,6 +123,12 @@ component =
       absurd
 
   render { function: Tuple _ (NodeGroup { nodes }) } =
-    SE.svg [ onMouseDown $ const $ Just MouseDown, onMouseUp $ const $ Just MouseUp ]
+    SE.svg
+      [ SA.width 100000.0
+      , SA.height
+          1000000.0
+      , onMouseDown $ const $ Just MouseDown
+      , onMouseUp $ const $ Just MouseUp
+      ]
       $ createNodeComponent
       <$> G.entries nodes
