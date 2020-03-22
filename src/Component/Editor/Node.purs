@@ -49,6 +49,7 @@ component =
         mkEval
           $ defaultEval
               { handleAction = handleAction
+              , handleQuery = handleQuery
               }
     }
   where
