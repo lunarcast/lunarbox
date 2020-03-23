@@ -1,7 +1,7 @@
 module Lunarbox.Component.Editor.Node where
 
 import Prelude
-import Data.Lens (Lens', over, set)
+import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
@@ -9,9 +9,10 @@ import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
+import Lunarbox.Component.Editor (Query(..))
 import Lunarbox.Data.NodeData (NodeData(..), MathVec2, _NodeDataSelected, _NodeDataPosition)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
@@ -37,15 +38,19 @@ data Action
 
 data Query a
   = Unselect a
+  | GetData a
   | Drag (Vec2 Number)
 
 type ChildSlots
   = ()
 
+type Output
+  = Void
+
 type Input
   = Tuple Node NodeData
 
-component :: forall m. MonadEffect m => Component HH.HTML Query Input Void m
+component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
   mkComponent
     { initialState: \(Tuple node nodeData) -> { node, nodeData }
@@ -58,12 +63,12 @@ component =
               }
     }
   where
-  handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
+  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     SetSelection value -> do
       modify_ $ set _stateSelected value
 
-  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Void m (Maybe a)
+  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
     Unselect inner -> do
       modify_ $ set _stateSelected false
@@ -71,6 +76,10 @@ component =
     Drag offest -> do
       modify_ $ over _position ((+) offest)
       pure Nothing
+    -- This runs when the Scene component wants us to save the data
+    Save inner -> do
+      nodeData <- gets $ view _nodeData
+      pure $ Just nodeData
 
   render ({ nodeData: NodeData { position, selected } }) =
     SE.rect
