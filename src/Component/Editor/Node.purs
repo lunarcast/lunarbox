@@ -9,10 +9,9 @@ import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
+import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Component.Editor (Query(..))
 import Lunarbox.Data.NodeData (NodeData(..), MathVec2, _NodeDataSelected, _NodeDataPosition)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
@@ -38,8 +37,8 @@ data Action
 
 data Query a
   = Unselect a
-  | GetData a
-  | Drag (Vec2 Number)
+  | GetData (NodeData -> a)
+  | Drag (Vec2 Number) a
 
 type ChildSlots
   = ()
@@ -73,13 +72,13 @@ component =
     Unselect inner -> do
       modify_ $ set _stateSelected false
       pure $ Just inner
-    Drag offest -> do
+    Drag offest inner -> do
       modify_ $ over _position ((+) offest)
-      pure Nothing
+      pure $ Just inner
     -- This runs when the Scene component wants us to save the data
-    Save inner -> do
+    GetData k -> do
       nodeData <- gets $ view _nodeData
-      pure $ Just nodeData
+      pure $ Just $ k nodeData
 
   render ({ nodeData: NodeData { position, selected } }) =
     SE.rect

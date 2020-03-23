@@ -2,11 +2,11 @@ module Lunarbox.Component.Editor.Scene where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
-import Control.Monad.State (get, gets, modify_)
+import Control.Monad.State (get, gets, modify, modify_)
 import Data.Foldable (for_, traverse_)
-import Data.Graph (Graph) as G
+import Data.Graph (Graph, alterVertex) as G
 import Data.Int (toNumber)
-import Data.Lens (Lens', _1, _2, set, view)
+import Data.Lens (Lens', _1, _2, _Just, over, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
@@ -15,7 +15,7 @@ import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query)
+import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, request, tell)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
@@ -24,7 +24,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Graph (entries) as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, _NodeGroup, _nodes)
+import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, VisualFunction, _DataflowFunction, _NodeGroup, _functions, _nodes)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -39,6 +39,12 @@ type State
 -- Lenses
 _lastMousePosition :: Lens' State (Maybe (Vec2 Number))
 _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
+
+_project :: Lens' State (Project NodeData)
+_project = prop (SProxy :: _ "project")
+
+_projectFunctions :: Lens' State (G.Graph FunctionName (VisualFunction NodeData))
+_projectFunctions = _project <<< _functions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
 _function = prop (SProxy :: SProxy "function")
@@ -58,7 +64,7 @@ data Action
   | MouseUp
 
 data Query a
-  = SelectFunction (Tuple FunctionName (NodeGroup NodeData))
+  = SelectFunction (Tuple FunctionName (NodeGroup NodeData)) ((NodeGroup NodeData) -> a)
 
 type Output
   = Void
@@ -108,7 +114,7 @@ component =
         -- each node will move itself if it knows it's selected
         for_ ids \id ->
           for_ maybeOldPosition \oldPosition ->
-            query (SProxy :: _ "node") id $ Node.Drag $ newPosition - oldPosition
+            query (SProxy :: _ "node") id $ tell $ Node.Drag $ newPosition - oldPosition
     MouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
     MouseUp -> do
@@ -118,22 +124,31 @@ component =
       -- query all nodes to unselect themselves
       for_ ids \id -> do
         mousePosition <- gets $ view _lastMousePosition
-        query (SProxy :: _ "node") id $ Node.Unselect unit
+        query (SProxy :: _ "node") id $ tell Node.Unselect
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
-    SelectFunction new -> do
+    SelectFunction new k -> do
       -- this chunk is here to save all nodes
       (ids :: Array _) <- getNodeIds
       -- query all nodes to unselect themselves
-      ids
-        # traverse_ \id -> do
-            mousePosition <- gets $ view _lastMousePosition
-            query (SProxy :: _ "node") id $ Node.Unselect unit
+      for_ ids \id ->
+        do
+          query (SProxy :: _ "node") id $ request Node.GetData
+          >>= traverse_
+              ( modify_
+                  <<< over _StateNodes
+                  <<< (flip G.alterVertex) id
+                  <<< set (_Just <<< _2)
+              )
+      Tuple name function <- gets $ view _function
+      -- save old function into the project
+      state <- modify $ over _projectFunctions $ (flip G.alterVertex) name $ set (_Just <<< _DataflowFunction) function
+      -- switch to the new function
       modify_ $ set _function new
       -- Here to see if the thing actually works
       print $ "Editing the " <> (show $ fst new) <> " function"
-      pure Nothing
+      pure $ Just $ k $ view _functionNodeGroup state
 
   createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
   createNodeComponent (Tuple id input) =
