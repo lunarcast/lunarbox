@@ -1,6 +1,4 @@
-@use "../utils/utils";
-@use "../fonts";
-@import "../theme.scss";
+@import "../../theme.scss";
 
 #editor > #panel > #panel-container > #tree {
   overflow: hidden;

@@ -1,0 +1,33 @@
+@use "../../utils/utils";
+@use "../../fonts";
+@import "../../theme.scss";
+
+#editor > #scene {
+  background: $primary;
+  width: 100%;
+
+  overflow: hidden;
+}
+
+#editor > #scene > #empty {
+  @include utils.center;
+  height: 100%;
+
+  #illustration {
+    width: 40vw;
+
+    img {
+      width: 100%;
+    }
+  }
+
+  #text {
+    width: 100%;
+    text-align: center;
+    font-size: 1.5rem;
+    padding: 2rem;
+    box-sizing: border-box;
+    font-family: fonts.$oxanium;
+    color: $disabled;
+  }
+}

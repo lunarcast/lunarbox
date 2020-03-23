@@ -6,7 +6,8 @@
     "prebuild": "rm -rf dist",
     "bundle:purescript": "cross-env NODE_ENV=production pnpm run prepare:purescript && spago bundle-app -t output/prod-bundle.js",
     "build": "pnpm run bundle:purescript && parcel build public/index.html",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "test": "spago test"
   },
   "dependencies": {
     "normalize.css": "^8.0.1"

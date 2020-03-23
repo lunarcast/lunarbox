@@ -2,12 +2,18 @@ module Lunarbox.Data.Project where
 
 import Prelude
 import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
+import Data.Lens (Lens', Prism', prism')
+import Data.Lens.Record (prop)
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
+import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
-import Lunarbox.Data.Graph (singleton, keys, filterValues) as G
-import Lunarbox.Dataflow.Expression (class Expressible, Expression(..), NativeExpression, newtypeToExpression, toExpression)
+import Lunarbox.Data.Graph (singleton, keys) as G
+import Lunarbox.Data.Lens (newtypeIso)
+import Lunarbox.Dataflow.Expressible (class Expressible, newtypeToExpression, toExpression)
+import Lunarbox.Dataflow.Expression (Expression(..), NativeExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
 
 newtype NodeId
@@ -25,6 +31,9 @@ instance showNodeId :: Show NodeId where
 instance expressibleNodeId :: Expressible NodeId where
   toExpression = newtypeToExpression
 
+_NodeId :: Lens' NodeId String
+_NodeId = newtypeIso
+
 newtype FunctionName
   = FunctionName String
 
@@ -40,32 +49,77 @@ instance showFunctionName :: Show FunctionName where
 instance expressibleFunctionName :: Expressible FunctionName where
   toExpression = newtypeToExpression
 
+_FunctionName :: Lens' FunctionName String
+_FunctionName = newtypeIso
+
+type ComplexNodeData
+  = { inputs :: List (Maybe NodeId)
+    , function :: FunctionName
+    }
+
 data Node
   = InputNode
   | ComplexNode
-    { inputs :: List (Maybe NodeId)
-    , function :: FunctionName
-    }
+    ComplexNodeData
   | OutputNode (Maybe NodeId)
 
-newtype NodeGroup
-  = NodeGroup
-  { inputs :: List NodeId
-  , nodes :: G.Graph NodeId Node
-  , output :: NodeId
-  , visible :: Boolean
-  }
+_InputNode :: Prism' Node ComplexNodeData
+_InputNode =
+  prism' ComplexNode case _ of
+    ComplexNode c -> Just c
+    _ -> Nothing
 
-data VisualFunction
+_OutputNode :: Prism' Node (Maybe NodeId)
+_OutputNode =
+  prism' OutputNode case _ of
+    OutputNode v -> Just v
+    _ -> Nothing
+
+type NodeGroupData a
+  = { inputs :: List NodeId
+    , nodes :: G.Graph NodeId (Tuple Node a)
+    , output :: NodeId
+    }
+
+newtype NodeGroup a
+  = NodeGroup (NodeGroupData a)
+
+derive instance newtypeNodeGroup :: Newtype (NodeGroup a) _
+
+_NodeGroup :: forall a. Lens' (NodeGroup a) (NodeGroupData a)
+_NodeGroup = newtypeIso
+
+_inputs :: forall a. Lens' (NodeGroupData a) (List NodeId)
+_inputs = prop (SProxy :: _ "inputs")
+
+_nodes :: forall a. Lens' (NodeGroupData a) (G.Graph NodeId (Tuple Node a))
+_nodes = prop (SProxy :: _ "nodes")
+
+_output :: forall a. Lens' (NodeGroupData a) NodeId
+_output = prop (SProxy :: _ "output")
+
+data VisualFunction a
   = NativeVF (forall a b. NativeExpression a b)
-  | DataflowFunction NodeGroup
+  | DataflowFunction (NodeGroup a)
 
-type Project
-  = { functions :: G.Graph FunctionName VisualFunction
+_DataflowFunction :: forall a. Prism' (VisualFunction a) (NodeGroup a)
+_DataflowFunction =
+  prism' DataflowFunction case _ of
+    DataflowFunction f -> Just f
+    _ -> Nothing
+
+type Project a
+  = { functions :: G.Graph FunctionName (VisualFunction a)
     , main :: FunctionName
     }
 
-orderNodes :: NodeGroup -> List NodeId
+_functions :: forall a. Lens' (Project a) (G.Graph FunctionName (VisualFunction a))
+_functions = prop (SProxy :: _ "functions")
+
+_main :: forall a. Lens' (Project a) FunctionName
+_main = prop (SProxy :: _ "main")
+
+orderNodes :: forall a. NodeGroup a -> List NodeId
 orderNodes (NodeGroup function) = G.topologicalSort function.nodes
 
 functionDeclaration :: Expression -> List TVar -> Expression
@@ -88,7 +142,7 @@ compileNode nodes maybeChild id =
           where
           value = functionCall (toExpression $ functionName) (toExpression <$> inputs)
 
-instance expressibleNodeGroup :: Expressible NodeGroup where
+instance expressibleNodeGroup :: Expressible (NodeGroup a) where
   toExpression group@(NodeGroup { nodes, inputs }) =
     toExpression do
       let
@@ -97,45 +151,40 @@ instance expressibleNodeGroup :: Expressible NodeGroup where
         body = ordered \\ inputs
       return <-
         foldl
-          (compileNode nodes)
+          (compileNode $ fst <$> nodes)
           Nothing
           body
       pure $ functionDeclaration return $ TV <$> unwrap <$> inputs
 
-instance expressibleVisualFunction :: Expressible VisualFunction where
+instance expressibleVisualFunction :: Expressible (VisualFunction a) where
   toExpression = case _ of
     NativeVF f -> Native f
     DataflowFunction g -> toExpression g
 
-compileProject :: Project -> List Expression
+compileProject :: forall a. Project a -> List Expression
 compileProject project = toExpression <$> G.vertices project.functions
 
-createEmptyFunction :: NodeId -> VisualFunction
-createEmptyFunction id =
+createEmptyFunction :: forall a. a -> NodeId -> VisualFunction a
+createEmptyFunction data' id =
   DataflowFunction
     $ NodeGroup
         { inputs: mempty
-        , nodes: G.singleton id $ OutputNode Nothing
+        , nodes: G.singleton id $ Tuple (OutputNode Nothing) data'
         , output: id
-        , visible: true
         }
 
-emptyProject :: NodeId -> Project
-emptyProject id =
+emptyProject :: forall a. a -> NodeId -> Project a
+emptyProject data' id =
   { main: FunctionName "main"
-  , functions: G.singleton (FunctionName "main") $ createEmptyFunction id
+  , functions: G.singleton (FunctionName "main") $ createEmptyFunction data' id
   }
 
-isVisible :: VisualFunction -> Boolean
-isVisible (DataflowFunction (NodeGroup { visible }))
-  | visible = true
-
-isVisible _ = false
-
-createFunction :: FunctionName -> NodeId -> Project -> Project
-createFunction name outputId project@{ functions } = project { functions = G.insertVertex name function functions }
+createFunction :: forall a. a -> FunctionName -> NodeId -> Project a -> Project a
+createFunction data' name outputId project@{ functions } =
+  project
+    { functions = G.insertVertex name function functions }
   where
-  function = (createEmptyFunction outputId)
+  function = (createEmptyFunction data' outputId)
 
-getFunctions :: forall u. Unfoldable u => Project -> u FunctionName
-getFunctions project = G.filterValues isVisible project.functions # G.keys
+getFunctions :: forall u a. Unfoldable u => Project a -> u FunctionName
+getFunctions project = project.functions # G.keys
