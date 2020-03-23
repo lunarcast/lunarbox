@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.0.1...v1.1.0) (2020-03-23)
+
+
+### Features
+
+* moved everything related to not editing anything in the Editor component ([163f7fa](https://github.com/Mateiadrielrafael/lunarbox/commit/163f7fa8fdb749e3d577580417d1b71b4980e8ce))
+* now the state of each function is saved when changing functions ([cc07c60](https://github.com/Mateiadrielrafael/lunarbox/commit/cc07c609d65c3f6886b18bcf13f51d3a3065e349))
+* some more work on the node component ([c2e6420](https://github.com/Mateiadrielrafael/lunarbox/commit/c2e64203674f2716b837efb28d3ac76bbf935531))
+* the node part of the dnd system ([19a8e40](https://github.com/Mateiadrielrafael/lunarbox/commit/19a8e40c9b606d2d9ac435dbc9123f9cf01b7321))
+* the nodes are now unselected when you mouseup, bet you didn't expect that:) ([306d6d6](https://github.com/Mateiadrielrafael/lunarbox/commit/306d6d650bd508ee5e0d7759674ffd389c4afde1))
+* working darg and drop! ([bbdc293](https://github.com/Mateiadrielrafael/lunarbox/commit/bbdc293431d8773b1e18563c068ef21e82142d0e))
+* wrote lesnes for the Project module ([a2c9e1e](https://github.com/Mateiadrielrafael/lunarbox/commit/a2c9e1ef4030da7cc23462b2bb90b2bfac945556))
+
 ## [1.0.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.0.0...v1.0.1) (2020-03-18)
 
 
