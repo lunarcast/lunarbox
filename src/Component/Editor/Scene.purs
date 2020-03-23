@@ -2,7 +2,7 @@ module Lunarbox.Component.Editor.Scene where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
-import Control.Monad.State (get, gets, modify, modify_)
+import Control.Monad.State (get, gets, modify_)
 import Data.Foldable (for_, traverse_)
 import Data.Graph (Graph, alterVertex) as G
 import Data.Int (toNumber)
@@ -21,10 +21,9 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Graph (entries) as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, VisualFunction, _DataflowFunction, _NodeGroup, _functions, _nodes)
+import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, VisualFunction, _NodeGroup, _functions, _nodes)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -141,14 +140,13 @@ component =
                   <<< (flip G.alterVertex) id
                   <<< set (_Just <<< _2)
               )
-      Tuple name function <- gets $ view _function
-      -- save old function into the project
-      state <- modify $ over _projectFunctions $ (flip G.alterVertex) name $ set (_Just <<< _DataflowFunction) function
+      -- save the nodeGroup into a variable we will send to the Editor component
+      -- we need to do this so when we change functions back to this one the data is saved
+      group <- gets $ view _functionNodeGroup
       -- switch to the new function
       modify_ $ set _function new
-      -- Here to see if the thing actually works
-      print $ "Editing the " <> (show $ fst new) <> " function"
-      pure $ Just $ k $ view _functionNodeGroup state
+      -- respond with the data of the last group
+      pure $ Just $ k group
 
   createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
   createNodeComponent (Tuple id input) =

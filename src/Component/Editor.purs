@@ -2,11 +2,11 @@ module Lunarbox.Component.Editor where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
-import Control.Monad.State (get, modify_)
+import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Foldable (sequence_, traverse_)
 import Data.Graph as G
-import Data.Lens (Lens', _Just, over, preview, set)
+import Data.Lens (Lens', _Just, over, preview, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
@@ -55,6 +55,15 @@ _project = prop (SProxy :: _ "project")
 _projectFunctions :: Lens' State (G.Graph FunctionName (VisualFunction NodeData))
 _projectFunctions = _project <<< _functions
 
+_currentFunction :: Lens' State (Maybe FunctionName)
+_currentFunction = prop (SProxy :: _ "currentFunction")
+
+_panelIsOpen :: Lens' State Boolean
+_panelIsOpen = prop (SProxy :: _ "panelIsOpen")
+
+_currentTab :: Lens' State Tab
+_currentTab = prop (SProxy :: _ "currentTab")
+
 data Action
   = ChangeTab Tab
   | CreateFunction FunctionName
@@ -96,38 +105,23 @@ component =
 
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
-    ChangeTab tab -> do
+    ChangeTab newTab -> do
+      oldTab <- gets $ view _currentTab
       modify_
-        ( \state@{ panelIsOpen: open, currentTab } ->
-            state
-              { currentTab = tab
-              , panelIsOpen =
-                if (currentTab == tab) then
-                  not open
-                else
-                  open
-              }
-        )
-    CreateFunction name -> do
-      id <- createId
-      modify_
-        ( \state@{ project } ->
-            state
-              { project =
-                createFunction
-                  mempty
-                  name
-                  id
-                  project
-              }
-        )
+        if (oldTab == newTab) then
+          over _panelIsOpen not
+        else
+          set _currentTab newTab
+    CreateFunction name -> createId >>= update
+      where
+      update = modify_ <<< over _project <<< createFunction mempty name
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SelectFunction name -> do
       -- we need the current function to lookup the function in the function graph
       { project, currentFunction: oldName } <- get
       -- Save the selected function in the state
-      modify_ (_ { currentFunction = name })
+      modify_ $ set _currentFunction name
       -- this is here to update the function the Scene component renders
       when (name /= oldName)
         $ sequence_ do
