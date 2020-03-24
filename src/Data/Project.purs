@@ -2,7 +2,7 @@ module Lunarbox.Data.Project where
 
 import Prelude
 import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
-import Data.Lens (Lens', Prism', prism')
+import Data.Lens (Lens', Prism', over, prism')
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
@@ -108,15 +108,15 @@ _DataflowFunction =
     DataflowFunction f -> Just f
     _ -> Nothing
 
-type Project a
-  = { functions :: G.Graph FunctionName (VisualFunction a)
+type Project f n
+  = { functions :: G.Graph FunctionName (Tuple (VisualFunction n) f)
     , main :: FunctionName
     }
 
-_functions :: forall a. Lens' (Project a) (G.Graph FunctionName (VisualFunction a))
+_functions :: forall f n. Lens' (Project f n) (G.Graph FunctionName (Tuple (VisualFunction n) f))
 _functions = prop (SProxy :: _ "functions")
 
-_main :: forall a. Lens' (Project a) FunctionName
+_main :: forall f n. Lens' (Project f n) FunctionName
 _main = prop (SProxy :: _ "main")
 
 orderNodes :: forall a. NodeGroup a -> List NodeId
@@ -161,8 +161,8 @@ instance expressibleVisualFunction :: Expressible (VisualFunction a) where
     NativeVF f -> Native f
     DataflowFunction g -> toExpression g
 
-compileProject :: forall a. Project a -> List Expression
-compileProject project = toExpression <$> G.vertices project.functions
+compileProject :: forall f n. Project f n -> List Expression
+compileProject project = toExpression <$> fst <$> G.vertices project.functions
 
 createEmptyFunction :: forall a. a -> NodeId -> VisualFunction a
 createEmptyFunction data' id =
@@ -173,18 +173,21 @@ createEmptyFunction data' id =
         , output: id
         }
 
-emptyProject :: forall a. a -> NodeId -> Project a
-emptyProject data' id =
+emptyProject :: forall f n. f -> n -> NodeId -> Project f n
+emptyProject functionData nodeData id =
   { main: FunctionName "main"
-  , functions: G.singleton (FunctionName "main") $ createEmptyFunction data' id
+  , functions: G.singleton (FunctionName "main") $ Tuple function functionData
   }
-
-createFunction :: forall a. a -> FunctionName -> NodeId -> Project a -> Project a
-createFunction data' name outputId project@{ functions } =
-  project
-    { functions = G.insertVertex name function functions }
   where
-  function = (createEmptyFunction data' outputId)
+  function = createEmptyFunction nodeData id
 
-getFunctions :: forall u a. Unfoldable u => Project a -> u FunctionName
+createFunction :: forall f n. f -> n -> FunctionName -> NodeId -> Project f n -> Project f n
+createFunction functionData nodeData name outputId =
+  over
+    _functions
+    $ G.insertVertex name (Tuple function functionData)
+  where
+  function = createEmptyFunction nodeData outputId
+
+getFunctions :: forall u a b. Unfoldable u => Project a b -> u FunctionName
 getFunctions project = project.functions # G.keys

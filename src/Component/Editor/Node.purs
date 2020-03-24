@@ -1,10 +1,9 @@
 module Lunarbox.Component.Editor.Node where
 
 import Prelude
-import Data.Int (fromNumber)
 import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
@@ -12,7 +11,6 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Halogen.HTML.Properties as HP
 import Lunarbox.Data.NodeData (NodeData(..), MathVec2, _NodeDataSelected, _NodeDataPosition)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
@@ -88,24 +86,15 @@ component =
       nodeData <- gets $ view _nodeData
       pure $ Just $ k nodeData
 
-  render ({ selectable, nodeData: NodeData { position, selected, scale, image } }) =
+  render ({ selectable, nodeData: NodeData { position, selected } }) =
     SE.g
       [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
       ]
       [ SE.rect
-          [ SA.width $ scale !! d0
-          , SA.height $ scale !! d1
+          [ SA.fill $ Just $ SA.RGB 255 255 255
+          , SA.width $ 100.0
+          , SA.height $ 100.0
           , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
           , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
-          ]
-      , SE.foreignObject
-          [ SA.width $ scale !! d0
-          , SA.height $ scale !! d1
-          ]
-          [ HH.img
-              [ HP.src image
-              , HP.width $ fromMaybe 0 $ fromNumber $ scale !! d0
-              , HP.height $ fromMaybe 0 $ fromNumber $ scale !! d1
-              ]
           ]
       ]

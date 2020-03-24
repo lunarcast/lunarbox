@@ -21,6 +21,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
+import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph (entries) as G
 import Lunarbox.Data.NodeData (NodeData)
 import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, VisualFunction, _NodeGroup, _functions, _nodes)
@@ -30,7 +31,7 @@ import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
 
 type State
-  = { project :: Project NodeData
+  = { project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
     , lastMousePosition :: Maybe (Vec2 Number)
     }
@@ -39,10 +40,10 @@ type State
 _lastMousePosition :: Lens' State (Maybe (Vec2 Number))
 _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
 
-_project :: Lens' State (Project NodeData)
+_project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
-_projectFunctions :: Lens' State (G.Graph FunctionName (VisualFunction NodeData))
+_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (VisualFunction NodeData) FunctionData))
 _projectFunctions = _project <<< _functions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
@@ -72,7 +73,7 @@ type ChildSlots
   = ( node :: Slot Node.Query Void NodeId )
 
 type Input
-  = { project :: Project NodeData
+  = { project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
     }
 
