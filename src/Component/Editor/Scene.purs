@@ -149,12 +149,12 @@ component =
       pure $ Just $ k group
 
   createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
-  createNodeComponent (Tuple id input) =
+  createNodeComponent (Tuple id (Tuple node nodeData)) =
     HH.slot
       (SProxy :: _ "node")
       id
       Node.component
-      input
+      { node, nodeData, selectable: true }
       absurd
 
   render { function: Tuple _ (NodeGroup { nodes }) } =

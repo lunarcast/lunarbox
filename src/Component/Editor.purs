@@ -5,7 +5,7 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Foldable (sequence_, traverse_)
-import Data.Graph as G
+import Data.Graph (Graph, alterVertex, lookup) as G
 import Data.Lens (Lens', _Just, over, preview, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -25,6 +25,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Data.NodeData (NodeData)
 import Lunarbox.Data.Project (FunctionName, NodeId(..), Project, VisualFunction(..), _DataflowFunction, _functions, createFunction, emptyProject, getFunctions)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
+import Lunarbox.Data.Graph (keys) as G
 
 data Tab
   = Settings
@@ -190,6 +191,11 @@ component =
                 }
                 handleTreeOutput
             ]
+        ]
+    Add ->
+      container "panel-container"
+        [ container "title" [ HH.text "Add node" ]
+        , container "nodes" $ HH.text <$> show <$> G.keys project.functions
         ]
     _ -> HH.text "not implemented"
 
