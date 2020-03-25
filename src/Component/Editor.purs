@@ -245,7 +245,7 @@ component =
                     ]
                 , container "node-buttons"
                     [ icon "add"
-                    , icon "edit"
+                    , HH.div [ onClick $ const $ Just $ SelectFunction $ Just name ] [ icon "edit" ]
                     ]
                 ]
             ]
