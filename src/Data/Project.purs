@@ -1,7 +1,8 @@
 module Lunarbox.Data.Project where
 
 import Prelude
-import Data.Lens (Lens', Prism', over, prism')
+import Data.Lens (Lens', Prism', Traversal', _1, over, prism')
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
@@ -10,47 +11,13 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName(..))
+import Lunarbox.Data.Dataflow.NodeId (NodeId)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
-import Lunarbox.Dataflow.Expressible (class Expressible, newtypeToExpression, toExpression)
+import Lunarbox.Dataflow.Expressible (class Expressible, toExpression)
 import Lunarbox.Dataflow.Expression (Expression(..), NativeExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
-
-newtype NodeId
-  = NodeId String
-
-derive instance eqNodeId :: Eq NodeId
-
-derive instance ordNodeId :: Ord NodeId
-
-derive instance newtypeNodeId :: Newtype NodeId _
-
-instance showNodeId :: Show NodeId where
-  show = show <<< unwrap
-
-instance expressibleNodeId :: Expressible NodeId where
-  toExpression = newtypeToExpression
-
-_NodeId :: Lens' NodeId String
-_NodeId = newtypeIso
-
-newtype FunctionName
-  = FunctionName String
-
-derive instance eqFunctionName :: Eq FunctionName
-
-derive instance ordFunctionName :: Ord FunctionName
-
-derive instance newtypeFunctionName :: Newtype FunctionName _
-
-instance showFunctionName :: Show FunctionName where
-  show (FunctionName f) = f
-
-instance expressibleFunctionName :: Expressible FunctionName where
-  toExpression = newtypeToExpression
-
-_FunctionName :: Lens' FunctionName String
-_FunctionName = newtypeIso
 
 type ComplexNodeData
   = { inputs :: List (Maybe NodeId)
@@ -191,3 +158,6 @@ createFunction functionData nodeData name outputId =
 
 getFunctions :: forall u a b. Unfoldable u => Project a b -> u FunctionName
 getFunctions project = project.functions # G.keys # Set.toUnfoldable
+
+_projectNodeGroup :: forall f n. FunctionName -> Traversal' (Project f n) (NodeGroup n)
+_projectNodeGroup name = _functions <<< ix name <<< _1 <<< _DataflowFunction

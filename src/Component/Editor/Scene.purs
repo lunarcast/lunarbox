@@ -21,10 +21,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
+import Lunarbox.Data.Dataflow.NodeId (NodeId)
 import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, VisualFunction, _NodeGroup, _functions, _nodes)
+import Lunarbox.Data.Project (Node, NodeGroup(..), Project, VisualFunction, _NodeGroup, _functions, _nodes)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE

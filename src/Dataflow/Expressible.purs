@@ -2,7 +2,6 @@ module Lunarbox.Dataflow.Expressible where
 
 import Prelude
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Newtype (class Newtype, unwrap)
 import Lunarbox.Dataflow.Expression (Expression(..))
 import Lunarbox.Dataflow.Type (TVar(..))
 
@@ -20,6 +19,3 @@ instance expressibleMaybe :: Expressible a => Expressible (Maybe a) where
 
 instance expressibleExpression :: Expressible Expression where
   toExpression = identity
-
-newtypeToExpression :: forall a t. Newtype a t => Expressible t => a -> Expression
-newtypeToExpression = toExpression <<< unwrap
