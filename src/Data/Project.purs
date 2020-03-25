@@ -1,16 +1,16 @@
 module Lunarbox.Data.Project where
 
 import Prelude
-import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
 import Data.Lens (Lens', Prism', over, prism')
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
-import Lunarbox.Data.Graph (singleton, keys) as G
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Dataflow.Expressible (class Expressible, newtypeToExpression, toExpression)
 import Lunarbox.Dataflow.Expression (Expression(..), NativeExpression)
@@ -185,9 +185,9 @@ createFunction :: forall f n. f -> n -> FunctionName -> NodeId -> Project f n ->
 createFunction functionData nodeData name outputId =
   over
     _functions
-    $ G.insertVertex name (Tuple function functionData)
+    $ G.insert name (Tuple function functionData)
   where
   function = createEmptyFunction nodeData outputId
 
 getFunctions :: forall u a b. Unfoldable u => Project a b -> u FunctionName
-getFunctions project = project.functions # G.keys
+getFunctions project = project.functions # G.keys # Set.toUnfoldable

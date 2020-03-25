@@ -5,9 +5,9 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Foldable (sequence_, traverse_)
-import Data.Graph (Graph, alterVertex, lookup) as G
 import Data.Int (toNumber)
-import Data.Lens (Lens', _1, _Just, over, preview, set, view)
+import Data.Lens (Lens', _1, over, preview, set, view)
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
@@ -28,7 +28,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataScale)
-import Lunarbox.Data.Graph (entries) as G
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
 import Lunarbox.Data.Project (FunctionName, Node(..), NodeId(..), Project, VisualFunction(..), _DataflowFunction, _functions, createFunction, emptyProject, getFunctions)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -152,9 +152,7 @@ component =
             pure $ functionData
               >>= traverse_
                   ( modify_
-                      <<< over _projectFunctions
-                      <<< (flip G.alterVertex) oldFunction
-                      <<< set (_Just <<< _1 <<< _DataflowFunction)
+                      <<< set (_projectFunctions <<< ix oldFunction <<< _1 <<< _DataflowFunction)
                   )
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
@@ -206,7 +204,7 @@ component =
         [ container "title" [ HH.text "Add node" ]
         , container "nodes"
             $ makeNode
-            <$> G.entries project.functions
+            <$> G.toUnfoldable project.functions
         ]
       where
       input :: FunctionName -> Node.Input

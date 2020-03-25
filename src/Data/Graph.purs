@@ -11,6 +11,7 @@ import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (Maybe, maybe)
 import Data.Newtype (class Newtype, over, unwrap)
+import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Traversable, sequenceDefault, traverse)
 import Data.Tuple (Tuple(..), fst, uncurry)
@@ -73,6 +74,12 @@ lookup k = map fst <<< Map.lookup k <<< unwrap
 
 delete :: forall k v. Ord k => k -> Graph k v -> Graph k v
 delete k = over Graph $ Map.delete k
+
+keys :: forall k v. Ord k => Graph k v -> Set k
+keys = Map.keys <<< unwrap
+
+vertices :: forall k v. Ord k => Graph k v -> List v
+vertices = map fst <<< Map.values <<< unwrap
 
 toUnfoldable :: forall u k v. Unfoldable u => Ord k => Graph k v -> u (Tuple k v)
 toUnfoldable (Graph m) = Map.toUnfoldable $ fst <$> m
