@@ -1,3 +1,18 @@
+# [1.2.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.1.0...v1.2.0) (2020-03-25)
+
+
+### Bug Fixes
+
+* fixed everything related to switching to the new graph module ([4900c5f](https://github.com/Mateiadrielrafael/lunarbox/commit/4900c5fbd53aad4630c5055952910c5147979e2c))
+
+
+### Features
+
+* a basic Add page ([5e34b2c](https://github.com/Mateiadrielrafael/lunarbox/commit/5e34b2cac24f0c7624f72a6f0957295f66a45579))
+* my own graph implementation so I can use lenses on it ([034fcdd](https://github.com/Mateiadrielrafael/lunarbox/commit/034fcddeb8c5e7c4eef638a73345fd591f4ac511))
+* POC custom textures ([8b35099](https://github.com/Mateiadrielrafael/lunarbox/commit/8b350990dbc0d63dc7411dbc062bb033826aae01))
+* the edit button on the Add page works now! ([2662986](https://github.com/Mateiadrielrafael/lunarbox/commit/26629862fe4a7bdde73bcd879cf49ceb0b7d061c))
+
 # [1.1.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.0.1...v1.1.0) (2020-03-23)
 
 
