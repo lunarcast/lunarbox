@@ -19,7 +19,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Tooltip (maybeTooltip)
 import Lunarbox.Component.Utils (StaticHtml, container)
 import Lunarbox.Config (Config, shouldCancelOnBlur)
-import Lunarbox.Data.Project (FunctionName(..))
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.KeyboardEvent as KE

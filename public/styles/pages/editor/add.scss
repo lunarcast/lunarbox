@@ -1,0 +1,63 @@
+@import "../../theme.scss";
+
+#editor > #panel > #panel-container > #nodes {
+  display: flex;
+  flex-direction: column;
+  margin: 1rem;
+  height: 75px;
+
+  .node {
+    display: flex;
+    margin-bottom: 1rem;
+
+    #node-data {
+      display: flex;
+      justify-content: space-between;
+      flex-grow: 1;
+
+      height: 100%;
+      margin: 1rem;
+      margin-top: 0;
+      margin-bottom: 0;
+
+      #node-buttons {
+        display: flex;
+        flex-direction: column;
+
+        height: 100%;
+        justify-content: space-evenly;
+      }
+
+      #node-text {
+        display: flex;
+        flex-direction: column;
+        text-overflow: ellipsis;
+        width: calc(15rem - 100px);
+
+        #node-name {
+          font-size: 1.4rem;
+
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          text-transform: capitalize;
+        }
+      }
+
+      .material-icons {
+        font-size: 1.5rem;
+
+        cursor: pointer;
+
+        filter: none;
+        color: grey;
+
+        transition: filter $transition-time;
+      }
+
+      .material-icons:hover {
+        filter: brightness(1.7);
+      }
+    }
+  }
+}

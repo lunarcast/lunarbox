@@ -5,7 +5,6 @@ import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
@@ -21,6 +20,7 @@ import Svg.Elements as SE
 type State
   = { nodeData :: NodeData
     , node :: Node
+    , selectable :: Boolean
     }
 
 _nodeData :: Lens' State NodeData
@@ -31,6 +31,9 @@ _position = _nodeData <<< _NodeDataPosition
 
 _stateSelected :: Lens' State Boolean
 _stateSelected = _nodeData <<< _NodeDataSelected
+
+_selectable :: Lens' State Boolean
+_selectable = prop (SProxy :: _ "selectable")
 
 data Action
   = SetSelection Boolean
@@ -47,12 +50,15 @@ type Output
   = Void
 
 type Input
-  = Tuple Node NodeData
+  = { nodeData :: NodeData
+    , node :: Node
+    , selectable :: Boolean
+    }
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
   mkComponent
-    { initialState: \(Tuple node nodeData) -> { node, nodeData }
+    { initialState: identity
     , render
     , eval:
         mkEval
@@ -80,14 +86,15 @@ component =
       nodeData <- gets $ view _nodeData
       pure $ Just $ k nodeData
 
-  render ({ nodeData: NodeData { position, selected } }) =
-    SE.rect
-      [ SA.width 100.0
-      , SA.height 100.0
-      -- TODO: remove this, for debugging only
-      , SA.fill $ Just $ if selected then SA.RGB 128 255 255 else SA.RGB 255 255 255
-      , SA.x $ position !! d0
-      , SA.y $ position !! d1
-      , SA.stroke $ Just $ if selected then SA.RGB 118 255 2 else SA.RGB 63 196 255
-      , onMouseDown $ const $ Just $ SetSelection true
+  render ({ selectable, nodeData: NodeData { position, selected } }) =
+    SE.g
+      [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
+      ]
+      [ SE.rect
+          [ SA.fill $ Just $ SA.RGB 255 255 255
+          , SA.width $ 100.0
+          , SA.height $ 100.0
+          , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
+          , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
+          ]
       ]

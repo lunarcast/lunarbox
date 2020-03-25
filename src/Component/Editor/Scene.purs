@@ -4,9 +4,9 @@ import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
 import Data.Foldable (for_, traverse_)
-import Data.Graph (Graph, alterVertex) as G
 import Data.Int (toNumber)
-import Data.Lens (Lens', _1, _2, _Just, over, set, view)
+import Data.Lens (Lens', _1, _2, set, view)
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
@@ -21,16 +21,19 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Graph (entries) as G
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
+import Lunarbox.Data.Dataflow.NodeId (NodeId)
+import Lunarbox.Data.FunctionData (FunctionData)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (FunctionName, Node, NodeGroup(..), NodeId, Project, VisualFunction, _NodeGroup, _functions, _nodes)
+import Lunarbox.Data.Project (Node, NodeGroup(..), Project, VisualFunction, _NodeGroup, _functions, _nodes)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
 
 type State
-  = { project :: Project NodeData
+  = { project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
     , lastMousePosition :: Maybe (Vec2 Number)
     }
@@ -39,10 +42,10 @@ type State
 _lastMousePosition :: Lens' State (Maybe (Vec2 Number))
 _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
 
-_project :: Lens' State (Project NodeData)
+_project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
-_projectFunctions :: Lens' State (G.Graph FunctionName (VisualFunction NodeData))
+_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (VisualFunction NodeData) FunctionData))
 _projectFunctions = _project <<< _functions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
@@ -72,7 +75,7 @@ type ChildSlots
   = ( node :: Slot Node.Query Void NodeId )
 
 type Input
-  = { project :: Project NodeData
+  = { project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
     }
 
@@ -93,7 +96,7 @@ component =
     }
   where
   getNodeIds :: forall u. Unfoldable u => Functor u => HalogenM State Action ChildSlots Output m (u NodeId)
-  getNodeIds = (map fst) <$> G.entries <$> view _StateNodes <$> get
+  getNodeIds = (map fst) <$> G.toUnfoldable <$> view _StateNodes <$> get
 
   isDragging :: HalogenM State Action ChildSlots Output m Boolean
   isDragging = Maybe.isJust <$> view _lastMousePosition <$> get
@@ -136,9 +139,7 @@ component =
           query (SProxy :: _ "node") id $ request Node.GetData
           >>= traverse_
               ( modify_
-                  <<< over _StateNodes
-                  <<< (flip G.alterVertex) id
-                  <<< set (_Just <<< _2)
+                  <<< set (_StateNodes <<< ix id <<< _2)
               )
       -- save the nodeGroup into a variable we will send to the Editor component
       -- we need to do this so when we change functions back to this one the data is saved
@@ -149,12 +150,12 @@ component =
       pure $ Just $ k group
 
   createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
-  createNodeComponent (Tuple id input) =
+  createNodeComponent (Tuple id (Tuple node nodeData)) =
     HH.slot
       (SProxy :: _ "node")
       id
       Node.component
-      input
+      { node, nodeData, selectable: true }
       absurd
 
   render { function: Tuple _ (NodeGroup { nodes }) } =
@@ -166,4 +167,4 @@ component =
       , onMouseUp $ const $ Just MouseUp
       ]
       $ createNodeComponent
-      <$> G.entries nodes
+      <$> G.toUnfoldable nodes

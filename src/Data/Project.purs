@@ -1,56 +1,23 @@
 module Lunarbox.Data.Project where
 
 import Prelude
-import Data.Graph (Graph, insertVertex, lookup, topologicalSort, vertices) as G
-import Data.Lens (Lens', Prism', prism')
+import Data.Lens (Lens', Prism', Traversal', _1, over, prism')
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, reverse, (\\))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
-import Lunarbox.Data.Graph (singleton, keys) as G
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName(..))
+import Lunarbox.Data.Dataflow.NodeId (NodeId)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
-import Lunarbox.Dataflow.Expressible (class Expressible, newtypeToExpression, toExpression)
+import Lunarbox.Dataflow.Expressible (class Expressible, toExpression)
 import Lunarbox.Dataflow.Expression (Expression(..), NativeExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
-
-newtype NodeId
-  = NodeId String
-
-derive instance eqNodeId :: Eq NodeId
-
-derive instance ordNodeId :: Ord NodeId
-
-derive instance newtypeNodeId :: Newtype NodeId _
-
-instance showNodeId :: Show NodeId where
-  show = show <<< unwrap
-
-instance expressibleNodeId :: Expressible NodeId where
-  toExpression = newtypeToExpression
-
-_NodeId :: Lens' NodeId String
-_NodeId = newtypeIso
-
-newtype FunctionName
-  = FunctionName String
-
-derive instance eqFunctionName :: Eq FunctionName
-
-derive instance ordFunctionName :: Ord FunctionName
-
-derive instance newtypeFunctionName :: Newtype FunctionName _
-
-instance showFunctionName :: Show FunctionName where
-  show (FunctionName f) = f
-
-instance expressibleFunctionName :: Expressible FunctionName where
-  toExpression = newtypeToExpression
-
-_FunctionName :: Lens' FunctionName String
-_FunctionName = newtypeIso
 
 type ComplexNodeData
   = { inputs :: List (Maybe NodeId)
@@ -108,15 +75,15 @@ _DataflowFunction =
     DataflowFunction f -> Just f
     _ -> Nothing
 
-type Project a
-  = { functions :: G.Graph FunctionName (VisualFunction a)
+type Project f n
+  = { functions :: G.Graph FunctionName (Tuple (VisualFunction n) f)
     , main :: FunctionName
     }
 
-_functions :: forall a. Lens' (Project a) (G.Graph FunctionName (VisualFunction a))
+_functions :: forall f n. Lens' (Project f n) (G.Graph FunctionName (Tuple (VisualFunction n) f))
 _functions = prop (SProxy :: _ "functions")
 
-_main :: forall a. Lens' (Project a) FunctionName
+_main :: forall f n. Lens' (Project f n) FunctionName
 _main = prop (SProxy :: _ "main")
 
 orderNodes :: forall a. NodeGroup a -> List NodeId
@@ -161,8 +128,8 @@ instance expressibleVisualFunction :: Expressible (VisualFunction a) where
     NativeVF f -> Native f
     DataflowFunction g -> toExpression g
 
-compileProject :: forall a. Project a -> List Expression
-compileProject project = toExpression <$> G.vertices project.functions
+compileProject :: forall f n. Project f n -> List Expression
+compileProject project = toExpression <$> fst <$> G.vertices project.functions
 
 createEmptyFunction :: forall a. a -> NodeId -> VisualFunction a
 createEmptyFunction data' id =
@@ -173,18 +140,24 @@ createEmptyFunction data' id =
         , output: id
         }
 
-emptyProject :: forall a. a -> NodeId -> Project a
-emptyProject data' id =
+emptyProject :: forall f n. f -> n -> NodeId -> Project f n
+emptyProject functionData nodeData id =
   { main: FunctionName "main"
-  , functions: G.singleton (FunctionName "main") $ createEmptyFunction data' id
+  , functions: G.singleton (FunctionName "main") $ Tuple function functionData
   }
-
-createFunction :: forall a. a -> FunctionName -> NodeId -> Project a -> Project a
-createFunction data' name outputId project@{ functions } =
-  project
-    { functions = G.insertVertex name function functions }
   where
-  function = (createEmptyFunction data' outputId)
+  function = createEmptyFunction nodeData id
 
-getFunctions :: forall u a. Unfoldable u => Project a -> u FunctionName
-getFunctions project = project.functions # G.keys
+createFunction :: forall f n. f -> n -> FunctionName -> NodeId -> Project f n -> Project f n
+createFunction functionData nodeData name outputId =
+  over
+    _functions
+    $ G.insert name (Tuple function functionData)
+  where
+  function = createEmptyFunction nodeData outputId
+
+getFunctions :: forall u a b. Unfoldable u => Project a b -> u FunctionName
+getFunctions project = project.functions # G.keys # Set.toUnfoldable
+
+_projectNodeGroup :: forall f n. FunctionName -> Traversal' (Project f n) (NodeGroup n)
+_projectNodeGroup name = _functions <<< ix name <<< _1 <<< _DataflowFunction

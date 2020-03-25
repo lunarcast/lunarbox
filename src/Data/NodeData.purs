@@ -5,8 +5,6 @@ import Data.Lens (Lens', iso)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
-import Data.Typelevel.Num (D2)
-import Data.Vec (Vec)
 import Lunarbox.Data.Vector (Vec2)
 
 type MathVec2
@@ -23,7 +21,9 @@ derive instance newtypeNodeData :: Newtype NodeData _
 instance semigroupNodeData :: Semigroup NodeData where
   append (NodeData { position, selected }) (NodeData { position: position', selected: selected' }) =
     NodeData
-      { position: position + position', selected: selected && selected' }
+      { position: position + position'
+      , selected: selected && selected'
+      }
 
 instance monoidNodeData :: Monoid NodeData where
   mempty = NodeData { position: zero, selected: false }
