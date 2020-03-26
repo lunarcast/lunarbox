@@ -2,6 +2,7 @@ module Lunarbox.Data.Project where
 
 import Prelude
 import Data.Lens (Lens', Prism', Traversal', _1, over, prism')
+import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, reverse, (\\))
@@ -56,14 +57,14 @@ derive instance newtypeNodeGroup :: Newtype (NodeGroup a) _
 _NodeGroup :: forall a. Lens' (NodeGroup a) (NodeGroupData a)
 _NodeGroup = newtypeIso
 
-_inputs :: forall a. Lens' (NodeGroupData a) (List NodeId)
-_inputs = prop (SProxy :: _ "inputs")
+_NodeGroupInputs :: forall a. Lens' (NodeGroup a) (List NodeId)
+_NodeGroupInputs = _NodeGroup <<< prop (SProxy :: _ "inputs")
 
-_nodes :: forall a. Lens' (NodeGroupData a) (G.Graph NodeId (Tuple Node a))
-_nodes = prop (SProxy :: _ "nodes")
+_NodeGroupNodes :: forall a. Lens' (NodeGroup a) (G.Graph NodeId (Tuple Node a))
+_NodeGroupNodes = _NodeGroup <<< prop (SProxy :: _ "nodes")
 
-_output :: forall a. Lens' (NodeGroupData a) NodeId
-_output = prop (SProxy :: _ "output")
+_NodeGroupOutput :: forall a. Lens' (NodeGroup a) NodeId
+_NodeGroupOutput = _NodeGroup <<< prop (SProxy :: _ "output")
 
 data VisualFunction a
   = NativeVF (forall a b. NativeExpression a b)
@@ -161,3 +162,6 @@ getFunctions project = project.functions # G.keys # Set.toUnfoldable
 
 _projectNodeGroup :: forall f n. FunctionName -> Traversal' (Project f n) (NodeGroup n)
 _projectNodeGroup name = _functions <<< ix name <<< _1 <<< _DataflowFunction
+
+_atProjectNode :: forall f n. FunctionName -> NodeId -> Traversal' (Project f n) (Maybe (Tuple Node n))
+_atProjectNode name id = _projectNodeGroup name <<< _NodeGroupNodes <<< at id

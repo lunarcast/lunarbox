@@ -11,7 +11,7 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.NodeData (NodeData(..), MathVec2, _NodeDataSelected, _NodeDataPosition)
+import Lunarbox.Data.NodeData (MathVec2, NodeData(..), _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
@@ -79,7 +79,8 @@ component =
       modify_ $ set _stateSelected false
       pure $ Just inner
     Drag offest inner -> do
-      modify_ $ over _position ((+) offest)
+      selected <- gets $ view _stateSelected
+      when selected $ modify_ $ over _position ((+) offest)
       pure $ Just inner
     -- This runs when the Scene component wants us to save the data
     GetData k -> do

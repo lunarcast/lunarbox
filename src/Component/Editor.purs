@@ -4,37 +4,32 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
-import Data.Foldable (sequence_, traverse_)
-import Data.Int (toNumber)
+import Data.Foldable (for_, sequence_, traverse_)
 import Data.Lens (Lens', Traversal', over, preview, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
-import Data.Typelevel.Num (d0, d1)
-import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, request, tell)
+import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
 import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Component.Editor.Node as Node
+import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
-import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataScale)
+import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (Node(..), NodeGroup, Project, VisualFunction, _DataflowFunction, _functions, _projectNodeGroup, createFunction, emptyProject, getFunctions)
+import Lunarbox.Data.Project (Node(..), NodeGroup, Project, VisualFunction, _atProjectNode, _functions, _projectNodeGroup, createFunction, emptyProject, getFunctions)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Svg.Attributes as SA
-import Svg.Elements as SE
 
 data Tab
   = Settings
@@ -68,6 +63,9 @@ _projectFunctions = _project <<< _functions
 _stateProjectNodeGroup :: FunctionName -> Traversal' State (NodeGroup NodeData)
 _stateProjectNodeGroup name = _project <<< _projectNodeGroup name
 
+_stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe (Tuple Node NodeData))
+_stateAtProjectNode name id = _project <<< _atProjectNode name id
+
 _currentFunction :: Lens' State (Maybe FunctionName)
 _currentFunction = prop (SProxy :: _ "currentFunction")
 
@@ -82,6 +80,8 @@ data Action
   | CreateFunction FunctionName
   | SelectFunction (Maybe FunctionName)
   | StartFunctionCreation
+  | CreateNode FunctionName
+  | UpdateNodeGroup (NodeGroup NodeData)
 
 data Query a
   = Void
@@ -89,7 +89,7 @@ data Query a
 type ChildSlots
   = ( scene :: Slot Scene.Query Scene.Output Unit
     , tree :: Slot TreeC.Query TreeC.Output Unit
-    , node :: Slot Node.Query Node.Output FunctionName
+    , add :: Slot AddC.Query AddC.Output Unit
     )
 
 component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
@@ -119,6 +119,23 @@ component =
 
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
+    UpdateNodeGroup group -> do
+      (gets $ view _currentFunction)
+        >>= traverse_ \currentFunction ->
+            modify_
+              $ set (_stateProjectNodeGroup currentFunction) group
+    CreateNode name -> do
+      id <- createId
+      maybeCurrentFunction <- gets $ view _currentFunction
+      let
+        node :: Node
+        node = ComplexNode { inputs: mempty, function: name }
+      for_ maybeCurrentFunction
+        $ \currentFunction ->
+            modify_
+              $ set (_stateAtProjectNode currentFunction id)
+              $ Just
+              $ Tuple node mempty
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_
@@ -134,35 +151,30 @@ component =
     SelectFunction name -> do
       -- we need the current function to lookup the function in the function graph
       { project, currentFunction: oldName } <- get
-      -- Save the selected function in the state
-      modify_ $ set _currentFunction name
       -- this is here to update the function the Scene component renders
       when (name /= oldName)
         $ sequence_ do
             currentFunction <- name
-            oldFunction <- oldName
             Tuple function _ <-
               G.lookup currentFunction project.functions
-            -- we only render DataflowFunctions
-            group <- preview _DataflowFunction function
-            let
-              functionData =
-                query
-                  (SProxy :: _ "scene")
-                  unit
-                  $ request
-                  $ Scene.SelectFunction
-                  $ Tuple currentFunction group
-            pure $ functionData
-              >>= traverse_
-                  ( modify_
-                      <<< set (_stateProjectNodeGroup oldFunction)
-                  )
+            pure do
+              void $ query (SProxy :: _ "scene") unit $ tell Scene.BeforeFunctionChanging
+              -- And finally, save the selected function in the state
+              modify_ $ set _currentFunction name
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
     TreeC.CreatedFunction name -> Just $ CreateFunction name
     TreeC.SelectedFunction name -> Just $ SelectFunction name
+
+  handleAddOutput :: AddC.Output -> Maybe Action
+  handleAddOutput = case _ of
+    AddC.SelectedFunction name -> Just $ SelectFunction $ Just name
+    AddC.AddedNode name -> Just $ CreateNode name
+
+  handleSceneOutput :: Scene.Output -> Maybe Action
+  handleSceneOutput = case _ of
+    Scene.SaveNodeGroup group -> Just $ UpdateNodeGroup group
 
   sidebarIcon activeTab current =
     HH.div
@@ -206,49 +218,8 @@ component =
     Add ->
       container "panel-container"
         [ container "title" [ HH.text "Add node" ]
-        , container "nodes"
-            $ makeNode
-            <$> G.toUnfoldable project.functions
+        , slot (SProxy :: _ "add") unit AddC.component { project, currentFunction } handleAddOutput
         ]
-      where
-      input :: FunctionName -> Node.Input
-      input name =
-        { selectable: false
-        , nodeData: mempty
-        , node: ComplexNode { inputs: mempty, function: name }
-        }
-
-      makeNode (Tuple name (Tuple function functionData)) =
-        let
-          scale = view _FunctionDataScale functionData
-
-          side = toNumber $ max (scale !! d0) (scale !! d1)
-        in
-          HH.div [ className "node" ]
-            [ SE.svg
-                [ SA.width 75.0
-                , SA.height 75.0
-                , SA.viewBox 0.0 0.0 side side
-                ]
-                [ slot
-                    (SProxy :: _ "node")
-                    name
-                    Node.component
-                    (input name)
-                    absurd
-                ]
-            , container "node-data"
-                [ container "node-text"
-                    [ container "node-name"
-                        [ HH.text $ show name
-                        ]
-                    ]
-                , container "node-buttons"
-                    [ icon "add"
-                    , HH.div [ onClick $ const $ Just $ SelectFunction $ Just name ] [ icon "edit" ]
-                    ]
-                ]
-            ]
     _ -> HH.text "not implemented"
 
   scene { project, currentFunction: maybeCurrentFunction } =
@@ -263,7 +234,7 @@ component =
             unit
             Scene.component
             { project, function: Tuple currentFunction group }
-            absurd
+            handleSceneOutput
 
   render state@{ currentTab, panelIsOpen, project, currentFunction } =
     container "editor"
