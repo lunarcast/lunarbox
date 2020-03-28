@@ -6,7 +6,7 @@ import Control.Monad.State (get, gets, modify_)
 import Data.Array (foldr, sortBy)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
-import Data.Lens (Lens', _1, _2, set, view)
+import Data.Lens (Lens', Traversal', _1, _2, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
@@ -63,6 +63,12 @@ _functionNodeGroup = _function <<< _2
 
 _StateNodes :: Lens' State (G.Graph NodeId (Tuple Node NodeData))
 _StateNodes = _functionNodeGroup <<< _NodeGroupNodes
+
+_node :: NodeId -> Traversal' State NodeData
+_node id = _StateNodes <<< ix id <<< _2
+
+_nodeZPosition :: NodeId -> Traversal' State Int
+_nodeZPosition id = _node id <<< _NodeDataZPosition
 
 data Action
   = MouseMove (Vec2 Number)
@@ -152,7 +158,7 @@ component =
           query (SProxy :: _ "node") id $ request Node.GetData
           >>= traverse_
               ( modify_
-                  <<< set (_StateNodes <<< ix id <<< _2)
+                  <<< set (_node id)
               )
     TriggerNodeGroupSaving -> do
       -- We need to sync this first before emiting it to the parent
@@ -166,8 +172,8 @@ component =
       let
         y = 1 + (view _NodeDataZPosition $ foldr max mempty $ snd <$> G.vertices nodeGraph)
       void $ query (SProxy :: _ "node") id $ tell $ Node.SetZPosition y
-      -- here we resync the new position
-      modify_ $ set (_StateNodes <<< ix id <<< _2 <<< _NodeDataZPosition) y
+      -- here we resync the new z position
+      modify_ $ set (_nodeZPosition id) y
 
   handleNodeOutput :: NodeId -> Node.Output -> Maybe Action
   handleNodeOutput id = case _ of
