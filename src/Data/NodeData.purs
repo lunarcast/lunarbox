@@ -1,4 +1,10 @@
-module Lunarbox.Data.NodeData where
+module Lunarbox.Data.NodeData
+  ( NodeData(..)
+  , NodeDataContent
+  , _NodeDataPosition
+  , _NodeDataSelected
+  , _NodeDataZPosition
+  ) where
 
 import Prelude
 import Data.Lens (Lens', iso)
@@ -7,39 +13,40 @@ import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Vector (Vec2)
 
-type MathVec2
-  = Vec2 Number
-
+-- This is here so we don't have to rewrite this type in the _NodeData lens
 type NodeDataContent
-  = { position :: MathVec2, selected :: Boolean }
+  = { position :: Vec2 Number, selected :: Boolean, zPosition :: Int }
 
 newtype NodeData
   = NodeData NodeDataContent
 
 derive instance newtypeNodeData :: Newtype NodeData _
 
+derive instance eqNodeData :: Eq NodeData
+
+instance ordNodeData :: Ord NodeData where
+  compare (NodeData { zPosition }) (NodeData ({ zPosition: zPosition' })) = compare zPosition zPosition'
+
 instance semigroupNodeData :: Semigroup NodeData where
-  append (NodeData { position, selected }) (NodeData { position: position', selected: selected' }) =
+  append (NodeData { position, selected, zPosition }) (NodeData { position: position', selected: selected', zPosition: zPosition' }) =
     NodeData
       { position: position + position'
       , selected: selected && selected'
+      , zPosition: zPosition + zPosition'
       }
 
 instance monoidNodeData :: Monoid NodeData where
-  mempty = NodeData { position: zero, selected: false }
+  mempty = NodeData { position: zero, selected: false, zPosition: 0 }
 
 -- Lenses
 _NodeData :: Lens' NodeData NodeDataContent
 _NodeData = iso unwrap wrap
 
-_position :: Lens' NodeDataContent MathVec2
-_position = prop (SProxy :: SProxy "position")
-
-_selected :: Lens' NodeDataContent Boolean
-_selected = prop (SProxy :: SProxy "selected")
-
-_NodeDataPosition :: Lens' NodeData MathVec2
-_NodeDataPosition = _NodeData <<< _position
+_NodeDataPosition :: Lens' NodeData (Vec2 Number)
+_NodeDataPosition = _NodeData <<< prop (SProxy :: SProxy "position")
 
 _NodeDataSelected :: Lens' NodeData Boolean
-_NodeDataSelected = _NodeData <<< _selected
+_NodeDataSelected = _NodeData <<< prop (SProxy :: SProxy "selected")
+
+_NodeDataZPosition :: Lens' NodeData Int
+_NodeDataZPosition = _NodeData <<< prop (SProxy :: _ "zPosition")

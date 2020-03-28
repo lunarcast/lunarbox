@@ -125,7 +125,7 @@ component =
                 name
                 Node.component
                 (nodeInput name)
-                absurd
+                $ const Nothing
             ]
         , container "node-data"
             [ container "node-text"
