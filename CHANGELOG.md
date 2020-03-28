@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.2.0...v1.3.0) (2020-03-28)
+
+
+### Features
+
+* the stuff on the add node panel now actually works! ([421e1b8](https://github.com/Mateiadrielrafael/lunarbox/commit/421e1b8549938f20a15ca4b170531f6127d06cc9))
+
 # [1.2.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.1.0...v1.2.0) (2020-03-25)
 
 
