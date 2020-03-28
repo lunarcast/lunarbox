@@ -3,19 +3,22 @@ module Lunarbox.Component.Editor.Scene where
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
+import Data.Array (foldr, sortBy)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
-import Data.Lens (Lens', _1, _2, set, view)
+import Data.Lens (Lens', Traversal', _1, _2, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
+import Data.List (List)
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Unfoldable (class Unfoldable)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, request, tell)
+import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, raise, request, tell)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
@@ -25,8 +28,8 @@ import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.Dataflow.NodeId (NodeId)
 import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (Node, NodeGroup(..), Project, VisualFunction, _NodeGroup, _functions, _nodes)
+import Lunarbox.Data.NodeData (NodeData, _NodeDataZPosition)
+import Lunarbox.Data.Project (Node, NodeGroup(..), Project, VisualFunction, _NodeGroupNodes, _functions)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -36,6 +39,7 @@ type State
   = { project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
     , lastMousePosition :: Maybe (Vec2 Number)
+    , nodes :: List NodeId
     }
 
 -- Lenses
@@ -58,40 +62,56 @@ _functionNodeGroup :: Lens' State (NodeGroup NodeData)
 _functionNodeGroup = _function <<< _2
 
 _StateNodes :: Lens' State (G.Graph NodeId (Tuple Node NodeData))
-_StateNodes = _functionNodeGroup <<< _NodeGroup <<< _nodes
+_StateNodes = _functionNodeGroup <<< _NodeGroupNodes
+
+_node :: NodeId -> Traversal' State NodeData
+_node id = _StateNodes <<< ix id <<< _2
+
+_nodeZPosition :: NodeId -> Traversal' State Int
+_nodeZPosition id = _node id <<< _NodeDataZPosition
 
 data Action
   = MouseMove (Vec2 Number)
   | MouseDown (Vec2 Number)
   | MouseUp
+  | Receive Input
+  | NodeSelected NodeId
+  | SyncNodeGroup
+  | TriggerNodeGroupSaving
 
 data Query a
-  = SelectFunction (Tuple FunctionName (NodeGroup NodeData)) ((NodeGroup NodeData) -> a)
+  = BeforeFunctionChanging a
 
-type Output
-  = Void
+data Output
+  = SaveNodeGroup (NodeGroup NodeData)
 
 type ChildSlots
-  = ( node :: Slot Node.Query Void NodeId )
+  = ( node :: Slot Node.Query Node.Output NodeId )
 
 type Input
   = { project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
     }
 
+initialState :: Input -> State
+initialState { project, function } =
+  { project
+  , function
+  , lastMousePosition: Nothing
+  , nodes: Set.toUnfoldable <$> G.keys $ view (_2 <<< _NodeGroupNodes) function
+  }
+
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
 component =
   mkComponent
-    { initialState:
-        \{ project, function } ->
-          { project, function, lastMousePosition: Nothing
-          }
+    { initialState
     , render
     , eval:
         mkEval
           $ defaultEval
               { handleAction = handleAction
               , handleQuery = handleQuery
+              , receive = Just <<< Receive
               }
     }
   where
@@ -106,6 +126,8 @@ component =
 
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
+    Receive { project, function } -> do
+      modify_ _ { project = project, function = function }
     MouseMove newPosition ->
       whenDragging do
         maybeOldPosition <- gets $ view _lastMousePosition
@@ -127,10 +149,7 @@ component =
       for_ ids \id -> do
         mousePosition <- gets $ view _lastMousePosition
         query (SProxy :: _ "node") id $ tell Node.Unselect
-
-  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
-  handleQuery = case _ of
-    SelectFunction new k -> do
+    SyncNodeGroup -> do
       -- this chunk is here to save all nodes
       (ids :: Array _) <- getNodeIds
       -- query all nodes to unselect themselves
@@ -139,15 +158,32 @@ component =
           query (SProxy :: _ "node") id $ request Node.GetData
           >>= traverse_
               ( modify_
-                  <<< set (_StateNodes <<< ix id <<< _2)
+                  <<< set (_node id)
               )
-      -- save the nodeGroup into a variable we will send to the Editor component
-      -- we need to do this so when we change functions back to this one the data is saved
+    TriggerNodeGroupSaving -> do
+      -- We need to sync this first before emiting it to the parent
+      handleAction SyncNodeGroup
       group <- gets $ view _functionNodeGroup
-      -- switch to the new function
-      modify_ $ set _function new
-      -- respond with the data of the last group
-      pure $ Just $ k group
+      raise $ SaveNodeGroup group
+    NodeSelected id -> do
+      -- we sync it first to get the last y values
+      handleAction SyncNodeGroup
+      nodeGraph <- gets $ view _StateNodes
+      let
+        y = 1 + (view _NodeDataZPosition $ foldr max mempty $ snd <$> G.vertices nodeGraph)
+      void $ query (SProxy :: _ "node") id $ tell $ Node.SetZPosition y
+      -- here we resync the new z position
+      modify_ $ set (_nodeZPosition id) y
+
+  handleNodeOutput :: NodeId -> Node.Output -> Maybe Action
+  handleNodeOutput id = case _ of
+    Node.Selected -> Just $ NodeSelected id
+
+  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
+  handleQuery = case _ of
+    BeforeFunctionChanging k -> do
+      handleAction TriggerNodeGroupSaving
+      pure $ Just k
 
   createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
   createNodeComponent (Tuple id (Tuple node nodeData)) =
@@ -156,7 +192,7 @@ component =
       id
       Node.component
       { node, nodeData, selectable: true }
-      absurd
+      $ handleNodeOutput id
 
   render { function: Tuple _ (NodeGroup { nodes }) } =
     SE.svg
@@ -167,4 +203,8 @@ component =
       , onMouseUp $ const $ Just MouseUp
       ]
       $ createNodeComponent
-      <$> G.toUnfoldable nodes
+      <$> sortedNodes
+    where
+    sortedNodes =
+      sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')
+        $ G.toUnfoldable nodes

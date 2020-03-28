@@ -28,6 +28,25 @@
         justify-content: space-evenly;
       }
 
+      #node-buttons > div > .material-icons {
+        font-size: 1.5rem;
+
+        cursor: pointer;
+
+        filter: none;
+        color: $disabled;
+
+        transition: filter $transition-time;
+      }
+
+      #node-buttons > div > .material-icons:hover {
+        filter: brightness(1.7);
+      }
+
+      #node-buttons > .active > .material-icons {
+        color: rgb(175, 173, 173);
+      }
+
       #node-text {
         display: flex;
         flex-direction: column;
@@ -42,21 +61,6 @@
           overflow: hidden;
           text-transform: capitalize;
         }
-      }
-
-      .material-icons {
-        font-size: 1.5rem;
-
-        cursor: pointer;
-
-        filter: none;
-        color: grey;
-
-        transition: filter $transition-time;
-      }
-
-      .material-icons:hover {
-        filter: brightness(1.7);
       }
     }
   }

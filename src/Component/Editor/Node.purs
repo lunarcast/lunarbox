@@ -8,10 +8,10 @@ import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.NodeData (NodeData(..), MathVec2, _NodeDataSelected, _NodeDataPosition)
+import Lunarbox.Data.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
@@ -26,8 +26,11 @@ type State
 _nodeData :: Lens' State NodeData
 _nodeData = prop (SProxy :: SProxy "nodeData")
 
-_position :: Lens' State MathVec2
+_position :: Lens' State (Vec2 Number)
 _position = _nodeData <<< _NodeDataPosition
+
+_zPosition :: Lens' State Int
+_zPosition = _nodeData <<< _NodeDataZPosition
 
 _stateSelected :: Lens' State Boolean
 _stateSelected = _nodeData <<< _NodeDataSelected
@@ -42,12 +45,13 @@ data Query a
   = Unselect a
   | GetData (NodeData -> a)
   | Drag (Vec2 Number) a
+  | SetZPosition Int a
 
 type ChildSlots
   = ()
 
-type Output
-  = Void
+data Output
+  = Selected
 
 type Input
   = { nodeData :: NodeData
@@ -72,6 +76,7 @@ component =
   handleAction = case _ of
     SetSelection value -> do
       modify_ $ set _stateSelected value
+      when (value == true) $ raise Selected
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -79,12 +84,16 @@ component =
       modify_ $ set _stateSelected false
       pure $ Just inner
     Drag offest inner -> do
-      modify_ $ over _position ((+) offest)
+      selected <- gets $ view _stateSelected
+      when selected $ modify_ $ over _position $ (+) offest
       pure $ Just inner
     -- This runs when the Scene component wants us to save the data
     GetData k -> do
       nodeData <- gets $ view _nodeData
       pure $ Just $ k nodeData
+    SetZPosition value k -> do
+      modify_ $ set _zPosition value
+      pure $ Just k
 
   render ({ selectable, nodeData: NodeData { position, selected } }) =
     SE.g
