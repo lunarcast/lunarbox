@@ -4,6 +4,7 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
+import Data.Array as Array
 import Data.Foldable (for_, sequence_, traverse_)
 import Data.Lens (Lens', Traversal', over, preview, set, view)
 import Data.Lens.Record (prop)
@@ -29,7 +30,8 @@ import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
 import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (Node(..), NodeGroup, Project, DataflowFunction, _atProjectNode, _functions, _projectNodeGroup, createFunction, emptyProject, getFunctions)
+import Lunarbox.Data.NodeDescriptor (onlyEditable)
+import Lunarbox.Data.Project (DataflowFunction, Node(..), NodeGroup, Project, _atProjectNode, _functions, _projectNodeGroup, createFunction, emptyProject)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
@@ -211,7 +213,7 @@ component =
                 , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
                 ]
             , HH.slot (SProxy :: _ "tree") unit TreeC.component
-                { functions: getFunctions project, selected: currentFunction
+                { functions: Array.toUnfoldable $ (\(Tuple { name } _) -> name) <$> onlyEditable currentFunction project, selected: currentFunction
                 }
                 handleTreeOutput
             ]

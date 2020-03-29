@@ -4,7 +4,7 @@ import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.MonadZero (guard)
 import Data.Int (toNumber)
-import Data.Lens (Lens', view, is)
+import Data.Lens (Lens', view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
@@ -22,10 +22,10 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataExternal, _FunctionDataScale)
-import Lunarbox.Data.Graph as G
+import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataScale)
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (Node(..), Project, DataflowFunction, _VisualFunction)
+import Lunarbox.Data.NodeDescriptor (describe)
+import Lunarbox.Data.Project (Node(..), Project)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -57,30 +57,6 @@ type ChildSlots
 
 type Input
   = State
-
-type NodeDescriptor
-  = { isUsable :: Boolean
-    , isEditable :: Boolean
-    }
-
-type FunctionGraphNode
-  = { name :: FunctionName
-    , functionData :: FunctionData
-    , function :: DataflowFunction NodeData
-    }
-
-describe :: State -> Array (Tuple FunctionGraphNode NodeDescriptor)
-describe { currentFunction, project } =
-  G.toUnfoldable project.functions
-    <#> \(Tuple name (Tuple function functionData)) ->
-        let
-          isExternal = view _FunctionDataExternal functionData
-
-          isEditable = not isExternal && is _VisualFunction function
-
-          isUsable = currentFunction /= Just name
-        in
-          Tuple { name, function, functionData } { isUsable, isEditable }
 
 nodeInput :: FunctionName -> Node.Input
 nodeInput name =
@@ -149,7 +125,7 @@ component =
             ]
         ]
 
-  render state =
+  render { project, currentFunction } =
     container "nodes"
       $ makeNode
-      <$> describe state
+      <$> describe currentFunction project
