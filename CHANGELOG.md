@@ -1,3 +1,16 @@
+# [1.4.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.3.0...v1.4.0) (2020-03-29)
+
+
+### Bug Fixes
+
+* now the native functions don't appear in the tree view anymore ([2096046](https://github.com/Mateiadrielrafael/lunarbox/commit/2096046a4118ceb9d8d5bd1f59921261f891a052))
+
+
+### Features
+
+* finally added a decent Native & Runtime system, and as a demo an add node is preloaded! ([a07fd62](https://github.com/Mateiadrielrafael/lunarbox/commit/a07fd6270e3ede20538b9033ab67f340dd499abd))
+* given the Node component access the the FunctionData record ([596d26e](https://github.com/Mateiadrielrafael/lunarbox/commit/596d26e06cebbaaeb730225146f200cd43df9871))
+
 # [1.3.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.2.0...v1.3.0) (2020-03-28)
 
 
