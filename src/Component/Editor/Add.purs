@@ -25,7 +25,7 @@ import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataExternal, _FunctionDataScale)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (Node(..), Project, VisualFunction, _DataflowFunction)
+import Lunarbox.Data.Project (Node(..), Project, DataflowFunction, _VisualFunction)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -66,7 +66,7 @@ type NodeDescriptor
 type FunctionGraphNode
   = { name :: FunctionName
     , functionData :: FunctionData
-    , function :: VisualFunction NodeData
+    , function :: DataflowFunction NodeData
     }
 
 describe :: State -> Array (Tuple FunctionGraphNode NodeDescriptor)
@@ -76,7 +76,7 @@ describe { currentFunction, project } =
         let
           isExternal = view _FunctionDataExternal functionData
 
-          isEditable = not isExternal && is _DataflowFunction function
+          isEditable = not isExternal && is _VisualFunction function
 
           isUsable = currentFunction /= Just name
         in

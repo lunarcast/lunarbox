@@ -66,22 +66,22 @@ _NodeGroupNodes = _NodeGroup <<< prop (SProxy :: _ "nodes")
 _NodeGroupOutput :: forall a. Lens' (NodeGroup a) NodeId
 _NodeGroupOutput = _NodeGroup <<< prop (SProxy :: _ "output")
 
-data VisualFunction a
-  = NativeVF NativeExpression
-  | DataflowFunction (NodeGroup a)
+data DataflowFunction a
+  = NativeFunction NativeExpression
+  | VisualFunction (NodeGroup a)
 
-_DataflowFunction :: forall a. Prism' (VisualFunction a) (NodeGroup a)
-_DataflowFunction =
-  prism' DataflowFunction case _ of
-    DataflowFunction f -> Just f
+_VisualFunction :: forall a. Prism' (DataflowFunction a) (NodeGroup a)
+_VisualFunction =
+  prism' VisualFunction case _ of
+    VisualFunction f -> Just f
     _ -> Nothing
 
 type Project f n
-  = { functions :: G.Graph FunctionName (Tuple (VisualFunction n) f)
+  = { functions :: G.Graph FunctionName (Tuple (DataflowFunction n) f)
     , main :: FunctionName
     }
 
-_functions :: forall f n. Lens' (Project f n) (G.Graph FunctionName (Tuple (VisualFunction n) f))
+_functions :: forall f n. Lens' (Project f n) (G.Graph FunctionName (Tuple (DataflowFunction n) f))
 _functions = prop (SProxy :: _ "functions")
 
 _main :: forall f n. Lens' (Project f n) FunctionName
@@ -124,17 +124,17 @@ instance expressibleNodeGroup :: Expressible (NodeGroup a) where
           body
       pure $ functionDeclaration return $ TV <$> unwrap <$> inputs
 
-instance expressibleVisualFunction :: Expressible (VisualFunction a) where
+instance expressibleVisualFunction :: Expressible (DataflowFunction a) where
   toExpression = case _ of
-    NativeVF f -> Native f
-    DataflowFunction g -> toExpression g
+    NativeFunction f -> Native f
+    VisualFunction g -> toExpression g
 
 compileProject :: forall f n. Project f n -> List Expression
 compileProject project = toExpression <$> fst <$> G.vertices project.functions
 
-createEmptyFunction :: forall a. a -> NodeId -> VisualFunction a
+createEmptyFunction :: forall a. a -> NodeId -> DataflowFunction a
 createEmptyFunction data' id =
-  DataflowFunction
+  VisualFunction
     $ NodeGroup
         { inputs: mempty
         , nodes: G.singleton id $ Tuple (OutputNode Nothing) data'
@@ -160,8 +160,11 @@ createFunction functionData nodeData name outputId =
 getFunctions :: forall u a b. Unfoldable u => Project a b -> u FunctionName
 getFunctions project = project.functions # G.keys # Set.toUnfoldable
 
+_atProjectFunction :: forall f n. FunctionName -> Traversal' (Project f n) (Maybe (Tuple (DataflowFunction n) f))
+_atProjectFunction name = _functions <<< at name
+
 _projectNodeGroup :: forall f n. FunctionName -> Traversal' (Project f n) (NodeGroup n)
-_projectNodeGroup name = _functions <<< ix name <<< _1 <<< _DataflowFunction
+_projectNodeGroup name = _functions <<< ix name <<< _1 <<< _VisualFunction
 
 _atProjectNode :: forall f n. FunctionName -> NodeId -> Traversal' (Project f n) (Maybe (Tuple Node n))
 _atProjectNode name id = _projectNodeGroup name <<< _NodeGroupNodes <<< at id

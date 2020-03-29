@@ -29,7 +29,7 @@ import Lunarbox.Data.Dataflow.NodeId (NodeId)
 import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData, _NodeDataZPosition)
-import Lunarbox.Data.Project (Node, NodeGroup(..), Project, VisualFunction, _NodeGroupNodes, _functions)
+import Lunarbox.Data.Project (Node, NodeGroup(..), Project, DataflowFunction, _NodeGroupNodes, _functions)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -49,7 +49,7 @@ _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
 _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
-_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (VisualFunction NodeData) FunctionData))
+_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
 _projectFunctions = _project <<< _functions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))

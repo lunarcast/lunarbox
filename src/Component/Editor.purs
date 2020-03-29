@@ -24,11 +24,12 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
+import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
 import Lunarbox.Data.FunctionData (FunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (Node(..), NodeGroup, Project, VisualFunction, _atProjectNode, _functions, _projectNodeGroup, createFunction, emptyProject, getFunctions)
+import Lunarbox.Data.Project (Node(..), NodeGroup, Project, DataflowFunction, _atProjectNode, _functions, _projectNodeGroup, createFunction, emptyProject, getFunctions)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
@@ -57,7 +58,7 @@ type State
 _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
-_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (VisualFunction NodeData) FunctionData))
+_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
 _projectFunctions = _project <<< _functions
 
 _stateProjectNodeGroup :: FunctionName -> Traversal' State (NodeGroup NodeData)
@@ -99,7 +100,7 @@ component =
         const
           { currentTab: Settings
           , panelIsOpen: false
-          , project: emptyProject mempty mempty $ NodeId "firstOutput"
+          , project: loadPrelude $ emptyProject mempty mempty $ NodeId "firstOutput"
           , nextId: 0
           , currentFunction: Nothing
           }
