@@ -67,7 +67,7 @@ _NodeGroupOutput :: forall a. Lens' (NodeGroup a) NodeId
 _NodeGroupOutput = _NodeGroup <<< prop (SProxy :: _ "output")
 
 data VisualFunction a
-  = NativeVF (forall a b. NativeExpression a b)
+  = NativeVF NativeExpression
   | DataflowFunction (NodeGroup a)
 
 _DataflowFunction :: forall a. Prism' (VisualFunction a) (NodeGroup a)

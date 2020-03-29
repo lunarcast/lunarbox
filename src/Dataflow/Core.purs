@@ -21,7 +21,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Lunarbox.Dataflow.Error (TypeError(..))
 import Lunarbox.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..))
 import Lunarbox.Dataflow.Substitution (Substitution, compose, apply, class Substituable, ftv)
-import Lunarbox.Dataflow.Type (Type(..), TVar(..), Scheme(..), typeBool, typeInt)
+import Lunarbox.Dataflow.Type (Type(..), TVar(..), Scheme(..), typeBool, typeNumber)
 import Lunarbox.Dataflow.TypeEnv (TypeEnv(..), extend)
 import Prelude (Unit, discard, (+))
 
@@ -126,7 +126,7 @@ infer = case _ of
     createConstraint (tv `TArrow` tv) t
     pure tv
   Native (NativeExpression t _) -> pure t
-  Literal (LInt _) -> pure typeInt
+  Literal (LInt _) -> pure typeNumber
   Literal (LBool _) -> pure typeBool
 
 emptyUnifier :: Unifier
