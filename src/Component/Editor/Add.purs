@@ -1,4 +1,10 @@
-module Lunarbox.Component.Editor.Add (State, Query(..), Input, component, Output(..)) where
+module Lunarbox.Component.Editor.Add
+  ( State
+  , Query(..)
+  , Input
+  , component
+  , Output(..)
+  ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
@@ -58,11 +64,12 @@ type ChildSlots
 type Input
   = State
 
-nodeInput :: FunctionName -> Node.Input
-nodeInput name =
+nodeInput :: FunctionName -> FunctionData -> Node.Input
+nodeInput name functionData =
   { selectable: false
   , nodeData: mempty
   , node: ComplexNode { inputs: mempty, function: name }
+  , functionData
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
@@ -100,7 +107,7 @@ component =
                 (SProxy :: _ "node")
                 name
                 Node.component
-                (nodeInput name)
+                (nodeInput name functionData)
                 $ const Nothing
             ]
         , container "node-data"

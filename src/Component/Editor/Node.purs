@@ -1,6 +1,12 @@
-module Lunarbox.Component.Editor.Node where
+module Lunarbox.Component.Editor.Node
+  ( component
+  , Query(..)
+  , Output(..)
+  , Input
+  ) where
 
 import Prelude
+import Data.Int (toNumber)
 import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
@@ -11,6 +17,8 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
+import Halogen.HTML.Properties as HP
+import Lunarbox.Data.FunctionData (FunctionData(..))
 import Lunarbox.Data.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
@@ -21,6 +29,7 @@ type State
   = { nodeData :: NodeData
     , node :: Node
     , selectable :: Boolean
+    , functionData :: FunctionData
     }
 
 _nodeData :: Lens' State NodeData
@@ -56,6 +65,7 @@ data Output
 type Input
   = { nodeData :: NodeData
     , node :: Node
+    , functionData :: FunctionData
     , selectable :: Boolean
     }
 
@@ -95,15 +105,25 @@ component =
       modify_ $ set _zPosition value
       pure $ Just k
 
-  render ({ selectable, nodeData: NodeData { position, selected } }) =
+  render ( { selectable
+    , functionData: FunctionData { image, scale }
+    , nodeData: NodeData { position, selected }
+    }
+  ) =
     SE.g
       [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
+      , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
       ]
       [ SE.rect
           [ SA.fill $ Just $ SA.RGB 255 255 255
-          , SA.width $ 100.0
-          , SA.height $ 100.0
+          , SA.width $ toNumber $ scale !! d0
+          , SA.height $ toNumber $ scale !! d1
           , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
-          , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
+          ]
+      , SE.foreignObject
+          [ SA.width $ toNumber $ scale !! d0
+          , SA.height $ toNumber $ scale !! d1
+          ]
+          [ HH.img [ HP.src image, HP.width $ scale !! d0, HP.height $ scale !! d1 ]
           ]
       ]

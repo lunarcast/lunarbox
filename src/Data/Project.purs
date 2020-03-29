@@ -1,7 +1,7 @@
 module Lunarbox.Data.Project where
 
 import Prelude
-import Data.Lens (Lens', Prism', Traversal', _1, over, prism')
+import Data.Lens (Lens', Prism', Traversal', _1, _2, over, prism')
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
@@ -168,3 +168,6 @@ _projectNodeGroup name = _functions <<< ix name <<< _1 <<< _VisualFunction
 
 _atProjectNode :: forall f n. FunctionName -> NodeId -> Traversal' (Project f n) (Maybe (Tuple Node n))
 _atProjectNode name id = _projectNodeGroup name <<< _NodeGroupNodes <<< at id
+
+_projectFunctionData :: forall f n. FunctionName -> Traversal' (Project f n) f
+_projectFunctionData name = _functions <<< ix name <<< _2
