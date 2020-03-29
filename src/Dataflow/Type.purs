@@ -1,4 +1,4 @@
-module Lunarbox.Dataflow.Type (Type(..), TVar(..), typeInt, typeBool, Scheme(..)) where
+module Lunarbox.Dataflow.Type (Type(..), TVar(..), typeNumber, typeBool, Scheme(..)) where
 
 import Prelude
 import Data.Foldable (fold)
@@ -41,8 +41,8 @@ printType p (TArrow from to) = if p then "(" <> result <> ")" else result
 instance typeShow :: Show Type where
   show = printType false
 
-typeInt :: Type
-typeInt = TConstant "Int"
+typeNumber :: Type
+typeNumber = TConstant "Number"
 
 typeBool :: Type
 typeBool = TConstant "Bool"

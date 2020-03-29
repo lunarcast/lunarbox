@@ -1,4 +1,9 @@
-module Lunarbox.Component.Editor.Scene where
+module Lunarbox.Component.Editor.Scene
+  ( component
+  , Query(..)
+  , Input
+  , Output(..)
+  ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
@@ -26,10 +31,10 @@ import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.Dataflow.NodeId (NodeId)
-import Lunarbox.Data.FunctionData (FunctionData)
+import Lunarbox.Data.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData, _NodeDataZPosition)
-import Lunarbox.Data.Project (Node, NodeGroup(..), Project, VisualFunction, _NodeGroupNodes, _functions)
+import Lunarbox.Data.Project (DataflowFunction, Node, NodeGroup(..), Project, _NodeGroupNodes, _functions, _projectFunctionData)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -49,7 +54,7 @@ _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
 _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
-_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (VisualFunction NodeData) FunctionData))
+_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
 _projectFunctions = _project <<< _functions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
@@ -185,16 +190,21 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  createNodeComponent :: Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
-  createNodeComponent (Tuple id (Tuple node nodeData)) =
-    HH.slot
-      (SProxy :: _ "node")
-      id
-      Node.component
-      { node, nodeData, selectable: true }
-      $ handleNodeOutput id
+  createNodeComponent :: Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
+  createNodeComponent project (Tuple id (Tuple node nodeData)) =
+    let
+      getData name = view (_projectFunctionData name) project
+    in
+      getFunctionData getData node
+        # \functionData ->
+            HH.slot
+              (SProxy :: _ "node")
+              id
+              Node.component
+              { node, nodeData, selectable: true, functionData }
+              $ handleNodeOutput id
 
-  render { function: Tuple _ (NodeGroup { nodes }) } =
+  render { project, function: Tuple _ (NodeGroup { nodes }) } =
     SE.svg
       [ SA.width 100000.0
       , SA.height 100000.0
@@ -202,7 +212,7 @@ component =
       , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const $ Just MouseUp
       ]
-      $ createNodeComponent
+      $ createNodeComponent project
       <$> sortedNodes
     where
     sortedNodes =

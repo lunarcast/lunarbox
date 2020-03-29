@@ -2,6 +2,7 @@ module Lunarbox.Dataflow.Expression where
 
 import Prelude
 import Lunarbox.Dataflow.Type (TVar, Type)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 
 data Literal
   = LInt Int
@@ -15,11 +16,10 @@ instance showLiteral :: Show Literal where
   show (LInt i) = show i
   show (LBool b) = show b
 
-data NativeExpression a b
-  = NativeExpression Type (a -> b)
+data NativeExpression
+  = NativeExpression Type RuntimeValue
 
-instance eqNativeExpression :: Eq (NativeExpression a b) where
-  eq (NativeExpression t _) (NativeExpression t' _) = t == t'
+derive instance eqNativeExpression :: Eq NativeExpression
 
 data Expression
   = Variable TVar
@@ -29,7 +29,7 @@ data Expression
   | Let TVar Expression Expression
   | If Expression Expression Expression
   | FixPoint Expression
-  | Native (forall a b. NativeExpression a b)
+  | Native NativeExpression
 
 derive instance expressinEq :: Eq Expression
 
