@@ -1,18 +1,39 @@
 module Lunarbox.Data.Dataflow.Constraint
   ( Constraint
   , ConstraintSet(..)
+  , _leftType
+  , _rightType
+  , _source
   ) where
 
 import Prelude
-import Data.Tuple (Tuple)
+import Data.Lens (Lens', iso)
+import Data.Lens.Record (prop)
+import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Symbol (SProxy(..))
 import Lunarbox.Dataflow.Type (Type)
 
-type Constraint
-  = Tuple Type Type
+newtype Constraint l
+  = Constraint
+  { leftType :: Type
+  , rightType :: Type
+  , source :: l
+  }
 
-newtype ConstraintSet
-  = ConstraintSet (Array Constraint)
+derive instance newtypeConstraint :: Newtype (Constraint l) _
 
-derive newtype instance semigroupConstraintSet :: Semigroup ConstraintSet
+_leftType :: forall l. Lens' (Constraint l) Type
+_leftType = iso unwrap wrap <<< prop (SProxy :: _ "leftType")
 
-derive newtype instance monoidConstraintSet :: Monoid ConstraintSet
+_rightType :: forall l. Lens' (Constraint l) Type
+_rightType = iso unwrap wrap <<< prop (SProxy :: _ "rightType")
+
+_source :: forall l. Lens' (Constraint l) l
+_source = iso unwrap wrap <<< prop (SProxy :: _ "source")
+
+newtype ConstraintSet l
+  = ConstraintSet (Array (Constraint l))
+
+derive newtype instance semigroupConstraintSet :: Semigroup (ConstraintSet l)
+
+derive newtype instance monoidConstraintSet :: Monoid (ConstraintSet l)
