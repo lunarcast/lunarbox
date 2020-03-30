@@ -10,11 +10,18 @@
 // Libraries
 @import "normalize.css";
 
-// Prevent default drag behavior on images
-img {
+// we don't want the user to drag stuff
+* {
   -webkit-user-drag: none;
 }
 
-* {
+// Prevent default select behavior on images and icons
+img,
+.material-icons {
+  user-select: none;
+}
+
+// default font on everything
+:root {
   font-family: fonts.$montserrat;
 }
