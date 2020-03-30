@@ -39,7 +39,7 @@
         transition: filter $transition-time;
       }
 
-      #node-buttons > div > .material-icons:hover {
+      #node-buttons > .active > .material-icons:hover {
         filter: brightness(1.7);
       }
 
