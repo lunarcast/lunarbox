@@ -10,7 +10,7 @@
 
 [![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
 
-Tool to help begginers learn functional programming
+Tool to help beginners learn functional programming
 
 ## Contributing
 
@@ -18,7 +18,7 @@ Fork this repo, write some code and submit a pull request.
 
 ## Tehnologies:
 
-This project is mostly made in the [puresciprt](https://www.purescript.org) programming language using [haolgen](https://github.com/purescript-halogen/purescript-halogen) for web rendering.
+This project is mostly made in the [purescript](https://www.purescript.org) programming language using [halogen](https://github.com/purescript-halogen/purescript-halogen) for web rendering.
 
 For installing dependencies this project uses:
 
