@@ -1,4 +1,6 @@
-module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression where
+module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression
+  ( infer
+  ) where
 
 import Prelude
 import Control.Monad.Error.Class (throwError)
@@ -16,24 +18,23 @@ import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _typeEnv)
 import Lunarbox.Data.Dataflow.Constraint (ConstraintSet(..))
 import Lunarbox.Dataflow.Error (TypeError(..))
 import Lunarbox.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..))
-import Lunarbox.Dataflow.Substitution (class Substituable, apply, ftv)
+import Lunarbox.Dataflow.Substitution (apply, ftv)
 import Lunarbox.Dataflow.Type (Scheme(..), TVar(..), Type(..), typeBool, typeNumber)
 import Lunarbox.Dataflow.TypeEnv (TypeEnv(..), extend)
 
+-- Create a fewsh type variable
+-- Uses the state from within the Infer monad to prevent duplicates
 fresh :: forall l. Infer l Type
 fresh = do
   inferState <- gets $ view _count
   modify_ $ over _count (_ + 1)
-  let
-    name = "t" <> show inferState
-  pure $ TVarariable $ TV $ name
+  pure $ TVarariable $ TV $ "t" <> show inferState
 
-isRecursive :: forall a. Substituable a => TVar -> a -> Boolean
-isRecursive subst t = subst `Set.member` ftv t
-
+-- Takes 2 types and creates a constraint which says those 2 types should be equal
 createConstraint :: forall l. Type -> Type -> Infer l Unit
-createConstraint t1 t2 = tell $ ConstraintSet $ [ Tuple t1 t2 ]
+createConstraint t1 = tell <<< ConstraintSet <<< pure <<< Tuple t1
 
+-- Create a scope for a variable to be in
 createClosure :: forall l a. TVar -> Scheme -> Infer l a -> Infer l a
 createClosure name scheme =
   let
@@ -43,6 +44,7 @@ createClosure name scheme =
   in
     local $ over _typeEnv scope
 
+-- The opposite of generalie. Takes a Forall type and creates a type out of it it
 instantiate :: forall l. Scheme -> Infer l Type
 instantiate (Forall q t) = do
   q' <- traverse (const fresh) q
@@ -50,6 +52,7 @@ instantiate (Forall q t) = do
     scheme = Map.fromFoldable $ zip q q'
   pure $ apply scheme t
 
+-- The opposite of instantiate. Takes a type, finds all the unresolved variables and packs them in a Forall instance. 
 generalize :: forall l. Type -> Infer l Scheme
 generalize t = do
   env <- asks $ view _typeEnv
@@ -65,6 +68,7 @@ lookupEnv location var = do
     Nothing -> throwError $ UnboundVariable var location
     Just s -> instantiate s
 
+-- Takes an expression and returns it's type
 infer :: forall l. Expression l -> Infer l Type
 infer = case _ of
   Variable name location -> lookupEnv location name
