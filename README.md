@@ -2,9 +2,13 @@
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
-[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=for-the-badge)](#contributors-)
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
+
+![](https://img.shields.io/github/release-date/Mateiadrielrafael/lunarbox?label=Last%20release&style=for-the-badge) ![](https://img.shields.io/github/v/release/Mateiadrielrafael/lunarbox?style=for-the-badge) ![](https://img.shields.io/github/languages/top/Mateiadrielrafael/lunarbox?color=yellow&style=for-the-badge) ![](https://img.shields.io/github/workflow/status/Mateiadrielrafael/lunarbox/Test%20⛳/develop?style=for-the-badge)
+
+[![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
 
 Tool to help begginers learn functional programming
 
