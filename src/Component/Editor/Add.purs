@@ -70,6 +70,7 @@ nodeInput name functionData =
   , nodeData: mempty
   , node: ComplexNode { inputs: mempty, function: name }
   , functionData
+  , name
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m

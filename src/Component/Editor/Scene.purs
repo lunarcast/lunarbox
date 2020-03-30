@@ -29,12 +29,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName(..))
 import Lunarbox.Data.Dataflow.NodeId (NodeId)
 import Lunarbox.Data.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.NodeData (NodeData, _NodeDataZPosition)
-import Lunarbox.Data.Project (DataflowFunction, Node, NodeGroup(..), Project, _NodeGroupNodes, _functions, _projectFunctionData)
+import Lunarbox.Data.Project (DataflowFunction, Node(..), NodeGroup(..), Project, _NodeGroupNodes, _functions, _projectFunctionData)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -193,7 +193,12 @@ component =
   createNodeComponent :: Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
   createNodeComponent project (Tuple id (Tuple node nodeData)) =
     let
-      getData name = view (_projectFunctionData name) project
+      getData name' = view (_projectFunctionData name') project
+
+      name = case node of
+        ComplexNode { function } -> function
+        InputNode -> FunctionName "input"
+        OutputNode _ -> FunctionName "output"
     in
       getFunctionData getData node
         # \functionData ->
@@ -201,7 +206,7 @@ component =
               (SProxy :: _ "node")
               id
               Node.component
-              { node, nodeData, selectable: true, functionData }
+              { node, nodeData, selectable: true, functionData, name }
               $ handleNodeOutput id
 
   render { project, function: Tuple _ (NodeGroup { nodes }) } =

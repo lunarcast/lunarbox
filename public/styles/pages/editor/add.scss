@@ -34,7 +34,7 @@
         cursor: pointer;
 
         filter: none;
-        color: $disabled;
+        color: lighten($color: $disabled, $amount: 0.5);
 
         transition: filter $transition-time;
       }

@@ -6,6 +6,7 @@ module Lunarbox.Component.Editor.Node
   ) where
 
 import Prelude
+import Data.Array (mapWithIndex)
 import Data.Int (toNumber)
 import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
@@ -17,11 +18,13 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Halogen.HTML.Properties as HP
+import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.FunctionData (FunctionData(..))
 import Lunarbox.Data.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Project (Node)
 import Lunarbox.Data.Vector (Vec2)
+import Lunarbox.Svg.Attributes (strokeWidth)
+import Svg.Attributes (TextAnchor(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -30,6 +33,7 @@ type State
     , node :: Node
     , selectable :: Boolean
     , functionData :: FunctionData
+    , name :: FunctionName
     }
 
 _nodeData :: Lens' State NodeData
@@ -67,6 +71,7 @@ type Input
     , node :: Node
     , functionData :: FunctionData
     , selectable :: Boolean
+    , name :: FunctionName
     }
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
@@ -105,25 +110,43 @@ component =
       modify_ $ set _zPosition value
       pure $ Just k
 
-  render ( { selectable
-    , functionData: FunctionData { image, scale }
-    , nodeData: NodeData { position, selected }
-    }
-  ) =
+  overlays elements =
+    SE.g []
+      $ mapWithIndex
+          ( \index elem ->
+              SE.g
+                [ SA.transform
+                    [ SA.Translate 0.0 $ toNumber $ (index + 1) * -20
+                    ]
+                ]
+                [ elem ]
+          )
+          elements
+
+  render { selectable
+  , functionData: FunctionData { image, scale }
+  , nodeData: NodeData { position, selected }
+  , name
+  } =
     SE.g
-      [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
+      [ SA.transform
+          [ SA.Translate (position !! d0) (position !! d1) ]
       , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
       ]
-      [ SE.rect
-          [ SA.fill $ Just $ SA.RGB 255 255 255
-          , SA.width $ toNumber $ scale !! d0
-          , SA.height $ toNumber $ scale !! d1
+      [ SE.circle
+          [ SA.r $ toNumber $ scale !! d0 / 2 - 5
+          , SA.cx $ toNumber $ scale !! d0 / 2
+          , SA.cy $ toNumber $ scale !! d0 / 2
+          , SA.fill $ Just $ SA.RGBA 0 0 0 0.0
           , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
+          , strokeWidth 5.0
           ]
-      , SE.foreignObject
-          [ SA.width $ toNumber $ scale !! d0
-          , SA.height $ toNumber $ scale !! d1
-          ]
-          [ HH.img [ HP.src image, HP.width $ scale !! d0, HP.height $ scale !! d1 ]
+      , overlays
+          [ SE.text
+              [ SA.text_anchor AnchorMiddle
+              , SA.x $ toNumber $ scale !! d0 / 2
+              , SA.fill $ Just $ SA.RGB 63 196 255
+              ]
+              [ HH.text $ show name ]
           ]
       ]
