@@ -45,11 +45,13 @@ pnpm run dev
 
 > Note: the first build might take a long time. This is caused by the fact spago will install and build all purescript dependencies
 
-### Creating components / pages
+## Code generation
 
 This project uses [hygen](http://www.hygen.io/) for code generation.
 
 > If you want to contribute a new generator add it to the `_templates` folder
+
+### Creating components / pages
 
 To create a component you can run:
 
@@ -60,6 +62,16 @@ pnpx hygen purescript component Foo.Bar
 This will create an empty halogen component in `src/Component/Foo/Bar.purs` which lives in a module called `Lunarbox.Component.Foo.Bar`.
 
 > Note: you can add the -p flag at the end to generate a page instead (lives in `src/Page` and has the module name prefixed with `Lunarbox.Page`)
+
+### Creating modules
+
+To create a simple purescript module use can use the `module` action from the `purescript` generator:
+
+```sh
+hygen purescript module Foo.Bar
+```
+
+This will create an empty halogen component in `src/Foo/Bar.purs` which lives in a module called `Lunarbox.Foo.Bar` which has a single import to `Prelude`.
 
 ## Strucure & architecture
 
