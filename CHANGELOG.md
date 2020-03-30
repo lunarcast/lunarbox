@@ -1,3 +1,13 @@
+## [1.4.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.4.0...v1.4.1) (2020-03-30)
+
+
+### Bug Fixes
+
+* adding new nodes now doesn't mess up the z-ordering anymore ([16b1941](https://github.com/Mateiadrielrafael/lunarbox/commit/16b19417ce6299e3a86a4bd11191369dada4769a))
+* fixed selectable images and icons ([0bb78bb](https://github.com/Mateiadrielrafael/lunarbox/commit/0bb78bb00fb51280fbe133693c63a634b34d8c66))
+* now theres no on-hover hilighting on non-usable icons ([59ff8be](https://github.com/Mateiadrielrafael/lunarbox/commit/59ff8bec7d79c66f0254344877a49eb1b5d115ff))
+* now you cannot edit something you are already editing ([dafd108](https://github.com/Mateiadrielrafael/lunarbox/commit/dafd1089f8f57089b4f2cf5ce6accf67e07d0f75))
+
 # [1.4.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.3.0...v1.4.0) (2020-03-29)
 
 
