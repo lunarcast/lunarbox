@@ -81,8 +81,9 @@ _currentTab = prop (SProxy :: _ "currentTab")
 data Action
   = ChangeTab Tab
   | CreateFunction FunctionName
-  | SelectFunction (Maybe FunctionName)
   | StartFunctionCreation
+  | SyncProjectData
+  | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | UpdateNodeGroup (NodeGroup NodeData)
 
@@ -128,6 +129,7 @@ component =
             modify_
               $ set (_stateProjectNodeGroup currentFunction) group
     CreateNode name -> do
+      handleAction SyncProjectData
       id <- createId
       maybeCurrentFunction <- gets $ view _currentFunction
       let
@@ -146,9 +148,11 @@ component =
           over _panelIsOpen not
         else
           set _currentTab newTab
-    CreateFunction name -> createId >>= update
-      where
-      update = modify_ <<< over _project <<< createFunction mempty mempty name
+    SyncProjectData -> do
+      void $ query (SProxy :: _ "scene") unit $ tell Scene.BeforeFunctionChanging
+    CreateFunction name -> do
+      id <- createId
+      modify_ $ over _project $ createFunction mempty mempty name id
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SelectFunction name -> do
@@ -161,7 +165,7 @@ component =
             Tuple function _ <-
               G.lookup currentFunction project.functions
             pure do
-              void $ query (SProxy :: _ "scene") unit $ tell Scene.BeforeFunctionChanging
+              handleAction SyncProjectData
               -- And finally, save the selected function in the state
               modify_ $ set _currentFunction name
 
