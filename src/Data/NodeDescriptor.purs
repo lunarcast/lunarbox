@@ -27,11 +27,16 @@ describe currentFunction project =
   G.toUnfoldable project.functions
     <#> \(Tuple name (Tuple function functionData)) ->
         let
+          isCurrent = currentFunction == Just name
+
           isExternal = view _FunctionDataExternal functionData
 
-          isEditable = not isExternal && is _VisualFunction function
+          isEditable =
+            not isCurrent
+              && not isExternal
+              && is _VisualFunction function
 
-          isUsable = currentFunction /= Just name && isJust currentFunction
+          isUsable = not isCurrent && isJust currentFunction
         in
           Tuple { name, function, functionData } { isUsable, isEditable }
 
