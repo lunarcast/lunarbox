@@ -9,15 +9,17 @@ module Lunarbox.Control.Monad.Dataflow.Infer
 
 import Prelude
 import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (Except)
-import Control.Monad.RWS (RWST)
+import Control.Monad.Except (Except, runExcept)
+import Control.Monad.RWS (RWST, evalRWST)
 import Control.Monad.Reader (class MonadAsk, class MonadReader)
 import Control.Monad.State (class MonadState)
 import Control.Monad.Writer (class MonadTell, class MonadWriter)
+import Data.Either (Either)
 import Data.Lens (Lens', iso)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple)
 import Lunarbox.Data.Dataflow.Constraint (ConstraintSet)
 import Lunarbox.Dataflow.Error (TypeError)
 import Lunarbox.Dataflow.TypeEnv (TypeEnv)
@@ -28,6 +30,12 @@ newtype InferState
   }
 
 derive instance newtypeInferState :: Newtype InferState _
+
+instance semigruopInferState :: Semigroup InferState where
+  append (InferState { count }) (InferState { count: count' }) = InferState { count: count + count' }
+
+instance monoidInferState :: Monoid InferState where
+  mempty = InferState { count: 0 }
 
 _count :: Lens' InferState Int
 _count = iso unwrap wrap <<< prop (SProxy :: _ "count")
@@ -70,3 +78,8 @@ derive newtype instance monadWriterInfer :: MonadWriter ConstraintSet (Infer l)
 derive newtype instance monadStateInfer :: MonadState InferState (Infer l)
 
 derive newtype instance monadThrowInfer :: MonadThrow (TypeError l) (Infer l)
+
+runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a ConstraintSet)
+runInfer env (Infer m) = result
+  where
+  result = runExcept $ evalRWST m env mempty
