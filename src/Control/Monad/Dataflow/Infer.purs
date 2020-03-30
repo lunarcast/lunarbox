@@ -5,6 +5,7 @@ module Lunarbox.Control.Monad.Dataflow.Infer
   , _count
   , _location
   , _typeEnv
+  , runInfer
   ) where
 
 import Prelude
@@ -57,6 +58,11 @@ _location = iso unwrap wrap <<< prop (SProxy :: _ "location")
 newtype Infer l a
   = Infer (RWST (InferEnv l) ConstraintSet InferState (Except (TypeError l)) a)
 
+runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a ConstraintSet)
+runInfer env (Infer m) = result
+  where
+  result = runExcept $ evalRWST m env mempty
+
 derive newtype instance functorInfer :: Functor (Infer l)
 
 derive newtype instance applyInfer :: Apply (Infer l)
@@ -78,8 +84,3 @@ derive newtype instance monadWriterInfer :: MonadWriter ConstraintSet (Infer l)
 derive newtype instance monadStateInfer :: MonadState InferState (Infer l)
 
 derive newtype instance monadThrowInfer :: MonadThrow (TypeError l) (Infer l)
-
-runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a ConstraintSet)
-runInfer env (Infer m) = result
-  where
-  result = runExcept $ evalRWST m env mempty
