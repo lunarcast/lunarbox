@@ -5,7 +5,9 @@ module Lunarbox.Data.Editor.DataflowFunction
 
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
-import Lunarbox.Data.Dataflow.Expression (NativeExpression)
+import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, toExpression)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression)
+import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 
 -- A dataflow function can either be:
@@ -14,6 +16,11 @@ import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 data DataflowFunction a
   = NativeFunction NativeExpression
   | VisualFunction (NodeGroup a)
+
+instance expressibleDataflowFunction :: Expressible (DataflowFunction a) NodeId where
+  toExpression = case _ of
+    NativeFunction f -> Native (NodeId "native function") f
+    VisualFunction g -> toExpression g
 
 _VisualFunction :: forall a. Prism' (DataflowFunction a) (NodeGroup a)
 _VisualFunction =

@@ -13,10 +13,10 @@ import Data.Lens.Record (prop)
 import Data.List (List, foldl)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr, toExpression)
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr, toExpressionFromSelf)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
 import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.Dataflow.NodeId (NodeId)
+import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
 import Lunarbox.Data.Graph as G
 
 type ComplexNodeData
@@ -37,23 +37,22 @@ data Node
 functionCall :: forall l. l -> Expression l -> List (Expression l) -> Expression l
 functionCall = foldl <<< FunctionCall
 
-compileNode :: G.Graph NodeId Node -> Maybe (Expression Int) -> NodeId -> Maybe (Expression Int)
+compileNode :: G.Graph NodeId Node -> Maybe (Expression NodeId) -> NodeId -> Maybe (Expression NodeId)
 compileNode nodes maybeChild id =
   G.lookup id nodes
     >>= case _ of
         InputNode -> maybeChild
-        OutputNode childId -> ((0 <$ _) <<< toExpression) <$> childId
+        OutputNode childId -> toExpressionFromSelf <$> childId
         ComplexNode { inputs, function: functionName } ->
           pure
             $ case maybeChild of
-                Just child -> Let 0 (VarName $ show id) value child
+                Just child -> Let id (VarName $ show id) value child
                 Nothing -> value
           where
           value =
-            functionCall 0 (((0 <$ _) <<< toExpression) $ functionName)
-              ( ( maybe (nullExpr 0)
-                    ((0 <$ _) <<< toExpression)
-                )
+            functionCall id (toExpressionFromSelf $ NodeId $ show functionName)
+              ( maybe (nullExpr id)
+                  toExpressionFromSelf
                   <$> inputs
               )
 

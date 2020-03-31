@@ -16,7 +16,7 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple, fst)
 import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, nullExpr)
 import Lunarbox.Data.Dataflow.Expression (VarName(..), functionDeclaration)
-import Lunarbox.Data.Dataflow.NodeId (NodeId)
+import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node (Node, compileNode)
 import Lunarbox.Data.Graph (Graph, topologicalSort)
 import Lunarbox.Data.Lens (newtypeIso)
@@ -35,7 +35,7 @@ orderNodes (NodeGroup function) = topologicalSort function.nodes
 
 derive instance newtypeNodeGroup :: Newtype (NodeGroup a) _
 
-instance expressibleNodeGroup :: Expressible (NodeGroup a) Int where
+instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeId where
   toExpression group@(NodeGroup { nodes, inputs }) =
     let
       ordered = orderNodes group
@@ -43,13 +43,13 @@ instance expressibleNodeGroup :: Expressible (NodeGroup a) Int where
       body = ordered \\ inputs
 
       return =
-        fromMaybe (nullExpr 0)
+        fromMaybe (nullExpr $ NodeId "this should never show up")
           $ foldl
               (compileNode $ fst <$> nodes)
               Nothing
               body
     in
-      functionDeclaration 0 return $ VarName <$> unwrap <$> inputs
+      functionDeclaration (NodeId "this should no be seen") return $ VarName <$> unwrap <$> inputs
 
 -- Prism
 _NodeGroupInputs :: forall a. Lens' (NodeGroup a) (List NodeId)
