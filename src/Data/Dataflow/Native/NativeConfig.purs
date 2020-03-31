@@ -7,7 +7,7 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.Project (DataflowFunction(..), Project, _atProjectFunction)
-import Lunarbox.Dataflow.Expression (NativeExpression)
+import Lunarbox.Data.Dataflow.Expression (NativeExpression)
 
 newtype NativeConfig f
   = NativeConfig

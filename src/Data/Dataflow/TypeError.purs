@@ -3,7 +3,8 @@ module Lunarbox.Data.Dataflow.TypeError
   ) where
 
 import Prelude
-import Lunarbox.Dataflow.Type (Type, TVar)
+import Lunarbox.Data.Dataflow.Expression (VarName(..))
+import Lunarbox.Data.Dataflow.Type (TVarName, Type)
 
 -- Type for all type errors
 -- At the moment there are 4 possible type errors:
@@ -15,8 +16,8 @@ import Lunarbox.Dataflow.Type (Type, TVar)
 data TypeError l
   = TypeMissmatch Type Type l
   | DifferentLength (Array Type) (Array Type) l
-  | RecursiveType TVar Type l
-  | UnboundVariable TVar l
+  | RecursiveType TVarName Type l
+  | UnboundVariable VarName l
 
 instance showTypeError :: Show (TypeError l) where
   show (TypeMissmatch t1 t2 _) = "Could not match type " <> show t1 <> " with type " <> show t2

@@ -20,62 +20,6 @@ import Lunarbox.Dataflow.Expressible (class Expressible, toExpression)
 import Lunarbox.Dataflow.Expression (Expression(..), NativeExpression)
 import Lunarbox.Dataflow.Type (TVar(..))
 
-type ComplexNodeData
-  = { inputs :: List (Maybe NodeId)
-    , function :: FunctionName
-    }
-
-data Node
-  = InputNode
-  | ComplexNode
-    ComplexNodeData
-  | OutputNode (Maybe NodeId)
-
-_InputNode :: Prism' Node ComplexNodeData
-_InputNode =
-  prism' ComplexNode case _ of
-    ComplexNode c -> Just c
-    _ -> Nothing
-
-_OutputNode :: Prism' Node (Maybe NodeId)
-_OutputNode =
-  prism' OutputNode case _ of
-    OutputNode v -> Just v
-    _ -> Nothing
-
-type NodeGroupData a
-  = { inputs :: List NodeId
-    , nodes :: G.Graph NodeId (Tuple Node a)
-    , output :: NodeId
-    }
-
-newtype NodeGroup a
-  = NodeGroup (NodeGroupData a)
-
-derive instance newtypeNodeGroup :: Newtype (NodeGroup a) _
-
-_NodeGroup :: forall a. Lens' (NodeGroup a) (NodeGroupData a)
-_NodeGroup = newtypeIso
-
-_NodeGroupInputs :: forall a. Lens' (NodeGroup a) (List NodeId)
-_NodeGroupInputs = _NodeGroup <<< prop (SProxy :: _ "inputs")
-
-_NodeGroupNodes :: forall a. Lens' (NodeGroup a) (G.Graph NodeId (Tuple Node a))
-_NodeGroupNodes = _NodeGroup <<< prop (SProxy :: _ "nodes")
-
-_NodeGroupOutput :: forall a. Lens' (NodeGroup a) NodeId
-_NodeGroupOutput = _NodeGroup <<< prop (SProxy :: _ "output")
-
-data DataflowFunction a
-  = NativeFunction NativeExpression
-  | VisualFunction (NodeGroup a)
-
-_VisualFunction :: forall a. Prism' (DataflowFunction a) (NodeGroup a)
-_VisualFunction =
-  prism' VisualFunction case _ of
-    VisualFunction f -> Just f
-    _ -> Nothing
-
 type Project f n
   = { functions :: G.Graph FunctionName (Tuple (DataflowFunction n) f)
     , main :: FunctionName
@@ -86,43 +30,6 @@ _functions = prop (SProxy :: _ "functions")
 
 _main :: forall f n. Lens' (Project f n) FunctionName
 _main = prop (SProxy :: _ "main")
-
-orderNodes :: forall a. NodeGroup a -> List NodeId
-orderNodes (NodeGroup function) = G.topologicalSort function.nodes
-
-functionDeclaration :: Expression -> List TVar -> Expression
-functionDeclaration expr = foldl (flip Lambda) expr <<< reverse
-
-functionCall :: Expression -> List Expression -> Expression
-functionCall = foldl FunctionCall
-
-compileNode :: G.Graph NodeId Node -> Maybe Expression -> NodeId -> Maybe Expression
-compileNode nodes maybeChild id =
-  G.lookup id nodes
-    >>= case _ of
-        InputNode -> maybeChild
-        OutputNode childId -> pure $ toExpression $ childId
-        ComplexNode { inputs, function: functionName } ->
-          pure
-            $ case maybeChild of
-                Just child -> Let (TV $ show $ id) value child
-                Nothing -> value
-          where
-          value = functionCall (toExpression $ functionName) (toExpression <$> inputs)
-
-instance expressibleNodeGroup :: Expressible (NodeGroup a) where
-  toExpression group@(NodeGroup { nodes, inputs }) =
-    toExpression do
-      let
-        ordered = orderNodes group
-
-        body = ordered \\ inputs
-      return <-
-        foldl
-          (compileNode $ fst <$> nodes)
-          Nothing
-          body
-      pure $ functionDeclaration return $ TV <$> unwrap <$> inputs
 
 instance expressibleVisualFunction :: Expressible (DataflowFunction a) where
   toExpression = case _ of

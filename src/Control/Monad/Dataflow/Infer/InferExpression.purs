@@ -14,13 +14,13 @@ import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _typeEnv)
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _location, _typeEnv, withLocation)
 import Lunarbox.Data.Dataflow.Constraint (Constraint(..), ConstraintSet(..))
+import Lunarbox.Data.Dataflow.Expression (TypeEnv(..), extend)
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
-import Lunarbox.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..))
-import Lunarbox.Dataflow.Substitution (apply, ftv)
-import Lunarbox.Dataflow.Type (Scheme(..), TVar(..), Type(..), typeBool, typeNumber)
-import Lunarbox.Dataflow.TypeEnv (TypeEnv(..), extend)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..))
+import Lunarbox.Data.Dataflow.Class.Substituable (apply, ftv)
+import Lunarbox.Data.Dataflow.Type (Scheme(..), TVar(..), Type(..), typeBool, typeNumber)
 
 -- Create a fewsh type variable
 -- Uses the state from within the Infer monad to prevent duplicates
@@ -31,8 +31,10 @@ fresh = do
   pure $ TVarariable $ TV $ "t" <> show inferState
 
 -- Takes 2 types and creates a constraint which says those 2 types should be equal
-createConstraint :: forall l. l -> Type -> Type -> Infer l Unit
-createConstraint l t1 t2 = tell $ ConstraintSet [ Constraint { leftType: t1, rightType: t2, source: l } ]
+createConstraint :: forall l. Type -> Type -> Infer l Unit
+createConstraint t1 t2 = do
+  source <- asks $ view _location
+  tell $ ConstraintSet [ Constraint { leftType: t1, rightType: t2, source } ]
 
 -- Create a scope for a variable to be in
 createClosure :: forall l a. TVar -> Scheme -> Infer l a -> Infer l a
@@ -61,8 +63,9 @@ generalize t = do
   pure $ Forall qunatifiers t
 
 -- Lookup a TypeEnv and return the type. If the type doen't exist an error is thrown 
-lookupEnv :: forall l. l -> TVar -> Infer l Type
-lookupEnv location var = do
+lookupEnv :: forall l. TVar -> Infer l Type
+lookupEnv var = do
+  location <- asks $ view _location
   (TypeEnv env) <- asks $ view _typeEnv
   case Map.lookup var env of
     Nothing -> throwError $ UnboundVariable var location
@@ -71,33 +74,41 @@ lookupEnv location var = do
 -- Takes an expression and returns it's type
 infer :: forall l. Expression l -> Infer l Type
 infer = case _ of
-  Variable name location -> lookupEnv location name
-  Lambda param body _ -> do
-    tv <- fresh
-    t <- createClosure param (Forall [] tv) $ infer body
-    pure $ tv `TArrow` t
-  FunctionCall func input location -> do
-    funcType <- infer func
-    inputType <- infer input
-    tv <- fresh
-    createConstraint location funcType (inputType `TArrow` tv)
-    pure tv
-  Let name value body _ -> do
-    t <- infer value
-    inner <- generalize t
-    createClosure name inner (infer body)
-  If condition onTrue onFalse location -> do
-    conditionType <- infer condition
-    trueType <- infer onTrue
-    falseType <- infer onFalse
-    createConstraint location conditionType typeBool
-    createConstraint location trueType falseType
-    pure trueType
-  FixPoint expression location -> do
-    t <- infer expression
-    tv <- fresh
-    createConstraint location (tv `TArrow` tv) t
-    pure tv
+  Variable name location ->
+    withLocation location do
+      lookupEnv name
+  Lambda param body location ->
+    withLocation location do
+      tv <- fresh
+      t <- createClosure param (Forall [] tv) $ infer body
+      pure $ tv `TArrow` t
+  FunctionCall func input location ->
+    withLocation location do
+      funcType <- infer func
+      inputType <- infer input
+      tv <- fresh
+      createConstraint funcType (inputType `TArrow` tv)
+      pure tv
+  Let name value body location ->
+    withLocation location do
+      t <- infer value
+      inner <- generalize t
+      createClosure name inner (infer body)
+  If condition onTrue onFalse location ->
+    withLocation location do
+      conditionType <- infer condition
+      trueType <- infer onTrue
+      falseType <- infer onFalse
+      createConstraint conditionType typeBool
+      createConstraint trueType falseType
+      pure trueType
+  FixPoint expression location ->
+    withLocation location do
+      t <- infer expression
+      tv <- fresh
+      createConstraint (tv `TArrow` tv) t
+      pure tv
+  -- those 3 branches do not need the location
   Native (NativeExpression t _) _ -> pure t
   Literal (LInt _) _ -> pure typeNumber
   Literal (LBool _) _ -> pure typeBool

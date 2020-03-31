@@ -2,9 +2,9 @@ module Lunarbox.Data.Dataflow.NodeId where
 
 import Prelude
 import Data.Lens (Lens')
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
+import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, toExpression)
 import Lunarbox.Data.Lens (newtypeIso)
-import Lunarbox.Dataflow.Expressible (class Expressible)
 
 newtype NodeId
   = NodeId String
@@ -17,7 +17,8 @@ derive instance newtypeNodeId :: Newtype NodeId _
 
 derive newtype instance showNodeId :: Show NodeId
 
-derive newtype instance expressibleNodeId :: Expressible NodeId
+instance expressibleNodeId :: Expressible NodeId Unit where
+  toExpression = toExpression <<< unwrap
 
 _NodeId :: Lens' NodeId String
 _NodeId = newtypeIso

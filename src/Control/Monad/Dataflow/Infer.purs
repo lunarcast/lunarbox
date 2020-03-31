@@ -6,24 +6,25 @@ module Lunarbox.Control.Monad.Dataflow.Infer
   , _location
   , _typeEnv
   , runInfer
+  , withLocation
   ) where
 
 import Prelude
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (Except, runExcept)
-import Control.Monad.RWS (RWST, evalRWST)
+import Control.Monad.RWS (RWST, evalRWST, local)
 import Control.Monad.Reader (class MonadAsk, class MonadReader)
 import Control.Monad.State (class MonadState)
 import Control.Monad.Writer (class MonadTell, class MonadWriter)
 import Data.Either (Either)
-import Data.Lens (Lens', iso)
+import Data.Lens (Lens', iso, set)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple)
 import Lunarbox.Data.Dataflow.Constraint (ConstraintSet)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
-import Lunarbox.Dataflow.TypeEnv (TypeEnv)
+import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv)
 
 newtype InferState
   = InferState
@@ -62,6 +63,10 @@ runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a
 runInfer env (Infer m) = result
   where
   result = runExcept $ evalRWST m env mempty
+
+-- run a monad in a specific location
+withLocation :: forall a l. l -> Infer l a -> Infer l a
+withLocation = local <<< set _location
 
 derive newtype instance functorInfer :: Functor (Infer l)
 

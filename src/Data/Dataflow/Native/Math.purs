@@ -5,8 +5,8 @@ import Lunarbox.Data.Dataflow.FunctionName (FunctionName(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataImage)
-import Lunarbox.Dataflow.Expression (NativeExpression(..))
-import Lunarbox.Dataflow.Type (Type(..), typeNumber)
+import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
+import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber)
 import Prelude (mempty, ($), (+))
 
 addT :: Type

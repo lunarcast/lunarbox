@@ -1,18 +1,21 @@
-module Lunarbox.Dataflow.Substitution where
+module Lunarbox.Data.Dataflow.Class.Substituable where
 
 import Prelude
 import Data.Foldable (class Foldable, foldr)
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Set as Set
-import Lunarbox.Dataflow.TypeEnv (TypeEnv(..))
-import Lunarbox.Dataflow.Type (Scheme(..), TVar, Type(..))
+import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
+import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 
-type Substitution
-  = Map.Map TVar Type
+newtype Substitution
+  = Substitution (Map.Map TVarName Type)
 
-compose :: Substitution -> Substitution -> Substitution
-compose s1 s2 = ((apply s1) <$> s2) `Map.union` s1
+instance semigroupSubstitution :: Semigroup Substitution where
+  append s1 s2 = ((apply s1) <$> s2) `Map.union` s1
+
+derive newtype instance monoidSubstitution :: Monoid Substitution
 
 class Substituable a where
   apply :: Substitution -> a -> a

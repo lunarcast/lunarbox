@@ -1,5 +1,5 @@
 module Lunarbox.Data.Dataflow.Constraint
-  ( Constraint
+  ( Constraint(..)
   , ConstraintSet(..)
   , _leftType
   , _rightType
@@ -11,7 +11,7 @@ import Data.Lens (Lens', iso)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
-import Lunarbox.Dataflow.Type (Type)
+import Lunarbox.Data.Dataflow.Type (Type)
 
 newtype Constraint l
   = Constraint
