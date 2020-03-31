@@ -28,7 +28,8 @@
       "profile": "http://xwafl.github.io/portfolio",
       "contributions": [
         "design",
-        "ideas"
+        "ideas",
+        "doc"
       ]
     },
     {
@@ -42,5 +43,6 @@
       ]
     }
   ],
-  "contributorsPerLine": 7
+  "contributorsPerLine": 7,
+  "skipCi": true
 }
