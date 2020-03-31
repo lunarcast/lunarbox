@@ -5,8 +5,8 @@ module Lunarbox.Data.Dataflow.Native.Prelude
 
 import Lunarbox.Data.Dataflow.Native.Math (add)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig, loadNativeConfigs)
-import Lunarbox.Data.FunctionData (FunctionData)
-import Lunarbox.Data.Project (Project)
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.Project (Project)
 
 configs :: Array (NativeConfig FunctionData)
 configs = [ add ]

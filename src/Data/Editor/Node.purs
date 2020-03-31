@@ -15,8 +15,8 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr, toExpressionFromSelf)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Graph as G
 
 type ComplexNodeData

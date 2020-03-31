@@ -27,11 +27,12 @@ import Lunarbox.Component.Editor.Node as Node
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataScale)
-import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.NodeDescriptor (describe)
-import Lunarbox.Data.Project (Node(..), Project)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataScale)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData)
+import Lunarbox.Data.Editor.Node.NodeDescriptor (describe)
+import Lunarbox.Data.Editor.Project (Project)
+import Lunarbox.Data.Editor.Node (Node(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 

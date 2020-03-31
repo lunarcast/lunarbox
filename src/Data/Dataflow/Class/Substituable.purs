@@ -5,34 +5,38 @@ import Data.Foldable (class Foldable, foldr)
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Set as Set
-import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
+import Lunarbox.Data.Dataflow.Type (TVarName, Type(..))
+import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 
 newtype Substitution
   = Substitution (Map.Map TVarName Type)
 
 instance semigroupSubstitution :: Semigroup Substitution where
-  append s1 s2 = ((apply s1) <$> s2) `Map.union` s1
+  append s1@(Substitution m1) (Substitution m2) =
+    let
+      m12 = (apply s1) <$> m2
+    in
+      Substitution $ (m12 `Map.union` m1)
 
 derive newtype instance monoidSubstitution :: Monoid Substitution
 
 class Substituable a where
   apply :: Substitution -> a -> a
-  ftv :: a -> Set.Set TVar
+  ftv :: a -> Set.Set TVarName
 
 instance typeSubst :: Substituable Type where
   apply _ t@(TConstant _) = t
-  apply s t@(TVarariable a) = (Map.lookup a s) # fromMaybe t
+  apply (Substitution s) t@(TVarariable a) = (Map.lookup a s) # fromMaybe t
   apply s (TArrow t1 t2) = apply s t1 `TArrow` apply s t2
   ftv (TConstant _) = Set.empty
   ftv (TVarariable a) = Set.singleton a
   ftv (TArrow t1 t2) = ftv t1 `Set.union` ftv t2
 
 instance schemeSubst :: Substituable Scheme where
-  apply scheme (Forall quantifiers t) = Forall quantifiers $ apply newScheme t
+  apply (Substitution substitution) (Forall quantifiers t) = Forall quantifiers $ apply newScheme t
     where
-    newScheme = foldr Map.delete scheme quantifiers
+    newScheme = Substitution $ foldr Map.delete substitution quantifiers
   ftv (Forall as t) = ftv t `Set.difference` (Set.fromFoldable as)
 
 instance arrSubst :: (Substituable a, Foldable f, Functor f) => Substituable (f a) where

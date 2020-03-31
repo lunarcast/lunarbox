@@ -10,7 +10,9 @@ import Prelude
 newtype TVarName
   = TVarName String
 
-derive newtype instance tvarEq :: Eq TVarName
+derive instance eqTVarName :: Eq TVarName
+
+derive instance ordTVarName :: Ord TVarName
 
 derive newtype instance tvarShow :: Show TVarName
 

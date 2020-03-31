@@ -1,4 +1,4 @@
-module Lunarbox.Data.Dataflow.NodeId where
+module Lunarbox.Data.Editor.Node.NodeId where
 
 import Prelude
 import Data.Lens (Lens')

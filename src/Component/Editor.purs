@@ -24,14 +24,17 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
-import Lunarbox.Data.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData)
+import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.NodeDescriptor (onlyEditable)
-import Lunarbox.Data.Project (DataflowFunction, Node(..), NodeGroup, Project, _atProjectNode, _functions, _projectNodeGroup, createFunction, emptyProject)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Editor.Node (Node(..))
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectNode, _projectNodeGroup, createFunction, emptyProject)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab

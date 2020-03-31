@@ -1,12 +1,12 @@
 module Lunarbox.Data.Dataflow.Native.Math (add) where
 
 import Data.Lens (set)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
-import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataImage)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataImage)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (mempty, ($), (+))
 
 addT :: Type

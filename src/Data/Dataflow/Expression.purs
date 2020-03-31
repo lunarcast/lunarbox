@@ -16,6 +16,8 @@ newtype VarName
 
 derive instance eqVarName :: Eq VarName
 
+derive instance ordVarName :: Ord VarName
+
 derive newtype instance showVarName :: Show VarName
 
 data Literal

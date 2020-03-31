@@ -7,7 +7,7 @@ import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, toExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression)
-import Lunarbox.Data.Dataflow.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 
 -- A dataflow function can either be:

@@ -1,4 +1,4 @@
-module Lunarbox.Data.Dataflow.FunctionName where
+module Lunarbox.Data.Editor.FunctionName where
 
 import Prelude
 import Data.Lens (Lens')

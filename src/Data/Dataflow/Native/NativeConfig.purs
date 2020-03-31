@@ -5,8 +5,9 @@ import Data.Foldable (class Foldable, foldr)
 import Data.Lens (set)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.Project (DataflowFunction(..), Project, _atProjectFunction)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Project (Project, _atProjectFunction)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression)
 
 newtype NativeConfig f

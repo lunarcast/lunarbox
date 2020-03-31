@@ -1,4 +1,4 @@
-module Lunarbox.Data.FunctionData
+module Lunarbox.Data.Editor.FunctionData
   ( FunctionData(..)
   , getFunctionData
   , _FunctionDataExternal
@@ -12,8 +12,8 @@ import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Data.Vec (vec2)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.Project (Node(..))
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Vector (Vec2)
 
 newtype FunctionData
