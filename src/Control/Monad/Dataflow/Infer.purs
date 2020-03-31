@@ -22,7 +22,7 @@ import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple)
 import Lunarbox.Data.Dataflow.Constraint (ConstraintSet)
-import Lunarbox.Dataflow.Error (TypeError)
+import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Dataflow.TypeEnv (TypeEnv)
 
 newtype InferState

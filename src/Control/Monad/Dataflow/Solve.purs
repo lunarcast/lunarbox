@@ -5,7 +5,7 @@ import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (Except, runExcept)
 import Data.Either (Either)
 import Data.Newtype (class Newtype, unwrap)
-import Lunarbox.Dataflow.Error (TypeError)
+import Lunarbox.Data.Dataflow.TypeError (TypeError)
 
 -- Monad used to solve type constraints
 newtype Solve l a
