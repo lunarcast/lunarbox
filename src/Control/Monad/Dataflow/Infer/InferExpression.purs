@@ -15,7 +15,7 @@ import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _typeEnv)
-import Lunarbox.Data.Dataflow.Constraint (ConstraintSet(..))
+import Lunarbox.Data.Dataflow.Constraint (Constraint(..), ConstraintSet(..))
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
 import Lunarbox.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..))
 import Lunarbox.Dataflow.Substitution (apply, ftv)
@@ -31,8 +31,8 @@ fresh = do
   pure $ TVarariable $ TV $ "t" <> show inferState
 
 -- Takes 2 types and creates a constraint which says those 2 types should be equal
-createConstraint :: forall l. Type -> Type -> Infer l Unit
-createConstraint t1 = tell <<< ConstraintSet <<< pure <<< Tuple t1
+createConstraint :: forall l. l -> Type -> Type -> Infer l Unit
+createConstraint l t1 t2 = tell $ ConstraintSet [ Constraint { leftType: t1, rightType: t2, source: l } ]
 
 -- Create a scope for a variable to be in
 createClosure :: forall l a. TVar -> Scheme -> Infer l a -> Infer l a
@@ -76,27 +76,27 @@ infer = case _ of
     tv <- fresh
     t <- createClosure param (Forall [] tv) $ infer body
     pure $ tv `TArrow` t
-  FunctionCall func input _ -> do
+  FunctionCall func input location -> do
     funcType <- infer func
     inputType <- infer input
     tv <- fresh
-    createConstraint funcType (inputType `TArrow` tv)
+    createConstraint location funcType (inputType `TArrow` tv)
     pure tv
   Let name value body _ -> do
     t <- infer value
     inner <- generalize t
     createClosure name inner (infer body)
-  If condition onTrue onFalse _ -> do
+  If condition onTrue onFalse location -> do
     conditionType <- infer condition
     trueType <- infer onTrue
     falseType <- infer onFalse
-    createConstraint conditionType typeBool
-    createConstraint trueType falseType
+    createConstraint location conditionType typeBool
+    createConstraint location trueType falseType
     pure trueType
-  FixPoint expression _ -> do
+  FixPoint expression location -> do
     t <- infer expression
     tv <- fresh
-    createConstraint (tv `TArrow` tv) t
+    createConstraint location (tv `TArrow` tv) t
     pure tv
   Native (NativeExpression t _) _ -> pure t
   Literal (LInt _) _ -> pure typeNumber

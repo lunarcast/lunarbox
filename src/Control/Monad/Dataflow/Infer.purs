@@ -56,9 +56,9 @@ _location :: forall l. Lens' (InferEnv l) l
 _location = iso unwrap wrap <<< prop (SProxy :: _ "location")
 
 newtype Infer l a
-  = Infer (RWST (InferEnv l) ConstraintSet InferState (Except (TypeError l)) a)
+  = Infer (RWST (InferEnv l) (ConstraintSet l) InferState (Except (TypeError l)) a)
 
-runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a ConstraintSet)
+runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a (ConstraintSet l))
 runInfer env (Infer m) = result
   where
   result = runExcept $ evalRWST m env mempty
@@ -77,9 +77,9 @@ derive newtype instance monadAskInfer :: MonadAsk (InferEnv l) (Infer l)
 
 derive newtype instance monadReaderInfer :: MonadReader (InferEnv l) (Infer l)
 
-derive newtype instance monadTellInfer :: MonadTell ConstraintSet (Infer l)
+derive newtype instance monadTellInfer :: MonadTell (ConstraintSet l) (Infer l)
 
-derive newtype instance monadWriterInfer :: MonadWriter ConstraintSet (Infer l)
+derive newtype instance monadWriterInfer :: MonadWriter (ConstraintSet l) (Infer l)
 
 derive newtype instance monadStateInfer :: MonadState InferState (Infer l)
 
