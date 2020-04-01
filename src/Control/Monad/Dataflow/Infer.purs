@@ -60,9 +60,7 @@ newtype Infer l a
   = Infer (RWST (InferEnv l) (ConstraintSet l) InferState (Except (TypeError l)) a)
 
 runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a (ConstraintSet l))
-runInfer env (Infer m) = result
-  where
-  result = runExcept $ evalRWST m env mempty
+runInfer env (Infer m) = runExcept $ evalRWST m env mempty
 
 -- run a monad in a specific location
 withLocation :: forall a l. l -> Infer l a -> Infer l a

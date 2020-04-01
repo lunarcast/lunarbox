@@ -9,6 +9,7 @@ module Lunarbox.Data.Dataflow.Constraint
 import Prelude
 import Data.Lens (Lens', iso)
 import Data.Lens.Record (prop)
+import Data.List (List)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Type (Type)
@@ -34,7 +35,7 @@ _source :: forall l. Lens' (Constraint l) l
 _source = iso unwrap wrap <<< prop (SProxy :: _ "source")
 
 newtype ConstraintSet l
-  = ConstraintSet (Array (Constraint l))
+  = ConstraintSet (List (Constraint l))
 
 derive instance eqConstraintSet :: Eq l => Eq (ConstraintSet l)
 
