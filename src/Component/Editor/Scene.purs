@@ -58,7 +58,7 @@ _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
 _projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
-_projectFunctions = _project <<< _functions
+_projectFunctions = _project <<< _ProjectFunctions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
 _function = prop (SProxy :: SProxy "function")

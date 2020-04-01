@@ -63,8 +63,8 @@ type State
 _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
-_projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
-_projectFunctions = _project <<< _functions
+_StateProjectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
+_StateProjectFunctions = _project <<< _ProjectFunctions
 
 _stateProjectNodeGroup :: FunctionName -> Traversal' State (NodeGroup NodeData)
 _stateProjectNodeGroup name = _project <<< _projectNodeGroup name
@@ -72,8 +72,8 @@ _stateProjectNodeGroup name = _project <<< _projectNodeGroup name
 _stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe (Tuple Node NodeData))
 _stateAtProjectNode name id = _project <<< _atProjectNode name id
 
-_currentFunction :: Lens' State (Maybe FunctionName)
-_currentFunction = prop (SProxy :: _ "currentFunction")
+_StateCurrentFunction :: Lens' State (Maybe FunctionName)
+_StateCurrentFunction = prop (SProxy :: _ "currentFunction")
 
 _panelIsOpen :: Lens' State Boolean
 _panelIsOpen = prop (SProxy :: _ "panelIsOpen")
@@ -106,7 +106,7 @@ component =
         const
           { currentTab: Settings
           , panelIsOpen: false
-          , project: loadPrelude $ emptyProject mempty mempty $ NodeId "firstOutput"
+          , project: loadPrelude $ emptyProject $ NodeId "firstOutput"
           , nextId: 0
           , currentFunction: Nothing
           }
@@ -118,6 +118,7 @@ component =
               }
     }
   where
+  -- This is a helper monad which just generates an id
   createId :: HalogenM State Action ChildSlots Void m NodeId
   createId = do
     { nextId } <- get
@@ -127,14 +128,14 @@ component =
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
     UpdateNodeGroup group -> do
-      (gets $ view _currentFunction)
+      (gets $ view _StateCurrentFunction)
         >>= traverse_ \currentFunction ->
             modify_
               $ set (_stateProjectNodeGroup currentFunction) group
     CreateNode name -> do
       handleAction SyncProjectData
       id <- createId
-      maybeCurrentFunction <- gets $ view _currentFunction
+      maybeCurrentFunction <- gets $ view _StateCurrentFunction
       let
         node :: Node
         node = ComplexNode { inputs: mempty, function: name }
@@ -160,17 +161,18 @@ component =
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SelectFunction name -> do
       -- we need the current function to lookup the function in the function graph
-      { project, currentFunction: oldName } <- get
+      oldName <- gets $ view _StateCurrentFunction
+      functions <- gets $ view _StateProjectFunctions
       -- this is here to update the function the Scene component renders
       when (name /= oldName)
         $ sequence_ do
             currentFunction <- name
             Tuple function _ <-
-              G.lookup currentFunction project.functions
+              G.lookup currentFunction functions
             pure do
               handleAction SyncProjectData
               -- And finally, save the selected function in the state
-              modify_ $ set _currentFunction name
+              modify_ $ set _StateCurrentFunction name
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

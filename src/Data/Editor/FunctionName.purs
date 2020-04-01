@@ -15,7 +15,8 @@ derive instance ordFunctionName :: Ord FunctionName
 
 derive instance newtypeFunctionName :: Newtype FunctionName _
 
-derive newtype instance showFunctionName :: Show FunctionName
+instance showFunctionName :: Show FunctionName where
+  show = unwrap
 
 instance expressibleNodeId :: Expressible FunctionName Unit where
   toExpression = toExpression <<< unwrap
