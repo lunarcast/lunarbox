@@ -11,6 +11,7 @@ import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
+import Data.Unfoldable (replicate)
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
 import Halogen.HTML (slot)
@@ -24,8 +25,10 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
+import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Dataflow.Type (numberOfInputs)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -33,7 +36,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectNode, _projectNodeGroup, createFunction, emptyProject)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, createFunction, emptyProject)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
@@ -71,6 +74,9 @@ _stateProjectNodeGroup name = _project <<< _projectNodeGroup name
 
 _stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe (Tuple Node NodeData))
 _stateAtProjectNode name id = _project <<< _atProjectNode name id
+
+_StateAtProjectFunction :: FunctionName -> Traversal' State (Maybe (Tuple (DataflowFunction NodeData) FunctionData))
+_StateAtProjectFunction name = _project <<< _atProjectFunction name
 
 _StateCurrentFunction :: Lens' State (Maybe FunctionName)
 _StateCurrentFunction = prop (SProxy :: _ "currentFunction")
@@ -136,15 +142,25 @@ component =
       handleAction SyncProjectData
       id <- createId
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
-      let
-        node :: Node
-        node = ComplexNode { inputs: pure Nothing, function: name }
-      for_ maybeCurrentFunction
-        $ \currentFunction ->
-            modify_
-              $ set (_stateAtProjectNode currentFunction id)
-              $ Just
-              $ Tuple node mempty
+      maybeNodeFunction <- gets $ preview $ _StateAtProjectFunction name
+      for_ (join maybeNodeFunction) \(Tuple function functionData) -> do
+        let
+          inputCount = case function of
+            NativeFunction (NativeExpression type' _) -> numberOfInputs type'
+            _ -> 0
+
+          node :: Node
+          node =
+            ComplexNode
+              { inputs: replicate inputCount Nothing
+              , function: name
+              }
+        for_ maybeCurrentFunction
+          $ \currentFunction ->
+              modify_
+                $ set (_stateAtProjectNode currentFunction id)
+                $ Just
+                $ Tuple node mempty
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_

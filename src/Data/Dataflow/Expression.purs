@@ -9,6 +9,7 @@ module Lunarbox.Data.Dataflow.Expression
   , lookup
   , printExpressionAt
   , sumarizeExpression
+  , inputs
   ) where
 
 import Prelude
@@ -82,6 +83,19 @@ toMap expression =
 -- Tries finding the expression at a certain location
 lookup :: forall l. Ord l => l -> Expression l -> Maybe (Expression l)
 lookup key = Map.lookup key <<< toMap
+
+-- internal version of inputs which also takes the accumulated count
+inputs' :: forall l. Int -> Expression l -> Int
+inputs' count = case _ of
+  Lambda _ _ body -> inputs' (count + 1) body
+  _ -> count
+
+-- Takes an Expression and returns the number of inputs that function has
+-- Examples:
+--     for "a -> b -> c" the function returns 2
+--     for "let a = b in c" the function returns 0
+inputs :: forall l. Expression l -> Int
+inputs = inputs' 0
 
 -- Typecalss instances
 derive instance expressinEq :: Eq l => Eq (Expression l)

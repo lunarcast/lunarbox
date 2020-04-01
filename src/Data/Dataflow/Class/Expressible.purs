@@ -11,7 +11,7 @@ import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
 
 -- Expresison which represents nothingess
 nullExpr :: forall l. l -> Expression l
-nullExpr l = Variable l (VarName "__nothing")
+nullExpr l = Variable l (VarName "_")
 
 -- Create an expression with a custom location
 toExpressionWithLocation :: forall l l' a. Expressible a l' => l -> a -> Expression l

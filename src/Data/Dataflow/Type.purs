@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Type
   , Type(..)
   , typeNumber
   , typeBool
+  , numberOfInputs
   ) where
 
 import Prelude
@@ -26,6 +27,16 @@ typeNumber = TConstant "Number"
 
 typeBool :: Type
 typeBool = TConstant "Bool"
+
+-- Internal version of numberOfInputs which also takes an argument for the accumulated count
+numberOfInputs' :: Int -> Type -> Int
+numberOfInputs' count = case _ of
+  TArrow _ t -> numberOfInputs' (count + 1) t
+  _ -> count
+
+-- Returns the number of inputs a function with this type would have
+numberOfInputs :: Type -> Int
+numberOfInputs = numberOfInputs' 0
 
 derive instance typeEq :: Eq Type
 
