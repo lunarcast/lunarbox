@@ -8,7 +8,7 @@ import Data.Array as Array
 import Data.Foldable (for_, sequence_, traverse_)
 import Data.Lens (Lens', Traversal', over, preview, set, view)
 import Data.Lens.Record (prop)
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
@@ -25,16 +25,16 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
-import Lunarbox.Data.Graph as G
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
-import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectNode, _projectNodeGroup, createFunction, emptyProject)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
 data Tab
@@ -222,7 +222,12 @@ component =
                 , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
                 ]
             , HH.slot (SProxy :: _ "tree") unit TreeC.component
-                { functions: Array.toUnfoldable $ (\(Tuple { name } _) -> name) <$> onlyEditable currentFunction project, selected: currentFunction
+                { functions:
+                    (maybe mempty pure currentFunction)
+                      <> ( Array.toUnfoldable $ (\(Tuple { name } _) -> name)
+                            <$> onlyEditable currentFunction project
+                        )
+                , selected: currentFunction
                 }
                 handleTreeOutput
             ]
