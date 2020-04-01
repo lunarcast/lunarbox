@@ -15,7 +15,7 @@ import Data.Lens (Lens', Traversal', _1, _2, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
@@ -30,7 +30,11 @@ import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
+import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -197,8 +201,8 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  createNodeComponent :: Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
-  createNodeComponent project (Tuple id (Tuple node nodeData)) =
+  createNodeComponent :: (NodeId -> Expression _) -> Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
+  createNodeComponent getExpression project (Tuple id (Tuple node nodeData)) =
     let
       getData name' = view (_projectFunctionData name') project
 
@@ -213,19 +217,33 @@ component =
               (SProxy :: _ "node")
               id
               NodeC.component
-              { node, nodeData, selectable: true, functionData, name }
+              { node
+              , nodeData
+              , selectable: true
+              , functionData
+              , name
+              , expression: getExpression id
+              }
               $ handleNodeOutput id
 
-  render { project, function: Tuple _ (NodeGroup { nodes }) } =
-    SE.svg
-      [ SA.width 100000.0
-      , SA.height 100000.0
-      , onMouseMove $ \e -> Just $ MouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onMouseUp $ const $ Just MouseUp
-      ]
-      $ createNodeComponent project
-      <$> sortedNodes
+  render { project, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
+    let
+      expression = compileProject project
+
+      getExpression id =
+        fromMaybe
+          (nullExpr $ Location currentFunctionName)
+          $ Expression.lookup (DeepLocation currentFunctionName id) expression
+    in
+      SE.svg
+        [ SA.width 100000.0
+        , SA.height 100000.0
+        , onMouseMove $ \e -> Just $ MouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+        , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+        , onMouseUp $ const $ Just MouseUp
+        ]
+        $ createNodeComponent getExpression project
+        <$> sortedNodes
     where
     sortedNodes =
       sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')

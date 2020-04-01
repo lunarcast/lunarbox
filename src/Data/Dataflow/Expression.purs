@@ -5,10 +5,14 @@ module Lunarbox.Data.Dataflow.Expression
   , VarName(..)
   , functionDeclaration
   , getLocation
+  , toMap
+  , lookup
   ) where
 
 import Prelude
 import Data.List (List, foldr)
+import Data.Map as Map
+import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (Type)
@@ -61,6 +65,23 @@ getLocation = case _ of
   FixPoint l _ -> l
   Native l _ -> l
 
+-- Takes an Expression and transforms it into a map of location -> expression pairs
+toMap :: forall l. Ord l => Expression l -> Map.Map l (Expression l)
+toMap expression =
+  Map.singleton (getLocation expression) expression
+    <> case expression of
+        FunctionCall _ calee input -> toMap calee <> toMap input
+        Lambda _ _ body -> toMap body
+        Let _ _ value body -> toMap value <> toMap body
+        If _ condition then' else' -> toMap condition <> toMap then' <> toMap else'
+        FixPoint _ body -> toMap body
+        _ -> mempty
+
+-- Tries finding the expression at a certain location
+lookup :: forall l. Ord l => l -> Expression l -> Maybe (Expression l)
+lookup key = Map.lookup key <<< toMap
+
+-- Typecalss instances
 derive instance expressinEq :: Eq l => Eq (Expression l)
 
 derive instance functorExpression :: Functor Expression

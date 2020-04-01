@@ -3,10 +3,11 @@ module Lunarbox.Component.Editor.Node
   , Query(..)
   , Output(..)
   , Input
+  , State
   ) where
 
 import Prelude
-import Data.Array (mapWithIndex)
+import Data.Array (catMaybes, mapWithIndex)
 import Data.Int (toNumber)
 import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
@@ -18,10 +19,13 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (strokeWidth)
 import Svg.Attributes (TextAnchor(..))
@@ -34,6 +38,7 @@ type State
     , selectable :: Boolean
     , functionData :: FunctionData
     , name :: FunctionName
+    , expression :: Expression (ExtendedLocation FunctionName NodeId)
     }
 
 _nodeData :: Lens' State NodeData
@@ -67,12 +72,7 @@ data Output
   = Selected
 
 type Input
-  = { nodeData :: NodeData
-    , node :: Node
-    , functionData :: FunctionData
-    , selectable :: Boolean
-    , name :: FunctionName
-    }
+  = State
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
@@ -121,12 +121,14 @@ component =
                 ]
                 [ elem ]
           )
+      $ catMaybes
           elements
 
   render { selectable
   , functionData: FunctionData { image, scale }
   , nodeData: NodeData { position, selected }
   , name
+  , expression
   } =
     SE.g
       [ SA.transform
@@ -142,11 +144,19 @@ component =
           , strokeWidth 5.0
           ]
       , overlays
-          [ SE.text
-              [ SA.text_anchor AnchorMiddle
-              , SA.x $ toNumber $ scale !! d0 / 2
-              , SA.fill $ Just $ SA.RGB 63 196 255
-              ]
-              [ HH.text $ show name ]
+          [ Just
+              $ SE.text
+                  [ SA.text_anchor AnchorMiddle
+                  , SA.x $ toNumber $ scale !! d0 / 2
+                  , SA.fill $ Just $ SA.RGB 63 196 255
+                  ]
+                  [ HH.text $ show name ]
+          , Just
+              $ SE.text
+                  [ SA.text_anchor AnchorMiddle
+                  , SA.x $ toNumber $ scale !! d0 / 2
+                  , SA.fill $ Just $ SA.RGB 63 196 255
+                  ]
+                  [ HH.text $ show expression ]
           ]
       ]

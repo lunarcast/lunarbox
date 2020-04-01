@@ -1,6 +1,5 @@
 module Lunarbox.Data.Dataflow.Graph
-  ( ExtendedLocation(..)
-  , compileGraph
+  ( compileGraph
   ) where
 
 import Prelude
@@ -11,18 +10,8 @@ import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, nullExpr, toExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Graph (Graph, topologicalSort)
-
--- This represents a location which may or may not have an extra layer
-data ExtendedLocation l l'
-  = DeepLocation l l'
-  | Location l
-
-derive instance eqExtendedLocation :: (Eq l, Eq l') => Eq (ExtendedLocation l l')
-
-instance showExtendedLocation :: (Show l, Show l') => Show (ExtendedLocation l l') where
-  show (Location l) = show l
-  show (DeepLocation l l') = show l <> " -> " <> show l'
 
 -- Takes a key and a graph and uses that to produce an Expression
 compileGraphNode :: forall k v l. Ord k => Expressible v l => Graph k v -> k -> Maybe (Tuple k (Expression (ExtendedLocation k l)))
