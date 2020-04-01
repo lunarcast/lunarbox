@@ -1,7 +1,8 @@
 module Lunarbox.Data.Dataflow.Class.Substituable where
 
 import Prelude
-import Data.Foldable (class Foldable, foldr)
+import Data.Foldable (foldr)
+import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Set as Set
@@ -41,7 +42,7 @@ instance schemeSubst :: Substituable Scheme where
     newScheme = Substitution $ foldr Map.delete substitution quantifiers
   ftv (Forall as t) = ftv t `Set.difference` (Set.fromFoldable as)
 
-instance arrSubst :: (Substituable a, Foldable f, Functor f) => Substituable (f a) where
+instance arrSubst :: (Substituable a) => Substituable (List a) where
   apply = map <<< apply
   ftv = foldr (Set.union <<< ftv) Set.empty
 
