@@ -12,6 +12,8 @@ import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 newtype Substitution
   = Substitution (Map.Map TVarName Type)
 
+derive instance eqSubstitution :: Eq Substitution
+
 instance semigroupSubstitution :: Semigroup Substitution where
   append s1@(Substitution m1) (Substitution m2) =
     let

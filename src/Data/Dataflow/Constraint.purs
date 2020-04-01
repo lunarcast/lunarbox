@@ -20,6 +20,8 @@ newtype Constraint l
   , source :: l
   }
 
+derive instance eqConstraint :: Eq l => Eq (Constraint l)
+
 derive instance newtypeConstraint :: Newtype (Constraint l) _
 
 _leftType :: forall l. Lens' (Constraint l) Type
@@ -33,6 +35,8 @@ _source = iso unwrap wrap <<< prop (SProxy :: _ "source")
 
 newtype ConstraintSet l
   = ConstraintSet (Array (Constraint l))
+
+derive instance eqConstraintSet :: Eq l => Eq (ConstraintSet l)
 
 derive newtype instance semigroupConstraintSet :: Semigroup (ConstraintSet l)
 
