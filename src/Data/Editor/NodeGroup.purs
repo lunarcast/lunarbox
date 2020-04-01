@@ -9,7 +9,7 @@ module Lunarbox.Data.Editor.NodeGroup
 import Prelude
 import Data.Lens (Lens')
 import Data.Lens.Record (prop)
-import Data.List (List, foldr, (\\))
+import Data.List (List, foldl, (\\))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
@@ -44,8 +44,8 @@ instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeId where
 
       return =
         fromMaybe (nullExpr $ NodeId "unconnected")
-          $ foldr
-              (compileNode $ fst <$> nodes)
+          $ foldl
+              (flip $ compileNode $ fst <$> nodes)
               Nothing
               body
     in

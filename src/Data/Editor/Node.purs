@@ -16,7 +16,7 @@ import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr, toExpressionFromSelf, toExpressionWithLocation)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Graph as G
 
 type ComplexNodeData
@@ -50,7 +50,7 @@ compileNode nodes id maybeChild =
                 Nothing -> value
           where
           value =
-            functionCall id (toExpressionFromSelf $ NodeId $ show functionName)
+            functionCall id (toExpressionWithLocation id functionName)
               ( maybe (nullExpr id)
                   toExpressionFromSelf
                   <$> inputs

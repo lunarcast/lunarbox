@@ -138,7 +138,7 @@ component =
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
       let
         node :: Node
-        node = ComplexNode { inputs: mempty, function: name }
+        node = ComplexNode { inputs: pure Nothing, function: name }
       for_ maybeCurrentFunction
         $ \currentFunction ->
             modify_

@@ -7,6 +7,8 @@ module Lunarbox.Data.Dataflow.Expression
   , getLocation
   , toMap
   , lookup
+  , printExpressionAt
+  , sumarizeExpression
   ) where
 
 import Prelude
@@ -87,26 +89,36 @@ derive instance expressinEq :: Eq l => Eq (Expression l)
 derive instance functorExpression :: Functor Expression
 
 instance showExpression :: Show l => Show (Expression l) where
-  show expr = "(" <> show (getLocation expr) <> ": " <> printExpression expr <> ")"
+  show expr = "(" <> show (getLocation expr) <> ": " <> printRawExpression show expr <> ")"
+
+-- Prints only the parts of an expression found at a specific location
+printExpressionAt :: forall l. Show l => Eq l => l -> Expression l -> String
+printExpressionAt location =
+  printRawExpression
+    ( \expression ->
+        if getLocation expression == location then
+          printExpressionAt location expression
+        else
+          "..."
+    )
+
+-- Prints an expression and stops when changing locations
+sumarizeExpression :: forall l. Show l => Eq l => Expression l -> String
+sumarizeExpression expression = printExpressionAt (getLocation expression) expression
 
 -- Prints an expression without it's location. 
+-- Uses a custom function to print the recursive Expressions.
 -- Only used internally inside the show instance 
 -- to not reepat the location printing code every time
-printExpression :: forall l. Show l => Expression l -> String
-printExpression (Variable _ name) = unwrap name
-
-printExpression (FunctionCall _ f i) = show f <> " " <> show i
-
-printExpression (Lambda _ arg value) = "\\" <> show arg <> " -> " <> show value
-
-printExpression (Literal _ literal) = case literal of
-  LInt v -> show v
-  LBool b -> show b
-
-printExpression (Let _ name value body) = "let " <> unwrap name <> " = " <> show value <> " in " <> show body
-
-printExpression (If _ c t f) = "if " <> show c <> " then " <> show t <> " else " <> show f
-
-printExpression (FixPoint _ e) = "fixpoint( " <> show e <> " )"
-
-printExpression (Native _ (NativeExpression t _)) = "native :: " <> show t
+printRawExpression :: forall l. Show l => (Expression l -> String) -> Expression l -> String
+printRawExpression print = case _ of
+  Variable _ name -> unwrap name
+  FunctionCall _ f i -> print f <> " " <> print i
+  Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
+  Literal _ literal -> case literal of
+    LInt v -> show v
+    LBool b -> show b
+  Let _ name value body -> "let " <> unwrap name <> " = " <> print value <> " in " <> print body
+  If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
+  FixPoint _ e -> "fixpoint( " <> print e <> " )"
+  Native _ (NativeExpression t _) -> "native :: " <> show t

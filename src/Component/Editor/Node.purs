@@ -19,7 +19,7 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -56,8 +56,12 @@ _stateSelected = _nodeData <<< _NodeDataSelected
 _selectable :: Lens' State Boolean
 _selectable = prop (SProxy :: _ "selectable")
 
+_expression :: Lens' State (Expression (ExtendedLocation FunctionName NodeId))
+_expression = prop (SProxy :: _ "expression")
+
 data Action
   = SetSelection Boolean
+  | Receive Input
 
 data Query a
   = Unselect a
@@ -84,6 +88,7 @@ component =
           $ defaultEval
               { handleAction = handleAction
               , handleQuery = handleQuery
+              , receive = Just <<< Receive
               }
     }
   where
@@ -92,6 +97,8 @@ component =
     SetSelection value -> do
       modify_ $ set _stateSelected value
       when (value == true) $ raise Selected
+    Receive { expression } -> do
+      modify_ $ set _expression expression
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -157,6 +164,6 @@ component =
                   , SA.x $ toNumber $ scale !! d0 / 2
                   , SA.fill $ Just $ SA.RGB 63 196 255
                   ]
-                  [ HH.text $ show expression ]
+                  [ HH.text $ sumarizeExpression expression ]
           ]
       ]
