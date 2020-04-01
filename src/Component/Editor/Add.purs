@@ -23,7 +23,7 @@ import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Component.Editor.Node as Node
+import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
@@ -60,12 +60,12 @@ data Output
   | AddedNode FunctionName
 
 type ChildSlots
-  = ( node :: Slot Node.Query Node.Output FunctionName )
+  = ( node :: Slot NodeC.Query NodeC.Output FunctionName )
 
 type Input
   = State
 
-nodeInput :: FunctionName -> FunctionData -> Node.Input
+nodeInput :: FunctionName -> FunctionData -> NodeC.Input
 nodeInput name functionData =
   { selectable: false
   , nodeData: mempty
@@ -108,7 +108,7 @@ component =
             [ slot
                 (SProxy :: _ "node")
                 name
-                Node.component
+                NodeC.component
                 (nodeInput name functionData)
                 $ const Nothing
             ]

@@ -9,7 +9,7 @@ module Lunarbox.Data.Editor.NodeGroup
 import Prelude
 import Data.Lens (Lens')
 import Data.Lens.Record (prop)
-import Data.List (List, foldl, (\\))
+import Data.List (List, foldr, (\\))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
@@ -43,13 +43,13 @@ instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeId where
       body = ordered \\ inputs
 
       return =
-        fromMaybe (nullExpr $ NodeId "this should never show up")
-          $ foldl
+        fromMaybe (nullExpr $ NodeId "unconnected")
+          $ foldr
               (compileNode $ fst <$> nodes)
               Nothing
               body
     in
-      functionDeclaration (NodeId "this should no be seen") return $ VarName <$> unwrap <$> inputs
+      functionDeclaration (NodeId "this should not be seen") return $ VarName <$> unwrap <$> inputs
 
 -- Prism
 _NodeGroupInputs :: forall a. Lens' (NodeGroup a) (List NodeId)

@@ -19,7 +19,7 @@ data DataflowFunction a
 
 instance expressibleDataflowFunction :: Expressible (DataflowFunction a) NodeId where
   toExpression = case _ of
-    NativeFunction f -> Native (NodeId "native function") f
+    NativeFunction f -> Native (NodeId "[native]") f
     VisualFunction g -> toExpression g
 
 _VisualFunction :: forall a. Prism' (DataflowFunction a) (NodeGroup a)

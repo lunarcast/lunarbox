@@ -27,17 +27,18 @@ import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, que
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
-import Lunarbox.Component.Editor.Node as Node
+import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Graph as G
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
-import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData, compileProject)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -94,7 +95,7 @@ data Output
   = SaveNodeGroup (NodeGroup NodeData)
 
 type ChildSlots
-  = ( node :: Slot Node.Query Node.Output NodeId )
+  = ( node :: Slot NodeC.Query NodeC.Output NodeId )
 
 type Input
   = { project :: Project FunctionData NodeData
@@ -146,7 +147,7 @@ component =
         -- each node will move itself if it knows it's selected
         for_ ids \id ->
           for_ maybeOldPosition \oldPosition ->
-            query (SProxy :: _ "node") id $ tell $ Node.Drag $ newPosition - oldPosition
+            query (SProxy :: _ "node") id $ tell $ NodeC.Drag $ newPosition - oldPosition
     MouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
     MouseUp -> do
@@ -156,14 +157,14 @@ component =
       -- query all nodes to unselect themselves
       for_ ids \id -> do
         mousePosition <- gets $ view _lastMousePosition
-        query (SProxy :: _ "node") id $ tell Node.Unselect
+        query (SProxy :: _ "node") id $ tell NodeC.Unselect
     SyncNodeGroup -> do
       -- this chunk is here to save all nodes
       (ids :: Array _) <- getNodeIds
       -- query all nodes to unselect themselves
       for_ ids \id ->
         do
-          query (SProxy :: _ "node") id $ request Node.GetData
+          query (SProxy :: _ "node") id $ request NodeC.GetData
           >>= traverse_
               ( modify_
                   <<< set (_node id)
@@ -174,18 +175,21 @@ component =
       group <- gets $ view _functionNodeGroup
       raise $ SaveNodeGroup group
     NodeSelected id -> do
+      -- display this for debugging
+      project <- gets $ view _project
+      print $ compileProject project
       -- we sync it first to get the last y values
       handleAction SyncNodeGroup
       nodeGraph <- gets $ view _StateNodes
       let
         y = 1 + (view _NodeDataZPosition $ foldr max mempty $ snd <$> G.vertices nodeGraph)
-      void $ query (SProxy :: _ "node") id $ tell $ Node.SetZPosition y
+      void $ query (SProxy :: _ "node") id $ tell $ NodeC.SetZPosition y
       -- here we resync the new z position
       modify_ $ set (_nodeZPosition id) y
 
-  handleNodeOutput :: NodeId -> Node.Output -> Maybe Action
+  handleNodeOutput :: NodeId -> NodeC.Output -> Maybe Action
   handleNodeOutput id = case _ of
-    Node.Selected -> Just $ NodeSelected id
+    NodeC.Selected -> Just $ NodeSelected id
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -208,7 +212,7 @@ component =
             HH.slot
               (SProxy :: _ "node")
               id
-              Node.component
+              NodeC.component
               { node, nodeData, selectable: true, functionData, name }
               $ handleNodeOutput id
 

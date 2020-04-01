@@ -4,10 +4,12 @@ module Lunarbox.Data.Dataflow.Expression
   , Expression(..)
   , VarName(..)
   , functionDeclaration
+  , getLocation
   ) where
 
 import Prelude
 import Data.List (List, foldr)
+import Data.Newtype (class Newtype, unwrap)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (Type)
 
@@ -19,6 +21,8 @@ derive instance eqVarName :: Eq VarName
 derive instance ordVarName :: Ord VarName
 
 derive newtype instance showVarName :: Show VarName
+
+derive instance newtypeVarName :: Newtype VarName _
 
 data Literal
   = LInt Int
@@ -41,10 +45,47 @@ data Expression l
   | FixPoint l (Expression l)
   | Native l NativeExpression
 
+-- Takes a list of argument names and a body and creates the body of a function
+functionDeclaration :: forall l. l -> Expression l -> List VarName -> Expression l
+functionDeclaration = foldr <<< Lambda
+
+-- Given an Expression extract it's location
+getLocation :: forall l. Expression l -> l
+getLocation = case _ of
+  Variable l _ -> l
+  FunctionCall l _ _ -> l
+  Lambda l _ _ -> l
+  Literal l _ -> l
+  Let l _ _ _ -> l
+  If l _ _ _ -> l
+  FixPoint l _ -> l
+  Native l _ -> l
+
 derive instance expressinEq :: Eq l => Eq (Expression l)
 
 derive instance functorExpression :: Functor Expression
 
--- Takes a list of argument names and a body and creates the body of a function
-functionDeclaration :: forall l. l -> Expression l -> List VarName -> Expression l
-functionDeclaration = foldr <<< Lambda
+instance showExpression :: Show l => Show (Expression l) where
+  show expr = "(" <> show (getLocation expr) <> ": " <> printExpression expr <> ")"
+
+-- Prints an expression without it's location. 
+-- Only used internally inside the show instance 
+-- to not reepat the location printing code every time
+printExpression :: forall l. Show l => Expression l -> String
+printExpression (Variable _ name) = unwrap name
+
+printExpression (FunctionCall _ f i) = show f <> " " <> show i
+
+printExpression (Lambda _ arg value) = "\\" <> show arg <> " -> " <> show value
+
+printExpression (Literal _ literal) = case literal of
+  LInt v -> show v
+  LBool b -> show b
+
+printExpression (Let _ name value body) = "let " <> unwrap name <> " = " <> show value <> " in " <> show body
+
+printExpression (If _ c t f) = "if " <> show c <> " then " <> show t <> " else " <> show f
+
+printExpression (FixPoint _ e) = "fixpoint( " <> show e <> " )"
+
+printExpression (Native _ (NativeExpression t _)) = "native :: " <> show t

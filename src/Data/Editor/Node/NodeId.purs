@@ -15,7 +15,8 @@ derive instance ordNodeId :: Ord NodeId
 
 derive instance newtypeNodeId :: Newtype NodeId _
 
-derive newtype instance showNodeId :: Show NodeId
+instance showNodeId :: Show NodeId where
+  show = unwrap
 
 instance expressibleNodeId :: Expressible NodeId Unit where
   toExpression = toExpression <<< unwrap
