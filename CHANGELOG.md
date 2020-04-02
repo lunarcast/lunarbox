@@ -1,3 +1,37 @@
+# [1.5.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.4.1...v1.5.0) (2020-04-02)
+
+
+### Bug Fixes
+
+* fixed 50+ bugs caused by the addition of the location system ([6e86b30](https://github.com/Mateiadrielrafael/lunarbox/commit/6e86b30dcc41dc56988f25254597b61ae3d8c5bc))
+* fixed all the remaining bugs caused by the refactoring ([bd05eb6](https://github.com/Mateiadrielrafael/lunarbox/commit/bd05eb610c08dec710569257294b28d3e1fea90a))
+* fixed the Infer module not exporting runInfer ([696c1b5](https://github.com/Mateiadrielrafael/lunarbox/commit/696c1b540111557f1b169ae73a8fd55310855af4))
+* now the current funciton appears in the tree view as well ([662a4a4](https://github.com/Mateiadrielrafael/lunarbox/commit/662a4a4acdef05ff7ab510388bd78781f7386662))
+* now the Infer monad uses the new Constraint module ([74af345](https://github.com/Mateiadrielrafael/lunarbox/commit/74af34595e639d1cf1d287f88184311ac7677510))
+
+
+### Features
+
+* added the Unifier module and derived a bunch of eq instances ([0a6664c](https://github.com/Mateiadrielrafael/lunarbox/commit/0a6664cb94c68d261c28cca47f5ad7f575264b21))
+* automatically infer the number of inputs for native expressions ([8d27f51](https://github.com/Mateiadrielrafael/lunarbox/commit/8d27f51d851639ac3e382d161994337faf217d92))
+* created the Solve monad ([f4e5fb4](https://github.com/Mateiadrielrafael/lunarbox/commit/f4e5fb4898da04edd577c36685e98b38d7337897))
+* displaying types for nodes above the nodes ([b58d4b0](https://github.com/Mateiadrielrafael/lunarbox/commit/b58d4b004aaa1275f20426bebd3d37c44253495c))
+* finally combined the constraint solver with the type inference algorithm! ([05f836e](https://github.com/Mateiadrielrafael/lunarbox/commit/05f836eaedda98378bd58999cdf03787a4cd5476))
+* lenses for the Infer monad related types ([dac26d6](https://github.com/Mateiadrielrafael/lunarbox/commit/dac26d6ea3401b6267804cf0f3d51ee01eeb7cb3))
+* nativeConfigs can specify how much to curry, not visual yet ([084bfe5](https://github.com/Mateiadrielrafael/lunarbox/commit/084bfe5798945af1683ffb945bd508c1446ea5ec))
+* now constraints keep a reference to the location they were emited from ([c8de391](https://github.com/Mateiadrielrafael/lunarbox/commit/c8de391a484aeaafb3b45b4494bc47eef1fbe153))
+* only the code specific to each node is displayed on top of it ([63c9a70](https://github.com/Mateiadrielrafael/lunarbox/commit/63c9a7033fbcb61c2227aaf15255f77d8fee4589))
+* reimplemented unification of types ([3eaba72](https://github.com/Mateiadrielrafael/lunarbox/commit/3eaba72918c5687b7784e10e8824250904b12015))
+* Reworked a lot of stuff to allow locations! ([68952d3](https://github.com/Mateiadrielrafael/lunarbox/commit/68952d3ccd9498f246c640517d9e319897d22265))
+* reworked some node ui ([617fdce](https://github.com/Mateiadrielrafael/lunarbox/commit/617fdce0f973e7f04d67b4fb4c3fbe54b3d201eb))
+* reworked the expression inference algorithm ([eac02b3](https://github.com/Mateiadrielrafael/lunarbox/commit/eac02b31876d26724aa6346080417fb7a180eed9))
+* running the Infer monad ([09cff84](https://github.com/Mateiadrielrafael/lunarbox/commit/09cff849bba21c84afb2ba8a8c188215ca2a2678))
+* the expression of each node is displayed above it ([e156500](https://github.com/Mateiadrielrafael/lunarbox/commit/e156500e008dd0252070a3a52a5ccc82708b47f2))
+* the Infer monad now support a location ([73b8148](https://github.com/Mateiadrielrafael/lunarbox/commit/73b81482552b4ec0e3d8d4838ecd412cc0c96fda))
+* typeMaps!!! ([4f73f39](https://github.com/Mateiadrielrafael/lunarbox/commit/4f73f3904a97dc8319b89d31c50a81d940b286c9))
+* working locations inside expressions:) FINALLY!!! ([3914234](https://github.com/Mateiadrielrafael/lunarbox/commit/391423455573da07a87f2ecaca6c221c690a7fda))
+* wrote the constraint solver! ([caaef5d](https://github.com/Mateiadrielrafael/lunarbox/commit/caaef5dee1c154f35ad920e3bea4b7bcd357963d))
+
 ## [1.4.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.4.0...v1.4.1) (2020-03-30)
 
 
