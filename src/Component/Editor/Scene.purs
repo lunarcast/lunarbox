@@ -9,13 +9,15 @@ import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
 import Data.Array (foldr, sortBy)
+import Data.Either (hush)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _1, _2, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
-import Data.Maybe (Maybe(..))
+import Data.Map as Map
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
@@ -27,14 +29,24 @@ import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, que
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
-import Lunarbox.Component.Editor.Node as Node
+import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.Dataflow.NodeId (NodeId)
-import Lunarbox.Data.FunctionData (FunctionData, getFunctionData)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
+import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
+import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression as Expression
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Node (Node(..))
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataZPosition)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData, compileProject)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.NodeData (NodeData, _NodeDataZPosition)
-import Lunarbox.Data.Project (DataflowFunction, Node, NodeGroup(..), Project, _NodeGroupNodes, _functions, _projectFunctionData)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -55,7 +67,7 @@ _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
 
 _projectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
-_projectFunctions = _project <<< _functions
+_projectFunctions = _project <<< _ProjectFunctions
 
 _function :: Lens' State (Tuple FunctionName (NodeGroup NodeData))
 _function = prop (SProxy :: SProxy "function")
@@ -91,7 +103,7 @@ data Output
   = SaveNodeGroup (NodeGroup NodeData)
 
 type ChildSlots
-  = ( node :: Slot Node.Query Node.Output NodeId )
+  = ( node :: Slot NodeC.Query NodeC.Output NodeId )
 
 type Input
   = { project :: Project FunctionData NodeData
@@ -143,7 +155,7 @@ component =
         -- each node will move itself if it knows it's selected
         for_ ids \id ->
           for_ maybeOldPosition \oldPosition ->
-            query (SProxy :: _ "node") id $ tell $ Node.Drag $ newPosition - oldPosition
+            query (SProxy :: _ "node") id $ tell $ NodeC.Drag $ newPosition - oldPosition
     MouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
     MouseUp -> do
@@ -153,14 +165,14 @@ component =
       -- query all nodes to unselect themselves
       for_ ids \id -> do
         mousePosition <- gets $ view _lastMousePosition
-        query (SProxy :: _ "node") id $ tell Node.Unselect
+        query (SProxy :: _ "node") id $ tell NodeC.Unselect
     SyncNodeGroup -> do
       -- this chunk is here to save all nodes
       (ids :: Array _) <- getNodeIds
       -- query all nodes to unselect themselves
       for_ ids \id ->
         do
-          query (SProxy :: _ "node") id $ request Node.GetData
+          query (SProxy :: _ "node") id $ request NodeC.GetData
           >>= traverse_
               ( modify_
                   <<< set (_node id)
@@ -171,18 +183,26 @@ component =
       group <- gets $ view _functionNodeGroup
       raise $ SaveNodeGroup group
     NodeSelected id -> do
+      -- display this for debugging
+      { project } <- get
+      let
+        expr = compileProject project
+
+        tm = solveExpression expr
+      print expr
+      print tm
       -- we sync it first to get the last y values
       handleAction SyncNodeGroup
       nodeGraph <- gets $ view _StateNodes
       let
         y = 1 + (view _NodeDataZPosition $ foldr max mempty $ snd <$> G.vertices nodeGraph)
-      void $ query (SProxy :: _ "node") id $ tell $ Node.SetZPosition y
+      void $ query (SProxy :: _ "node") id $ tell $ NodeC.SetZPosition y
       -- here we resync the new z position
       modify_ $ set (_nodeZPosition id) y
 
-  handleNodeOutput :: NodeId -> Node.Output -> Maybe Action
+  handleNodeOutput :: NodeId -> NodeC.Output -> Maybe Action
   handleNodeOutput id = case _ of
-    Node.Selected -> Just $ NodeSelected id
+    NodeC.Selected -> Just $ NodeSelected id
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -190,21 +210,33 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  createNodeComponent :: Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
-  createNodeComponent project (Tuple id (Tuple node nodeData)) =
+  createNodeComponent :: (NodeId -> Expression _) -> (NodeId -> Type) -> Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
+  createNodeComponent getExpression getType project (Tuple id (Tuple node nodeData)) =
     let
-      getData name = view (_projectFunctionData name) project
+      getData name' = view (_projectFunctionData name') project
+
+      name = case node of
+        ComplexNode { function } -> function
+        InputNode -> FunctionName "input"
+        OutputNode _ -> FunctionName "output"
     in
       getFunctionData getData node
         # \functionData ->
             HH.slot
               (SProxy :: _ "node")
               id
-              Node.component
-              { node, nodeData, selectable: true, functionData }
+              NodeC.component
+              { node
+              , nodeData
+              , selectable: true
+              , functionData
+              , name
+              , expression: getExpression id
+              , type': getType id
+              }
               $ handleNodeOutput id
 
-  render { project, function: Tuple _ (NodeGroup { nodes }) } =
+  render { project, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
     SE.svg
       [ SA.width 100000.0
       , SA.height 100000.0
@@ -212,9 +244,26 @@ component =
       , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const $ Just MouseUp
       ]
-      $ createNodeComponent project
+      $ createNodeComponent getExpression getType project
       <$> sortedNodes
     where
+    expression = compileProject project
+
+    nodeLocation = DeepLocation currentFunctionName
+
+    getExpression id =
+      fromMaybe
+        (nullExpr $ Location currentFunctionName)
+        $ Expression.lookup (nodeLocation id) expression
+
+    typeMap = hush $ solveExpression expression
+
+    getType id =
+      fromMaybe (TVarariable $ TVarName "unkown")
+        $ do
+            map <- typeMap
+            Map.lookup (nodeLocation id) map
+
     sortedNodes =
       sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')
         $ G.toUnfoldable nodes

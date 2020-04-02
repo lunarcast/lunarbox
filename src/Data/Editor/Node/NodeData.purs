@@ -1,4 +1,4 @@
-module Lunarbox.Data.NodeData
+module Lunarbox.Data.Editor.Node.NodeData
   ( NodeData(..)
   , NodeDataContent
   , _NodeDataPosition

@@ -23,15 +23,19 @@ import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Component.Editor.Node as Node
+import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataScale)
-import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.NodeDescriptor (describe)
-import Lunarbox.Data.Project (Node(..), Project)
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataScale)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Node (Node(..))
+import Lunarbox.Data.Editor.Node.NodeData (NodeData)
+import Lunarbox.Data.Editor.Node.NodeDescriptor (describe)
+import Lunarbox.Data.Editor.Project (Project)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -59,17 +63,20 @@ data Output
   | AddedNode FunctionName
 
 type ChildSlots
-  = ( node :: Slot Node.Query Node.Output FunctionName )
+  = ( node :: Slot NodeC.Query NodeC.Output FunctionName )
 
 type Input
   = State
 
-nodeInput :: FunctionName -> FunctionData -> Node.Input
+nodeInput :: FunctionName -> FunctionData -> NodeC.Input
 nodeInput name functionData =
   { selectable: false
   , nodeData: mempty
   , node: ComplexNode { inputs: mempty, function: name }
   , functionData
+  , name
+  , expression: nullExpr $ Location name
+  , type': TVarariable $ TVarName "doen't need a type"
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
@@ -106,7 +113,7 @@ component =
             [ slot
                 (SProxy :: _ "node")
                 name
-                Node.component
+                NodeC.component
                 (nodeInput name functionData)
                 $ const Nothing
             ]

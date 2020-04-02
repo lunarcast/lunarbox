@@ -1,15 +1,19 @@
-module Lunarbox.Data.NodeDescriptor where
+module Lunarbox.Data.Editor.Node.NodeDescriptor
+  ( describe
+  , onlyEditable
+  ) where
 
 import Prelude
 import Data.Array as Array
 import Data.Lens (is, view)
 import Data.Maybe (Maybe(..), isJust)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.FunctionName (FunctionName)
-import Lunarbox.Data.FunctionData (FunctionData, _FunctionDataExternal)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.NodeData (NodeData)
-import Lunarbox.Data.Project (DataflowFunction, Project, _VisualFunction)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataExternal)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData)
+import Lunarbox.Data.Editor.Project (Project(..))
 
 type NodeDescriptor
   = { isUsable :: Boolean
@@ -23,8 +27,8 @@ type FunctionGraphNode
     }
 
 describe :: Maybe FunctionName -> Project FunctionData NodeData -> Array (Tuple FunctionGraphNode NodeDescriptor)
-describe currentFunction project =
-  G.toUnfoldable project.functions
+describe currentFunction (Project { functions }) =
+  G.toUnfoldable functions
     <#> \(Tuple name (Tuple function functionData)) ->
         let
           isCurrent = currentFunction == Just name
