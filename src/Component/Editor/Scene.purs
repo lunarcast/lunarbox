@@ -9,12 +9,14 @@ import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
 import Data.Array (foldr, sortBy)
+import Data.Either (hush)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _1, _2, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
 import Data.Set as Set
@@ -29,10 +31,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Expression as Expression
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
@@ -180,8 +184,13 @@ component =
       raise $ SaveNodeGroup group
     NodeSelected id -> do
       -- display this for debugging
-      project <- gets $ view _project
-      print $ compileProject project
+      { project } <- get
+      let
+        expr = compileProject project
+
+        tm = solveExpression expr
+      print expr
+      print tm
       -- we sync it first to get the last y values
       handleAction SyncNodeGroup
       nodeGraph <- gets $ view _StateNodes
@@ -201,8 +210,8 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  createNodeComponent :: (NodeId -> Expression _) -> Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
-  createNodeComponent getExpression project (Tuple id (Tuple node nodeData)) =
+  createNodeComponent :: (NodeId -> Expression _) -> (NodeId -> Type) -> Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
+  createNodeComponent getExpression getType project (Tuple id (Tuple node nodeData)) =
     let
       getData name' = view (_projectFunctionData name') project
 
@@ -223,28 +232,38 @@ component =
               , functionData
               , name
               , expression: getExpression id
+              , type': getType id
               }
               $ handleNodeOutput id
 
   render { project, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
-    let
-      expression = compileProject project
-
-      getExpression id =
-        fromMaybe
-          (nullExpr $ Location currentFunctionName)
-          $ Expression.lookup (DeepLocation currentFunctionName id) expression
-    in
-      SE.svg
-        [ SA.width 100000.0
-        , SA.height 100000.0
-        , onMouseMove $ \e -> Just $ MouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-        , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-        , onMouseUp $ const $ Just MouseUp
-        ]
-        $ createNodeComponent getExpression project
-        <$> sortedNodes
+    SE.svg
+      [ SA.width 100000.0
+      , SA.height 100000.0
+      , onMouseMove $ \e -> Just $ MouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+      , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+      , onMouseUp $ const $ Just MouseUp
+      ]
+      $ createNodeComponent getExpression getType project
+      <$> sortedNodes
     where
+    expression = compileProject project
+
+    nodeLocation = DeepLocation currentFunctionName
+
+    getExpression id =
+      fromMaybe
+        (nullExpr $ Location currentFunctionName)
+        $ Expression.lookup (nodeLocation id) expression
+
+    typeMap = hush $ solveExpression expression
+
+    getType id =
+      fromMaybe (TVarariable $ TVarName "unkown")
+        $ do
+            map <- typeMap
+            Map.lookup (nodeLocation id) map
+
     sortedNodes =
       sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')
         $ G.toUnfoldable nodes

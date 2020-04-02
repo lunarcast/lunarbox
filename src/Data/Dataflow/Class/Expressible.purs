@@ -7,11 +7,11 @@ module Lunarbox.Data.Dataflow.Class.Expressible
   ) where
 
 import Prelude
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
+import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), VarName(..))
 
 -- Expresison which represents nothingess
 nullExpr :: forall l. l -> Expression l
-nullExpr l = Variable l (VarName "_")
+nullExpr l = Literal l LNull
 
 -- Create an expression with a custom location
 toExpressionWithLocation :: forall l l' a. Expressible a l' => l -> a -> Expression l

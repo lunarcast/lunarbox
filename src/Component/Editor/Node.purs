@@ -20,6 +20,7 @@ import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, mod
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
+import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -39,8 +40,10 @@ type State
     , functionData :: FunctionData
     , name :: FunctionName
     , expression :: Expression (ExtendedLocation FunctionName NodeId)
+    , type' :: Type
     }
 
+-- Lenses
 _nodeData :: Lens' State NodeData
 _nodeData = prop (SProxy :: SProxy "nodeData")
 
@@ -52,6 +55,9 @@ _zPosition = _nodeData <<< _NodeDataZPosition
 
 _stateSelected :: Lens' State Boolean
 _stateSelected = _nodeData <<< _NodeDataSelected
+
+_type :: Lens' State Type
+_type = prop (SProxy :: _ "type'")
 
 _selectable :: Lens' State Boolean
 _selectable = prop (SProxy :: _ "selectable")
@@ -136,6 +142,7 @@ component =
   , nodeData: NodeData { position, selected }
   , name
   , expression
+  , type'
   } =
     SE.g
       [ SA.transform
@@ -165,5 +172,12 @@ component =
                   , SA.fill $ Just $ SA.RGB 63 196 255
                   ]
                   [ HH.text $ sumarizeExpression expression ]
+          , Just
+              $ SE.text
+                  [ SA.text_anchor AnchorMiddle
+                  , SA.x $ toNumber $ scale !! d0 / 2
+                  , SA.fill $ Just $ SA.RGB 63 196 255
+                  ]
+                  [ HH.text $ show type' ]
           ]
       ]

@@ -16,7 +16,7 @@ import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _location, _typeEnv
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNull, typeNumber)
 import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 import Lunarbox.Data.Dataflow.TypeEnv as TypeEnv
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
@@ -100,4 +100,5 @@ infer expression =
       Native _ (NativeExpression t _) -> pure t
       Literal _ (LInt _) -> pure typeNumber
       Literal _ (LBool _) -> pure typeBool
+      Literal _ LNull -> pure typeNull
     rememberType type'

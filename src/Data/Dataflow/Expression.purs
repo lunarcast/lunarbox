@@ -31,11 +31,18 @@ derive newtype instance showVarName :: Show VarName
 
 derive instance newtypeVarName :: Newtype VarName _
 
+-- Theses are literal values with primitive values
 data Literal
   = LInt Int
   | LBool Boolean
+  | LNull
 
 derive instance literalEq :: Eq Literal
+
+instance showLiteral :: Show Literal where
+  show (LInt i) = show i
+  show (LBool b) = show b
+  show LNull = "null"
 
 data NativeExpression
   = NativeExpression Type RuntimeValue
@@ -129,9 +136,7 @@ printRawExpression print = case _ of
   Variable _ name -> unwrap name
   FunctionCall _ f i -> print f <> " " <> print i
   Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
-  Literal _ literal -> case literal of
-    LInt v -> show v
-    LBool b -> show b
+  Literal _ literal -> show literal
   Let _ name value body -> "let " <> unwrap name <> " = " <> print value <> " in " <> print body
   If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
   FixPoint _ e -> "fixpoint( " <> print e <> " )"

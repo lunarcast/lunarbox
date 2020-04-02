@@ -28,6 +28,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataScale)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -75,6 +76,7 @@ nodeInput name functionData =
   , functionData
   , name
   , expression: nullExpr $ Location name
+  , type': TVarariable $ TVarName "doen't need a type"
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
