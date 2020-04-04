@@ -37,6 +37,12 @@ Clone this repo. Install the dependencies with:
 pnpm install
 ```
 
+Then build all the purescript stuff with:
+
+```sh
+pnpx spago build
+```
+
 > Note: this project uses [pnpm](https://pnpm.js.org), pull requests using npm or yarn will be ignored
 
 ### Running the dev server:
@@ -46,8 +52,6 @@ To start the dev server use the `dev` command:
 ```sh
 pnpm run dev
 ```
-
-> Note: the first build might take a long time. This is caused by the fact spago will install and build all purescript dependencies
 
 ## Code generation
 

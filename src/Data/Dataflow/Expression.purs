@@ -6,6 +6,7 @@ module Lunarbox.Data.Dataflow.Expression
   , functionDeclaration
   , getLocation
   , toMap
+  , locations
   , lookup
   , printExpressionAt
   , sumarizeExpression
@@ -13,10 +14,11 @@ module Lunarbox.Data.Dataflow.Expression
   ) where
 
 import Prelude
-import Data.List (List, foldr)
+import Data.List (List(..), foldr, (:))
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
+import Data.Set (Set)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (Type)
 
@@ -57,6 +59,7 @@ data Expression l
   | Let l VarName (Expression l) (Expression l)
   | If l (Expression l) (Expression l) (Expression l)
   | FixPoint l (Expression l)
+  | Chain l (List (Expression l))
   | Native l NativeExpression
 
 -- Takes a list of argument names and a body and creates the body of a function
@@ -74,6 +77,7 @@ getLocation = case _ of
   If l _ _ _ -> l
   FixPoint l _ -> l
   Native l _ -> l
+  Chain l _ -> l
 
 -- Takes an Expression and transforms it into a map of location -> expression pairs
 toMap :: forall l. Ord l => Expression l -> Map.Map l (Expression l)
@@ -84,8 +88,13 @@ toMap expression =
         Lambda _ _ body -> toMap body
         Let _ _ value body -> toMap value <> toMap body
         If _ condition then' else' -> toMap condition <> toMap then' <> toMap else'
+        Chain _ expressions -> foldr (\expression' -> (<>) $ toMap expression') mempty expressions
         FixPoint _ body -> toMap body
         _ -> mempty
+
+-- get all the locations from an expression
+locations :: forall l. Ord l => Expression l -> Set l
+locations = Map.keys <<< toMap
 
 -- Tries finding the expression at a certain location
 lookup :: forall l. Ord l => l -> Expression l -> Maybe (Expression l)
@@ -141,3 +150,5 @@ printRawExpression print = case _ of
   If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
   Native _ (NativeExpression t _) -> "native :: " <> show t
+  Chain l (e : es) -> "{" <> show e <> "," <> (show $ Chain l es) <> "}"
+  Chain _ Nil -> ""

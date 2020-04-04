@@ -25,10 +25,10 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -36,7 +36,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, createFunction, emptyProject)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, createFunction, emptyProject, getType)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 
@@ -141,13 +141,12 @@ component =
     CreateNode name -> do
       handleAction SyncProjectData
       id <- createId
+      project <- gets $ view _project
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
       maybeNodeFunction <- gets $ preview $ _StateAtProjectFunction name
       for_ (join maybeNodeFunction) \(Tuple function functionData) -> do
         let
-          inputCount = case function of
-            NativeFunction (NativeExpression type' _) -> numberOfInputs type'
-            _ -> 0
+          inputCount = fromMaybe 0 $ numberOfInputs <$> getType (Location name) project
 
           node :: Node
           node =
