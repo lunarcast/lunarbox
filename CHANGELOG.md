@@ -1,3 +1,11 @@
+# [1.6.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.5.0...v1.6.0) (2020-04-04)
+
+
+### Features
+
+* Chain expressions, and fixed all functions having the Null type ([ebfa5c9](https://github.com/Mateiadrielrafael/lunarbox/commit/ebfa5c9387d1551c49cde08506eb87106c438f87))
+* the Nowhere location lol ([d05e5dc](https://github.com/Mateiadrielrafael/lunarbox/commit/d05e5dca5743cd7ffa1f5f964cc128bbc576f86e))
+
 # [1.5.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.4.1...v1.5.0) (2020-04-02)
 
 
