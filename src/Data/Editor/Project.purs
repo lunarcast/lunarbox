@@ -1,18 +1,36 @@
-module Lunarbox.Data.Editor.Project where
+module Lunarbox.Data.Editor.Project
+  ( Project(..)
+  , getType
+  , compileProject
+  , createEmptyFunction
+  , emptyProject
+  , createFunction
+  , getFunctions
+  , _atProjectFunction
+  , _atProjectNode
+  , _ProjectFunctions
+  , _ProjectMain
+  , _projectFunctionData
+  , _projectNodeGroup
+  ) where
 
 import Prelude
+import Data.Either (hush)
 import Data.Lens (Lens', Traversal', _1, _2, over, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
+import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -21,6 +39,10 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
+
+-- Location for stuff in Projects
+type Location
+  = ExtendedLocation FunctionName NodeId
 
 newtype Project f n
   = Project
@@ -36,8 +58,16 @@ _ProjectFunctions = newtypeIso <<< prop (SProxy :: _ "functions")
 _ProjectMain :: forall f n. Lens' (Project f n) FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
-compileProject :: forall f n. Project f n -> Expression (ExtendedLocation FunctionName NodeId)
-compileProject project = compileGraph (view _ProjectMain project) $ fst <$> view _ProjectFunctions project
+compileProject :: forall f n. Project f n -> Expression Location
+compileProject = compileGraph <<< map fst <<< view _ProjectFunctions
+
+-- takes a location and a project and get the type at that location
+getType :: forall f n. Location -> Project f n -> Maybe Type
+getType location project =
+  let
+    typemap = hush $ solveExpression $ compileProject project
+  in
+    typemap >>= Map.lookup location
 
 createEmptyFunction :: forall a. a -> NodeId -> DataflowFunction a
 createEmptyFunction data' id =

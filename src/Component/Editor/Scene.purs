@@ -34,7 +34,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression (Expression, locations)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
@@ -189,8 +189,11 @@ component =
         expr = compileProject project
 
         tm = solveExpression expr
+
+        (l :: Array _) = Set.toUnfoldable $ locations expr
       print expr
       print tm
+      print l
       -- we sync it first to get the last y values
       handleAction SyncNodeGroup
       nodeGraph <- gets $ view _StateNodes

@@ -6,7 +6,7 @@ import Prelude
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (asks, local)
 import Control.Monad.State (gets, modify_)
-import Data.Array (zip)
+import Data.Array (foldr, zip)
 import Data.Lens (over, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -101,4 +101,9 @@ infer expression =
       Literal _ (LInt _) -> pure typeNumber
       Literal _ (LBool _) -> pure typeBool
       Literal _ LNull -> pure typeNull
+      Chain _ expressions ->
+        foldr
+          (\expression' toDiscard -> toDiscard >>= (const $ infer expression'))
+          (pure typeNull)
+          expressions
     rememberType type'
