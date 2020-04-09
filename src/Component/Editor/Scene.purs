@@ -3,7 +3,6 @@ module Lunarbox.Component.Editor.Scene
   , Query(..)
   , Input
   , Output(..)
-  , Location
   ) where
 
 import Prelude
@@ -32,7 +31,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Expression as Expression
@@ -41,9 +39,10 @@ import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataZPosition)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData)
 import Lunarbox.Data.Graph as G
@@ -52,9 +51,6 @@ import Record as Record
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
-
-type Location
-  = ExtendedLocation FunctionName NodeId
 
 type Input
   = ( project :: Project FunctionData NodeData
@@ -154,8 +150,6 @@ component =
   handleAction = case _ of
     Receive input -> do
       modify_ $ Record.merge input
-      { typeMap } <- get
-      print $ Map.lookup (DeepLocation (FunctionName "main") (NodeId "0")) typeMap
     MouseMove newPosition ->
       whenDragging do
         maybeOldPosition <- gets $ view _lastMousePosition
@@ -213,7 +207,12 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  createNodeComponent :: (NodeId -> Expression _) -> (NodeId -> Type) -> Project FunctionData NodeData -> Tuple NodeId (Tuple Node NodeData) -> HTML _ Action
+  createNodeComponent ::
+    (NodeId -> Expression Location) ->
+    (NodeId -> Type) ->
+    Project FunctionData NodeData ->
+    Tuple NodeId (Tuple Node NodeData) ->
+    HTML _ Action
   createNodeComponent getExpression getType project (Tuple id (Tuple node nodeData)) =
     let
       getData name' = view (_projectFunctionData name') project
@@ -250,8 +249,10 @@ component =
       $ createNodeComponent getExpression getType project
       <$> sortedNodes
     where
-    nodeLocation = DeepLocation currentFunctionName
+    nodeLocation :: NodeId -> Location
+    nodeLocation = DeepLocation currentFunctionName <<< Location
 
+    getExpression :: NodeId -> Expression Location
     getExpression id =
       fromMaybe
         (nullExpr $ Location currentFunctionName)

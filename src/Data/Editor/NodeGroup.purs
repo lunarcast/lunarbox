@@ -1,6 +1,7 @@
 module Lunarbox.Data.Editor.NodeGroup
   ( NodeGroup(..)
   , orderNodes
+  , compileNodeGroup
   , _NodeGroupInputs
   , _NodeGroupOutput
   , _NodeGroupNodes
@@ -10,11 +11,9 @@ import Prelude
 import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, (\\))
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple, fst)
-import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression, VarName(..), functionDeclaration)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.Node (Node, compileNode)
@@ -37,20 +36,20 @@ orderNodes (NodeGroup function) = topologicalSort function.nodes
 
 derive instance newtypeNodeGroup :: Newtype (NodeGroup a) _
 
-instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeOrPinLocation where
-  toExpression group@(NodeGroup { nodes, inputs }) =
-    let
-      ordered = orderNodes group
+compileNodeGroup :: forall a. NodeGroup a -> Expression NodeOrPinLocation
+compileNodeGroup group@(NodeGroup { nodes, inputs }) =
+  let
+    ordered = orderNodes group
 
-      body = ordered \\ inputs
+    body = ordered \\ inputs
 
-      return =
-        foldl
-          (flip $ compileNode $ fst <$> nodes)
-          nothing
-          body
-    in
-      functionDeclaration (NodeOrPinLocation Nowhere) return $ VarName <$> unwrap <$> inputs
+    return =
+      foldl
+        (flip $ compileNode $ fst <$> nodes)
+        nothing
+        body
+  in
+    functionDeclaration Nowhere return $ VarName <$> unwrap <$> inputs
 
 -- Prism
 _NodeGroupInputs :: forall a. Lens' (NodeGroup a) (List NodeId)

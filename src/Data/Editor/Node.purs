@@ -8,13 +8,14 @@ module Lunarbox.Data.Editor.Node
   ) where
 
 import Prelude
+import Data.Default (def)
 import Data.Lens (Prism', Traversal', prism')
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, mapWithIndex)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), letWithLocation, nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
@@ -35,8 +36,8 @@ data Node
     ComplexNodeData
   | OutputNode (Maybe NodeId)
 
-functionCall :: forall l. l -> Expression l -> List (Expression l) -> Expression l
-functionCall = foldl <<< FunctionCall
+functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
+functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
 
 compileNode :: G.Graph NodeId Node -> NodeId -> Expression NodeOrPinLocation -> Expression NodeOrPinLocation
 compileNode nodes id child =
@@ -46,21 +47,22 @@ compileNode nodes id child =
       outputNode id case outputId of
         Just outputId' -> Variable (Location outputId') $ VarName $ show outputId'
         Nothing -> nothing
-    ComplexNode { inputs, function } -> Let Nowhere name value child
+    ComplexNode { inputs, function } -> letWithLocation (Location id) name value child
       where
       name = VarName $ show id
 
-      calee = Variable Nowhere $ VarName $ show function
+      calee = Variable def $ VarName $ show function
 
       arguments =
         mapWithIndex
-          ( \index -> case _ of
-              Just id' -> Variable (DeepLocation id' $ InputPin index) $ VarName $ show id'
-              Nothing -> nothing
+          ( \index id' ->
+              wrap (DeepLocation id $ InputPin index) case id' of
+                Just id'' -> Variable Nowhere $ VarName $ show id''
+                Nothing -> nothing
           )
           inputs
 
-      value = functionCall (Location id) calee arguments
+      value = functionCall (DeepLocation id OutputPin) calee arguments
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData

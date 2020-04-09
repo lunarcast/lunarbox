@@ -1,6 +1,5 @@
 module Lunarbox.Data.Editor.Project
   ( Project(..)
-  , Location
   , compileProject
   , createEmptyFunction
   , emptyProject
@@ -27,18 +26,15 @@ import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
+import Lunarbox.Data.Editor.ExtendedLocation (normalize)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
-
--- Location for stuff in Projects
-type Location
-  = ExtendedLocation FunctionName NodeId
 
 newtype Project f n
   = Project
@@ -55,7 +51,7 @@ _ProjectMain :: forall f n. Lens' (Project f n) FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
 compileProject :: forall f n. Project f n -> Expression Location
-compileProject = compileGraph <<< map fst <<< view _ProjectFunctions
+compileProject = map normalize <<< compileGraph compileDataflowFunction <<< map fst <<< view _ProjectFunctions
 
 createEmptyFunction :: forall a. a -> NodeId -> DataflowFunction a
 createEmptyFunction data' id =

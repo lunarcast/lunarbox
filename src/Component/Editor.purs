@@ -1,4 +1,4 @@
-module Lunarbox.Component.Editor (component, State, Action(..), Query, Tab, Location) where
+module Lunarbox.Component.Editor (component, State, Action(..), Query, Tab) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
@@ -28,8 +28,8 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
-import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -37,7 +37,8 @@ import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
@@ -63,9 +64,6 @@ tabIcon = case _ of
   Tree -> "account_tree"
   Problems -> "error"
 
-type Location
-  = ExtendedLocation FunctionName NodeId
-
 type State
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
@@ -84,6 +82,9 @@ _expression = prop (SProxy :: _ "expression")
 
 _typeMap :: Lens' State (Map Location Type)
 _typeMap = prop (SProxy :: _ "typeMap")
+
+_nextId :: Lens' State Int
+_nextId = prop (SProxy :: _ "nextId")
 
 _StateProjectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
 _StateProjectFunctions = _project <<< _ProjectFunctions
@@ -150,7 +151,7 @@ component =
   createId :: HalogenM State Action ChildSlots Void m NodeId
   createId = do
     { nextId } <- get
-    modify_ (_ { nextId = nextId + 1 })
+    modify_ $ over _nextId (_ + 1)
     pure $ NodeId $ show nextId
 
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
@@ -165,6 +166,7 @@ component =
           typeMap = case solveExpression expression' of
             Right map -> map
             Left _ -> mempty
+        printString $ printTypeMap typeMap
         -- TODO: make it so this accounts for errors
         modify_ $ Record.merge { expression: expression', typeMap }
     UpdateNodeGroup group -> do

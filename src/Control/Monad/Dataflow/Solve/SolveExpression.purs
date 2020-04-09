@@ -1,9 +1,11 @@
 module Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression
   ( solveExpression
+  , printTypeMap
   ) where
 
 import Prelude
 import Data.Either (Either)
+import Data.FoldableWithIndex (foldrWithIndex)
 import Data.Map as Map
 import Data.Tuple (Tuple(..))
 import Lunarbox.Control.Monad.Dataflow.Infer (InferEnv(..), InferOutput(..), runInfer)
@@ -31,3 +33,7 @@ solveExpression expression = do
   Tuple _ (InferOutput { typeMap, constraints }) <- runInfer inferEnv $ infer expression
   substitution <- runSolve solveContext $ solve constraints
   pure $ (apply substitution <$> typeMap)
+
+-- helper to print a typemap
+printTypeMap :: forall l. Show l => Ord l => Map.Map l Type -> String
+printTypeMap = foldrWithIndex (\location type' result -> result <> "\n" <> show location <> " = " <> show type') ""

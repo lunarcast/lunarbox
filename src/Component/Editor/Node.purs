@@ -21,12 +21,11 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (strokeWidth)
 import Svg.Attributes (TextAnchor(..))
@@ -39,7 +38,7 @@ type State
     , selectable :: Boolean
     , functionData :: FunctionData
     , name :: FunctionName
-    , expression :: Expression (ExtendedLocation FunctionName NodeId)
+    , expression :: Expression Location
     , type' :: Type
     }
 
@@ -62,7 +61,7 @@ _type = prop (SProxy :: _ "type'")
 _selectable :: Lens' State Boolean
 _selectable = prop (SProxy :: _ "selectable")
 
-_expression :: Lens' State (Expression (ExtendedLocation FunctionName NodeId))
+_expression :: Lens' State (Expression Location)
 _expression = prop (SProxy :: _ "expression")
 
 data Action

@@ -9,6 +9,7 @@ module Lunarbox.Data.Editor.ExtendedLocation
   ) where
 
 import Prelude
+import Data.Default (class Default)
 import Data.Lens (Prism', prism')
 import Data.List ((:), List(..))
 import Data.Maybe (Maybe(..))
@@ -24,6 +25,9 @@ data ExtendedLocation l l'
 derive instance eqExtendedLocation :: (Eq l, Eq l') => Eq (ExtendedLocation l l')
 
 derive instance ordExtendedLocation :: (Ord l, Ord l') => Ord (ExtendedLocation l l')
+
+instance defaultExtendedLocation :: Default (ExtendedLocation l l') where
+  def = Nowhere
 
 instance showExtendedLocation :: (Show l, Show l') => Show (ExtendedLocation l l') where
   show (Location l) = show l
@@ -62,12 +66,11 @@ letWithLocation location name value body =
     $ Chain Nowhere
     $ (Variable location name : body : Nil)
 
--- Take an Expression with (Maybe location) and transform it into one with an ExtendedLocation
-normalize :: forall l l'. Expression (Maybe l) -> Expression (ExtendedLocation l l')
-normalize =
-  map case _ of
-    Just location -> Location location
-    Nothing -> Nowhere
+-- Normalize nested Locations
+normalize :: forall l l' l''. ExtendedLocation l (ExtendedLocation l' l'') -> ExtendedLocation l (ExtendedLocation l' l'')
+normalize = case _ of
+  DeepLocation l Nowhere -> Location l
+  location -> location
 
 nothing :: forall l l'. Expression (ExtendedLocation l l')
 nothing = nullExpr Nowhere
