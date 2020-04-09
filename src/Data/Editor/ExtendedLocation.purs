@@ -1,6 +1,8 @@
 module Lunarbox.Data.Editor.ExtendedLocation
   ( ExtendedLocation(..)
   , letWithLocation
+  , normalize
+  , nothing
   , _ExtendedLocation
   , _LocationExtensionWithDefault
   , _LocationExtension
@@ -10,6 +12,7 @@ import Prelude
 import Data.Lens (Prism', prism')
 import Data.List ((:), List(..))
 import Data.Maybe (Maybe(..))
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName)
 
 -- This represents a location which may or may not have an extra or a missing layer 
@@ -58,3 +61,13 @@ letWithLocation location name value body =
     value
     $ Chain Nowhere
     $ (Variable location name : body : Nil)
+
+-- Take an Expression with (Maybe location) and transform it into one with an ExtendedLocation
+normalize :: forall l l'. Expression (Maybe l) -> Expression (ExtendedLocation l l')
+normalize =
+  map case _ of
+    Just location -> Location location
+    Nothing -> Nowhere
+
+nothing :: forall l l'. Expression (ExtendedLocation l l')
+nothing = nullExpr Nowhere

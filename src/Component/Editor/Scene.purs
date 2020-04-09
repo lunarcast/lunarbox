@@ -3,19 +3,20 @@ module Lunarbox.Component.Editor.Scene
   , Query(..)
   , Input
   , Output(..)
+  , Location
   ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
 import Data.Array (foldr, sortBy)
-import Data.Either (hush)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _1, _2, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
@@ -31,10 +32,9 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression, locations)
+import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
@@ -43,20 +43,32 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataZPosition)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData, compileProject)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
+import Record as Record
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
 
-type State
-  = { project :: Project FunctionData NodeData
+type Location
+  = ExtendedLocation FunctionName NodeId
+
+type Input
+  = ( project :: Project FunctionData NodeData
     , function :: Tuple FunctionName (NodeGroup NodeData)
-    , lastMousePosition :: Maybe (Vec2 Number)
+    , typeMap :: Map Location Type
+    , expression :: Expression Location
+    )
+
+type State
+  = { 
+    | ( lastMousePosition :: Maybe (Vec2 Number)
     , nodes :: List NodeId
+    | Input
+    )
     }
 
 -- Lenses
@@ -91,7 +103,7 @@ data Action
   = MouseMove (Vec2 Number)
   | MouseDown (Vec2 Number)
   | MouseUp
-  | Receive Input
+  | Receive { | Input }
   | NodeSelected NodeId
   | SyncNodeGroup
   | TriggerNodeGroupSaving
@@ -105,20 +117,17 @@ data Output
 type ChildSlots
   = ( node :: Slot NodeC.Query NodeC.Output NodeId )
 
-type Input
-  = { project :: Project FunctionData NodeData
-    , function :: Tuple FunctionName (NodeGroup NodeData)
-    }
-
-initialState :: Input -> State
-initialState { project, function } =
+initialState :: { | Input } -> State
+initialState { project, function, expression, typeMap } =
   { project
   , function
   , lastMousePosition: Nothing
   , nodes: Set.toUnfoldable <$> G.keys $ view (_2 <<< _NodeGroupNodes) function
+  , typeMap
+  , expression
   }
 
-component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
+component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query { | Input } Output m
 component =
   mkComponent
     { initialState
@@ -143,8 +152,10 @@ component =
 
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
-    Receive { project, function } -> do
-      modify_ _ { project = project, function = function }
+    Receive input -> do
+      modify_ $ Record.merge input
+      { typeMap } <- get
+      print $ Map.lookup (DeepLocation (FunctionName "main") (NodeId "0")) typeMap
     MouseMove newPosition ->
       whenDragging do
         maybeOldPosition <- gets $ view _lastMousePosition
@@ -183,17 +194,6 @@ component =
       group <- gets $ view _functionNodeGroup
       raise $ SaveNodeGroup group
     NodeSelected id -> do
-      -- display this for debugging
-      { project } <- get
-      let
-        expr = compileProject project
-
-        tm = solveExpression expr
-
-        (l :: Array _) = Set.toUnfoldable $ locations expr
-      print expr
-      print tm
-      print l
       -- we sync it first to get the last y values
       handleAction SyncNodeGroup
       nodeGraph <- gets $ view _StateNodes
@@ -239,7 +239,7 @@ component =
               }
               $ handleNodeOutput id
 
-  render { project, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
+  render { project, expression, typeMap, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
     SE.svg
       [ SA.width 100000.0
       , SA.height 100000.0
@@ -250,8 +250,6 @@ component =
       $ createNodeComponent getExpression getType project
       <$> sortedNodes
     where
-    expression = compileProject project
-
     nodeLocation = DeepLocation currentFunctionName
 
     getExpression id =
@@ -259,13 +257,9 @@ component =
         (nullExpr $ Location currentFunctionName)
         $ Expression.lookup (nodeLocation id) expression
 
-    typeMap = hush $ solveExpression expression
-
     getType id =
       fromMaybe (TVarariable $ TVarName "unkown")
-        $ do
-            map <- typeMap
-            Map.lookup (nodeLocation id) map
+        $ Map.lookup (nodeLocation id) typeMap
 
     sortedNodes =
       sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')

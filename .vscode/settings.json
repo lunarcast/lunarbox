@@ -1,4 +1,8 @@
 {
   "editor.formatOnSave": true,
-  "purescript.censorWarnings": ["ScopeShadowing"]
+  "purescript.censorWarnings": [
+    "ScopeShadowing"
+  ],
+  "discord.workspaceElapsedTime": true,
+  "discord.detailsEditing": "Editing {filename} 🚰"
 }

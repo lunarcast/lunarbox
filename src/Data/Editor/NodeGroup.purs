@@ -15,9 +15,11 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple, fst)
 import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, nullExpr)
-import Lunarbox.Data.Dataflow.Expression (VarName(..), functionDeclaration)
+import Lunarbox.Data.Dataflow.Expression (Expression, VarName(..), functionDeclaration)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.Node (Node, compileNode)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation)
 import Lunarbox.Data.Graph (Graph, topologicalSort)
 import Lunarbox.Data.Lens (newtypeIso)
 
@@ -35,7 +37,7 @@ orderNodes (NodeGroup function) = topologicalSort function.nodes
 
 derive instance newtypeNodeGroup :: Newtype (NodeGroup a) _
 
-instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeId where
+instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeOrPinLocation where
   toExpression group@(NodeGroup { nodes, inputs }) =
     let
       ordered = orderNodes group
@@ -43,13 +45,12 @@ instance expressibleNodeGroup :: Expressible (NodeGroup a) NodeId where
       body = ordered \\ inputs
 
       return =
-        fromMaybe (nullExpr $ NodeId "unconnected")
-          $ foldl
-              (flip $ compileNode $ fst <$> nodes)
-              Nothing
-              body
+        foldl
+          (flip $ compileNode $ fst <$> nodes)
+          nothing
+          body
     in
-      functionDeclaration (NodeId "this should not be seen") return $ VarName <$> unwrap <$> inputs
+      functionDeclaration (NodeOrPinLocation Nowhere) return $ VarName <$> unwrap <$> inputs
 
 -- Prism
 _NodeGroupInputs :: forall a. Lens' (NodeGroup a) (List NodeId)

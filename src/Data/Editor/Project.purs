@@ -1,6 +1,6 @@
 module Lunarbox.Data.Editor.Project
   ( Project(..)
-  , getType
+  , Location
   , compileProject
   , createEmptyFunction
   , emptyProject
@@ -15,22 +15,18 @@ module Lunarbox.Data.Editor.Project
   ) where
 
 import Prelude
-import Data.Either (hush)
 import Data.Lens (Lens', Traversal', _1, _2, over, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
-import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -60,14 +56,6 @@ _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
 compileProject :: forall f n. Project f n -> Expression Location
 compileProject = compileGraph <<< map fst <<< view _ProjectFunctions
-
--- takes a location and a project and get the type at that location
-getType :: forall f n. Location -> Project f n -> Maybe Type
-getType location project =
-  let
-    typemap = hush $ solveExpression $ compileProject project
-  in
-    typemap >>= Map.lookup location
 
 createEmptyFunction :: forall a. a -> NodeId -> DataflowFunction a
 createEmptyFunction data' id =

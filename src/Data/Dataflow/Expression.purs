@@ -11,6 +11,7 @@ module Lunarbox.Data.Dataflow.Expression
   , printExpressionAt
   , sumarizeExpression
   , inputs
+  , wrap
   ) where
 
 import Prelude
@@ -152,3 +153,7 @@ printRawExpression print = case _ of
   Native _ (NativeExpression t _) -> "native :: " <> show t
   Chain l (e : es) -> "{" <> show e <> "," <> (show $ Chain l es) <> "}"
   Chain _ Nil -> ""
+
+-- Wrap an expression in another expression with a custom location
+wrap :: forall l. l -> Expression l -> Expression l
+wrap location = Chain location <<< pure

@@ -1,13 +1,16 @@
-module Lunarbox.Component.Editor (component, State, Action(..), Query, Tab) where
+module Lunarbox.Component.Editor (component, State, Action(..), Query, Tab, Location) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Foldable (for_, sequence_, traverse_)
 import Data.Lens (Lens', Traversal', over, preview, set, view)
 import Data.Lens.Record (prop)
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
@@ -25,20 +28,25 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
+import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
+import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Dataflow.Type (numberOfInputs)
+import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, createFunction, emptyProject, getType)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction, emptyProject)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
+import Record as Record
 
 data Tab
   = Settings
@@ -55,16 +63,27 @@ tabIcon = case _ of
   Tree -> "account_tree"
   Problems -> "error"
 
+type Location
+  = ExtendedLocation FunctionName NodeId
+
 type State
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
     , project :: Project FunctionData NodeData
     , nextId :: Int
     , currentFunction :: Maybe FunctionName
+    , typeMap :: Map Location Type
+    , expression :: Expression Location
     }
 
 _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
+
+_expression :: Lens' State (Expression Location)
+_expression = prop (SProxy :: _ "expression")
+
+_typeMap :: Lens' State (Map Location Type)
+_typeMap = prop (SProxy :: _ "typeMap")
 
 _StateProjectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
 _StateProjectFunctions = _project <<< _ProjectFunctions
@@ -91,10 +110,11 @@ data Action
   = ChangeTab Tab
   | CreateFunction FunctionName
   | StartFunctionCreation
-  | SyncProjectData
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | UpdateNodeGroup (NodeGroup NodeData)
+  | SyncProjectData
+  | Compile
 
 data Query a
   = Void
@@ -115,6 +135,8 @@ component =
           , project: loadPrelude $ emptyProject $ NodeId "firstOutput"
           , nextId: 0
           , currentFunction: Nothing
+          , expression: nullExpr Nowhere
+          , typeMap: mempty
           }
     , render
     , eval:
@@ -133,6 +155,18 @@ component =
 
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
+    Compile -> do
+      { project, expression } <- get
+      let
+        expression' = compileProject project
+      -- we only run the type inference algorithm if the expression changed
+      when (expression /= expression') do
+        let
+          typeMap = case solveExpression expression' of
+            Right map -> map
+            Left _ -> mempty
+        -- TODO: make it so this accounts for errors
+        modify_ $ Record.merge { expression: expression', typeMap }
     UpdateNodeGroup group -> do
       (gets $ view _StateCurrentFunction)
         >>= traverse_ \currentFunction ->
@@ -141,12 +175,12 @@ component =
     CreateNode name -> do
       handleAction SyncProjectData
       id <- createId
-      project <- gets $ view _project
+      typeMap <- gets $ view _typeMap
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
       maybeNodeFunction <- gets $ preview $ _StateAtProjectFunction name
       for_ (join maybeNodeFunction) \(Tuple function functionData) -> do
         let
-          inputCount = fromMaybe 0 $ numberOfInputs <$> getType (Location name) project
+          inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
 
           node :: Node
           node =
@@ -160,6 +194,7 @@ component =
                 $ set (_stateAtProjectNode currentFunction id)
                 $ Just
                 $ Tuple node mempty
+      handleAction Compile
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_
@@ -186,6 +221,7 @@ component =
               G.lookup currentFunction functions
             pure do
               handleAction SyncProjectData
+              handleAction Compile
               -- And finally, save the selected function in the state
               modify_ $ set _StateCurrentFunction name
 
@@ -254,7 +290,7 @@ component =
         ]
     _ -> HH.text "not implemented"
 
-  scene { project, currentFunction: maybeCurrentFunction } =
+  scene { project, currentFunction: maybeCurrentFunction, expression, typeMap } =
     fromMaybe
       (emptyEditor unit) do
       currentFunction <- maybeCurrentFunction
@@ -265,10 +301,10 @@ component =
             (SProxy :: _ "scene")
             unit
             Scene.component
-            { project, function: Tuple currentFunction group }
+            { project, function: Tuple currentFunction group, expression, typeMap }
             handleSceneOutput
 
-  render state@{ currentTab, panelIsOpen, project, currentFunction } =
+  render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"
           $ tabs currentTab
@@ -276,6 +312,6 @@ component =
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel state ]
       , container "scene"
-          [ scene { project, currentFunction }
+          [ scene state
           ]
       ]

@@ -16,6 +16,7 @@ You can edit this file as you like.
   , "ordered-collections"
   , "profunctor-lenses"
   , "psci-support"
+  , "record"
   , "routing"
   , "routing-duplex"
   , "sized-vectors"
