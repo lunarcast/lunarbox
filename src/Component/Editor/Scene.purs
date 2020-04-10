@@ -117,10 +117,10 @@ initialState :: { | Input } -> State
 initialState { project, function, expression, typeMap } =
   { project
   , function
-  , lastMousePosition: Nothing
-  , nodes: Set.toUnfoldable <$> G.keys $ view (_2 <<< _NodeGroupNodes) function
   , typeMap
   , expression
+  , lastMousePosition: Nothing
+  , nodes: Set.toUnfoldable <$> G.keys $ view (_2 <<< _NodeGroupNodes) function
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query { | Input } Output m

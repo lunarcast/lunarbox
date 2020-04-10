@@ -15,7 +15,7 @@ import Data.List (List, foldl, mapWithIndex)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), letWithLocation, nothing)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
@@ -47,11 +47,11 @@ compileNode nodes id child =
       outputNode id case outputId of
         Just outputId' -> Variable (Location outputId') $ VarName $ show outputId'
         Nothing -> nothing
-    ComplexNode { inputs, function } -> letWithLocation (Location id) name value child
+    ComplexNode { inputs, function } -> Let def name value child
       where
       name = VarName $ show id
 
-      calee = Variable def $ VarName $ show function
+      calee = Variable (Location id) $ VarName $ show function
 
       arguments =
         mapWithIndex
