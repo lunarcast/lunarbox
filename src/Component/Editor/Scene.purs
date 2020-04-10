@@ -32,7 +32,7 @@ import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
@@ -208,12 +208,11 @@ component =
       pure $ Just k
 
   createNodeComponent ::
-    (NodeId -> Expression Location) ->
-    (NodeId -> Type) ->
+    Array (Maybe String) ->
     Project FunctionData NodeData ->
     Tuple NodeId (Tuple Node NodeData) ->
     HTML _ Action
-  createNodeComponent getExpression getType project (Tuple id (Tuple node nodeData)) =
+  createNodeComponent labels project (Tuple id (Tuple node nodeData)) =
     let
       getData name' = view (_projectFunctionData name') project
 
@@ -232,9 +231,7 @@ component =
               , nodeData
               , selectable: true
               , functionData
-              , name
-              , expression: getExpression id
-              , type': getType id
+              , labels: [ Just $ show name ] <> labels
               }
               $ handleNodeOutput id
 
@@ -246,21 +243,20 @@ component =
       , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const $ Just MouseUp
       ]
-      $ createNodeComponent getExpression getType project
+      $ ( \node@(Tuple id _) ->
+            let
+              location = DeepLocation currentFunctionName $ Location id
+
+              type' = Map.lookup location typeMap
+
+              expression' = Expression.lookup location expression
+            in
+              createNodeComponent [ show <$> type', sumarizeExpression <$> expression' ] project node
+        )
       <$> sortedNodes
     where
     nodeLocation :: NodeId -> Location
     nodeLocation = DeepLocation currentFunctionName <<< Location
-
-    getExpression :: NodeId -> Expression Location
-    getExpression id =
-      fromMaybe
-        (nullExpr $ Location currentFunctionName)
-        $ Expression.lookup (nodeLocation id) expression
-
-    getType id =
-      fromMaybe (TVarariable $ TVarName "unkown")
-        $ Map.lookup (nodeLocation id) typeMap
 
     sortedNodes =
       sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')

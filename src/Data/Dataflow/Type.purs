@@ -7,6 +7,7 @@ module Lunarbox.Data.Dataflow.Type
   ) where
 
 import Prelude
+import Data.Newtype (class Newtype, unwrap)
 
 newtype TVarName
   = TVarName String
@@ -15,7 +16,10 @@ derive instance eqTVarName :: Eq TVarName
 
 derive instance ordTVarName :: Ord TVarName
 
-derive newtype instance tvarShow :: Show TVarName
+derive instance newtypeTVarName :: Newtype TVarName _
+
+instance tvarShow :: Show TVarName where
+  show = unwrap
 
 data Type
   = TConstant String

@@ -17,13 +17,10 @@ import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
+import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
-import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Vector (Vec2)
@@ -37,9 +34,7 @@ type State
     , node :: Node
     , selectable :: Boolean
     , functionData :: FunctionData
-    , name :: FunctionName
-    , expression :: Expression Location
-    , type' :: Type
+    , labels :: Array (Maybe String)
     }
 
 -- Lenses
@@ -55,14 +50,11 @@ _zPosition = _nodeData <<< _NodeDataZPosition
 _stateSelected :: Lens' State Boolean
 _stateSelected = _nodeData <<< _NodeDataSelected
 
-_type :: Lens' State Type
-_type = prop (SProxy :: _ "type'")
-
 _selectable :: Lens' State Boolean
 _selectable = prop (SProxy :: _ "selectable")
 
-_expression :: Lens' State (Expression Location)
-_expression = prop (SProxy :: _ "expression")
+_labels :: Lens' State (Array (Maybe String))
+_labels = prop (SProxy :: _ "labels")
 
 data Action
   = SetSelection Boolean
@@ -102,8 +94,8 @@ component =
     SetSelection value -> do
       modify_ $ set _stateSelected value
       when (value == true) $ raise Selected
-    Receive { expression } -> do
-      modify_ $ set _expression expression
+    Receive { labels } -> do
+      modify_ $ set _labels labels
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -122,9 +114,10 @@ component =
       modify_ $ set _zPosition value
       pure $ Just k
 
-  overlays elements =
+  overlays :: Array (Maybe (HTML _ Action)) -> HTML _ Action
+  overlays =
     SE.g []
-      $ mapWithIndex
+      <<< mapWithIndex
           ( \index elem ->
               SE.g
                 [ SA.transform
@@ -133,15 +126,20 @@ component =
                 ]
                 [ elem ]
           )
-      $ catMaybes
-          elements
+      <<< catMaybes
+
+  label scale text =
+    SE.text
+      [ SA.text_anchor AnchorMiddle
+      , SA.x $ toNumber $ scale !! d0 / 2
+      , SA.fill $ Just $ SA.RGB 63 196 255
+      ]
+      [ HH.text text ]
 
   render { selectable
   , functionData: FunctionData { image, scale }
   , nodeData: NodeData { position, selected }
-  , name
-  , expression
-  , type'
+  , labels
   } =
     SE.g
       [ SA.transform
@@ -157,26 +155,6 @@ component =
           , strokeWidth 5.0
           ]
       , overlays
-          [ Just
-              $ SE.text
-                  [ SA.text_anchor AnchorMiddle
-                  , SA.x $ toNumber $ scale !! d0 / 2
-                  , SA.fill $ Just $ SA.RGB 63 196 255
-                  ]
-                  [ HH.text $ show name ]
-          , Just
-              $ SE.text
-                  [ SA.text_anchor AnchorMiddle
-                  , SA.x $ toNumber $ scale !! d0 / 2
-                  , SA.fill $ Just $ SA.RGB 63 196 255
-                  ]
-                  [ HH.text $ sumarizeExpression expression ]
-          , Just
-              $ SE.text
-                  [ SA.text_anchor AnchorMiddle
-                  , SA.x $ toNumber $ scale !! d0 / 2
-                  , SA.fill $ Just $ SA.RGB 63 196 255
-                  ]
-                  [ HH.text $ show type' ]
-          ]
+          $ (label scale <$> _)
+          <$> labels
       ]
