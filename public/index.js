@@ -3,7 +3,7 @@ import "./styles/index.scss";
 const Main = import("../output/bundle");
 
 if (process.env.NODE_ENV === "development" && module.hot) {
-  module.hot.accept(location.reload);
+  module.hot.accept(() => location.reload(true));
 }
 
 Main.then(({ main }) => {

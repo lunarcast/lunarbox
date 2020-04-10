@@ -135,7 +135,7 @@ printExpressionAt location =
 
 -- Prints an expression and stops when changing locations
 sumarizeExpression :: forall l. Show l => Eq l => Expression l -> String
-sumarizeExpression expression = printExpressionAt (getLocation expression) expression
+sumarizeExpression = printRawExpression $ const "..."
 
 -- Prints an expression without it's location. 
 -- Uses a custom function to print the recursive Expressions.
@@ -151,7 +151,8 @@ printRawExpression print = case _ of
   If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
   Native _ (NativeExpression t _) -> "native :: " <> show t
-  Chain l (e : es) -> "{" <> show e <> "," <> (show $ Chain l es) <> "}"
+  Chain l (e : Nil) -> printRawExpression print e
+  Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
   Chain _ Nil -> ""
 
 -- Wrap an expression in another expression with a custom location

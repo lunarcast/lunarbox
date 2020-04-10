@@ -4,7 +4,6 @@ module Lunarbox.Data.Dataflow.Type
   , typeNumber
   , typeBool
   , numberOfInputs
-  , typeNull
   ) where
 
 import Prelude
@@ -29,9 +28,6 @@ typeNumber = TConstant "Number"
 
 typeBool :: Type
 typeBool = TConstant "Bool"
-
-typeNull :: Type
-typeNull = TConstant "Null"
 
 -- Internal version of numberOfInputs which also takes an argument for the accumulated count
 numberOfInputs' :: Int -> Type -> Int
