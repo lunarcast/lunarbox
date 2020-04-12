@@ -15,7 +15,6 @@ newtype NativeConfig f
   { functionData :: f
   , expression :: NativeExpression
   , name :: FunctionName
-  , inputs :: Int
   }
 
 loadNativeConfig :: forall f n. NativeConfig f -> Project f n -> Project f n

@@ -16,10 +16,10 @@ import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..), fst)
 import Lunarbox.Data.Duplet (Duplet(..))
 import Lunarbox.Data.List (chunk)
-import Math (tau)
+import Math (Radians, tau)
 
 data Arc a
-  = Arc Number Number a
+  = Arc Radians Radians a
 
 derive instance eqArc :: Eq a => Eq (Arc a)
 

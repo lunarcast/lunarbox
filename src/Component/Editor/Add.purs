@@ -25,7 +25,7 @@ import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Editor.Constants (nodeRadius)
+import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -98,7 +98,7 @@ component =
       [ SE.svg
           [ SA.width 75.0
           , SA.height 75.0
-          , SA.viewBox (-nodeRadius) (-nodeRadius) (nodeRadius * 2.0) (nodeRadius * 2.0)
+          , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
           ]
           [ slot
               (SProxy :: _ "node")

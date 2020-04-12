@@ -105,5 +105,5 @@ infer expression =
       Literal _ LNull -> fresh
       Literal _ (LInt _) -> pure typeNumber
       Literal _ (LBool _) -> pure typeBool
-      Native _ (NativeExpression t _) -> pure t
+      Native _ (NativeExpression scheme _) -> instantiate scheme
     rememberType type'

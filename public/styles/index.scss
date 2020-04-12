@@ -17,7 +17,7 @@
 
 // Prevent default select behavior on images and icons
 img,
-.material-icons {
+.material-icons, .unselectable {
   user-select: none;
 }
 

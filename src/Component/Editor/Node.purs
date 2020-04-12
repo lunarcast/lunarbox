@@ -8,9 +8,12 @@ module Lunarbox.Component.Editor.Node
 
 import Prelude
 import Data.Array (catMaybes, mapWithIndex)
+import Data.Array (toUnfoldable) as Array
 import Data.Int (toNumber)
 import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
+import Data.List (List(..))
+import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
@@ -20,13 +23,14 @@ import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, mod
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.Editor.Constants (nodeRadius)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), fillWith)
+import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Vector (Vec2)
-import Lunarbox.Svg.Attributes (strokeWidth)
-import Svg.Attributes (TextAnchor(..))
+import Lunarbox.Svg.Attributes (arc, strokeWidth, transparent)
+import Svg.Attributes (D(..), TextAnchor(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -86,6 +90,15 @@ output true =
     , SA.fill $ Just $ SA.RGB 118 255 0
     ]
 
+displayArc :: forall r. Number -> Arc String -> HTML r Action
+displayArc radius (Arc start end _) =
+  SE.path
+    [ SA.d $ Abs <$> arc radius (start + arcSpacing) (end - arcSpacing)
+    , SA.fill $ Just transparent
+    , SA.stroke $ Just $ SA.RGB 63 196 255
+    , strokeWidth arcWidth
+    ]
+
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
   mkComponent
@@ -127,7 +140,7 @@ component =
 
   overlays :: Array (Maybe (HTML _ Action)) -> HTML _ Action
   overlays =
-    SE.g []
+    SE.g [ SA.class_ "unselectable" ]
       <<< mapWithIndex
           ( \index elem ->
               SE.g
@@ -148,22 +161,23 @@ component =
 
   render { selectable
   , nodeData: NodeData { position, selected }
+  , functionData
   , labels
   , hasOutput
   } =
-    SE.g
-      [ SA.transform
-          [ SA.Translate (position !! d0) (position !! d1) ]
-      , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
-      ]
-      [ SE.circle
-          [ SA.r nodeRadius
-          , SA.fill $ Just $ SA.RGBA 0 0 0 0.0
-          , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
-          , strokeWidth 5.0
-          ]
-      , overlays
-          $ (label <$> _)
-          <$> labels
-      , output hasOutput
-      ]
+    let
+      inputs = Array.toUnfoldable $ _.name <$> view _FunctionDataInputs functionData
+
+      inputArcs = fillWith inputs Nil
+    in
+      SE.g
+        [ SA.transform
+            [ SA.Translate (position !! d0) (position !! d1) ]
+        , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
+        ]
+        [ overlays
+            $ (label <$> _)
+            <$> labels
+        , output hasOutput
+        , SE.g [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ] ] $ displayArc nodeRadius <$> (List.toUnfoldable inputArcs)
+        ]

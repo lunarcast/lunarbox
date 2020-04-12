@@ -3,6 +3,7 @@ module Lunarbox.Data.Editor.FunctionData
   , getFunctionData
   , internal
   , _FunctionDataExternal
+  , _FunctionDataInputs
   ) where
 
 import Prelude

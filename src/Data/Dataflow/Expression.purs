@@ -21,7 +21,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Dataflow.Scheme (Scheme)
 
 newtype VarName
   = VarName String
@@ -48,7 +48,7 @@ instance showLiteral :: Show Literal where
   show LNull = "null"
 
 data NativeExpression
-  = NativeExpression Type RuntimeValue
+  = NativeExpression Scheme RuntimeValue
 
 derive instance eqNativeExpression :: Eq NativeExpression
 

@@ -13,6 +13,7 @@ import Data.Maybe (Maybe(..))
 data RuntimeValue
   = Number Number
   | String String
+  | Bool Boolean
   | Null
   | Function (RuntimeValue -> RuntimeValue)
 
