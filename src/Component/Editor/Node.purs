@@ -20,7 +20,8 @@ import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, mod
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
+import Lunarbox.Data.Editor.Constants (nodeRadius)
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Vector (Vec2)
@@ -35,6 +36,7 @@ type State
     , selectable :: Boolean
     , functionData :: FunctionData
     , labels :: Array (Maybe String)
+    , hasOutput :: Boolean
     }
 
 -- Lenses
@@ -74,6 +76,15 @@ data Output
 
 type Input
   = State
+
+output :: forall r. Boolean -> HTML r Action
+output false = HH.text ""
+
+output true =
+  SE.circle
+    [ SA.r 10.0
+    , SA.fill $ Just $ SA.RGB 118 255 0
+    ]
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
 component =
@@ -121,25 +132,24 @@ component =
           ( \index elem ->
               SE.g
                 [ SA.transform
-                    [ SA.Translate 0.0 $ toNumber $ (index + 1) * -20
+                    [ SA.Translate 0.0 $ -nodeRadius + (toNumber $ (index + 1) * -20)
                     ]
                 ]
                 [ elem ]
           )
       <<< catMaybes
 
-  label scale text =
+  label text =
     SE.text
       [ SA.text_anchor AnchorMiddle
-      , SA.x $ toNumber $ scale !! d0 / 2
       , SA.fill $ Just $ SA.RGB 63 196 255
       ]
       [ HH.text text ]
 
   render { selectable
-  , functionData: FunctionData { image, scale }
   , nodeData: NodeData { position, selected }
   , labels
+  , hasOutput
   } =
     SE.g
       [ SA.transform
@@ -147,14 +157,13 @@ component =
       , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
       ]
       [ SE.circle
-          [ SA.r $ toNumber $ scale !! d0 / 2 - 5
-          , SA.cx $ toNumber $ scale !! d0 / 2
-          , SA.cy $ toNumber $ scale !! d0 / 2
+          [ SA.r nodeRadius
           , SA.fill $ Just $ SA.RGBA 0 0 0 0.0
           , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
           , strokeWidth 5.0
           ]
       , overlays
-          $ (label scale <$> _)
+          $ (label <$> _)
           <$> labels
+      , output hasOutput
       ]

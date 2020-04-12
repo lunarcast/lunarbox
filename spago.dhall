@@ -16,6 +16,7 @@ You can edit this file as you like.
   , "halogen-svg"
   , "halogen-vdom"
   , "lists"
+  , "math"
   , "maybe"
   , "ordered-collections"
   , "profunctor-lenses"

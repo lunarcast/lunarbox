@@ -9,9 +9,10 @@ import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
 import Data.Array (foldr, sortBy)
+import Data.Default (def)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
-import Data.Lens (Lens', Traversal', _1, _2, set, view)
+import Data.Lens (Lens', Traversal', _1, _2, is, preview, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
@@ -26,21 +27,19 @@ import Data.Unfoldable (class Unfoldable)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, raise, request, tell)
-import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
+import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..))
+import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
@@ -192,7 +191,7 @@ component =
       handleAction SyncNodeGroup
       nodeGraph <- gets $ view _StateNodes
       let
-        y = 1 + (view _NodeDataZPosition $ foldr max mempty $ snd <$> G.vertices nodeGraph)
+        y = 1 + (view _NodeDataZPosition $ foldr max def $ snd <$> G.vertices nodeGraph)
       void $ query (SProxy :: _ "node") id $ tell $ NodeC.SetZPosition y
       -- here we resync the new z position
       modify_ $ set (_nodeZPosition id) y
@@ -207,34 +206,6 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  createNodeComponent ::
-    Array (Maybe String) ->
-    Project FunctionData NodeData ->
-    Tuple NodeId (Tuple Node NodeData) ->
-    HTML _ Action
-  createNodeComponent labels project (Tuple id (Tuple node nodeData)) =
-    let
-      getData name' = view (_projectFunctionData name') project
-
-      name = case node of
-        ComplexNode { function } -> function
-        InputNode -> FunctionName "input"
-        OutputNode _ -> FunctionName "output"
-    in
-      getFunctionData getData node
-        # \functionData ->
-            HH.slot
-              (SProxy :: _ "node")
-              id
-              NodeC.component
-              { node
-              , nodeData
-              , selectable: true
-              , functionData
-              , labels: [ Just $ show name ] <> labels
-              }
-              $ handleNodeOutput id
-
   render { project, expression, typeMap, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
     SE.svg
       [ SA.width 100000.0
@@ -243,20 +214,43 @@ component =
       , onMouseDown $ \e -> Just $ MouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const $ Just MouseUp
       ]
-      $ ( \node@(Tuple id _) ->
-            let
-              location = DeepLocation currentFunctionName $ Location id
-
-              type' = Map.lookup location typeMap
-
-              expression' = Expression.lookup location expression
-            in
-              createNodeComponent [ show <$> type', sumarizeExpression <$> expression' ] project node
-        )
+      $ createNodeComponent
       <$> sortedNodes
     where
     nodeLocation :: NodeId -> Location
     nodeLocation = DeepLocation currentFunctionName <<< Location
+
+    createNodeComponent (Tuple id (Tuple node nodeData)) =
+      let
+        getData name' = fromMaybe def $ preview (_projectFunctionData name') project
+
+        location = DeepLocation currentFunctionName $ Location id
+
+        type' = Map.lookup location typeMap
+
+        expression' = Expression.lookup location expression
+
+        labels = [ show <$> type', sumarizeExpression <$> expression' ]
+
+        name = case node of
+          ComplexNode { function } -> function
+          InputNode -> FunctionName "input"
+          OutputNode _ -> FunctionName "output"
+      in
+        getFunctionData getData node
+          # \functionData ->
+              HH.slot
+                (SProxy :: _ "node")
+                id
+                NodeC.component
+                { node
+                , nodeData
+                , selectable: true
+                , functionData
+                , labels: [ Just $ show name ] <> labels
+                , hasOutput: not $ is _OutputNode node
+                }
+                $ handleNodeOutput id
 
     sortedNodes =
       sortBy (\(Tuple _ (Tuple _ v)) (Tuple _ (Tuple _ v')) -> compare v v')

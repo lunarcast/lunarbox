@@ -5,6 +5,7 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Array as Array
+import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Foldable (for_, sequence_, traverse_)
 import Data.Lens (Lens', Traversal', over, preview, set, view)
@@ -196,7 +197,7 @@ component =
               modify_
                 $ set (_stateAtProjectNode currentFunction id)
                 $ Just
-                $ Tuple node mempty
+                $ Tuple node def
       handleAction Compile
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
@@ -209,7 +210,7 @@ component =
       void $ query (SProxy :: _ "scene") unit $ tell Scene.BeforeFunctionChanging
     CreateFunction name -> do
       id <- createId
-      modify_ $ over _project $ createFunction mempty mempty name id
+      modify_ $ over _project $ createFunction def def name id
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SelectFunction name -> do

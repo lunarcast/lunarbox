@@ -77,8 +77,8 @@ _ComplexNodeInputs = _ComplexNode <<< prop (SProxy :: _ "inputs")
 _ComplexNodeFunction :: Traversal' Node FunctionName
 _ComplexNodeFunction = _ComplexNode <<< prop (SProxy :: _ "function")
 
-_OutputNode :: Prism' Node NodeId
+_OutputNode :: Prism' Node (Maybe NodeId)
 _OutputNode =
-  prism' (OutputNode <<< Just) case _ of
-    OutputNode v -> v
+  prism' OutputNode case _ of
+    OutputNode v -> Just v
     _ -> Nothing

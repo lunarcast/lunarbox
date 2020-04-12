@@ -14,6 +14,7 @@ module Lunarbox.Data.Editor.Project
   ) where
 
 import Prelude
+import Data.Default (class Default, def)
 import Data.Lens (Lens', Traversal', _1, _2, over, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
@@ -62,14 +63,14 @@ createEmptyFunction data' id =
         , output: id
         }
 
-emptyProject :: forall f n. Monoid f => Monoid n => NodeId -> Project f n
+emptyProject :: forall f n. Default f => Default n => NodeId -> Project f n
 emptyProject id =
   Project
     { main: FunctionName "main"
-    , functions: G.singleton (FunctionName "main") $ Tuple function mempty
+    , functions: G.singleton (FunctionName "main") $ Tuple function def
     }
   where
-  function = createEmptyFunction mempty id
+  function = createEmptyFunction def id
 
 createFunction :: forall f n. f -> n -> FunctionName -> NodeId -> Project f n -> Project f n
 createFunction functionData nodeData name outputId =

@@ -9,14 +9,12 @@ module Lunarbox.Component.Editor.Add
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.MonadZero (guard)
-import Data.Int (toNumber)
-import Data.Lens (Lens', view)
+import Data.Default (def)
+import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
-import Data.Typelevel.Num (d0, d1)
-import Data.Vec ((!!))
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, put, raise)
 import Halogen.HTML (slot)
@@ -27,7 +25,8 @@ import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataScale)
+import Lunarbox.Data.Editor.Constants (nodeRadius)
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
@@ -68,10 +67,11 @@ type Input
 nodeInput :: FunctionName -> FunctionData -> NodeC.Input
 nodeInput name functionData =
   { selectable: false
-  , nodeData: mempty
+  , nodeData: def
   , node: ComplexNode { inputs: mempty, function: name }
   , functionData
   , labels: mempty
+  , hasOutput: false
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
@@ -94,45 +94,40 @@ component =
     SetState state -> put state
 
   makeNode (Tuple { functionData, name } { isUsable, isEditable }) =
-    let
-      scale = view _FunctionDataScale functionData
-
-      side = toNumber $ max (scale !! d0) (scale !! d1)
-    in
-      HH.div [ className "node" ]
-        [ SE.svg
-            [ SA.width 75.0
-            , SA.height 75.0
-            , SA.viewBox 0.0 0.0 side side
-            ]
-            [ slot
-                (SProxy :: _ "node")
-                name
-                NodeC.component
-                (nodeInput name functionData)
-                $ const Nothing
-            ]
-        , container "node-data"
-            [ container "node-text"
-                [ container "node-name"
-                    [ HH.text $ show name
-                    ]
-                ]
-            , container "node-buttons"
-                [ HH.div
-                    [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
-                    , onClick $ const $ guard isUsable $> AddNode name
-                    ]
-                    [ icon "add" ]
-                , HH.div
-                    [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
-                    , onClick $ const $ guard isEditable $> SelectFunction name
-                    ]
-                    [ icon "edit"
-                    ]
-                ]
-            ]
-        ]
+    HH.div [ className "node" ]
+      [ SE.svg
+          [ SA.width 75.0
+          , SA.height 75.0
+          , SA.viewBox (-nodeRadius) (-nodeRadius) (nodeRadius * 2.0) (nodeRadius * 2.0)
+          ]
+          [ slot
+              (SProxy :: _ "node")
+              name
+              NodeC.component
+              (nodeInput name functionData)
+              $ const Nothing
+          ]
+      , container "node-data"
+          [ container "node-text"
+              [ container "node-name"
+                  [ HH.text $ show name
+                  ]
+              ]
+          , container "node-buttons"
+              [ HH.div
+                  [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
+                  , onClick $ const $ guard isUsable $> AddNode name
+                  ]
+                  [ icon "add" ]
+              , HH.div
+                  [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
+                  , onClick $ const $ guard isEditable $> SelectFunction name
+                  ]
+                  [ icon "edit"
+                  ]
+              ]
+          ]
+      ]
 
   render { project, currentFunction } =
     container "nodes"
