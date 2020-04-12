@@ -1,6 +1,7 @@
 module Lunarbox.Svg.Attributes
   ( strokeWidth
   , arc
+  , chord
   , transparent
   ) where
 
@@ -38,6 +39,16 @@ arc radius startAngle endAngle =
     largeArcFlag = not $ arcLength startAngle endAngle >= pi
   in
     [ M (start !! d0) $ start !! d1, A radius radius 0.0 largeArcFlag true (end !! d0) (end !! d1) ]
+
+-- Like an arc but goes directly to the target
+chord :: Number -> Radians -> Radians -> Array Command
+chord radius startAngle endAngle =
+  let
+    start = polarToCartesian radius endAngle
+
+    end = polarToCartesian radius startAngle
+  in
+    [ M (start !! d0) $ start !! d1, L (end !! d0) (end !! d1) ]
 
 -- Transparent color
 transparent :: Color
