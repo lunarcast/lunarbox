@@ -7,7 +7,6 @@ module Lunarbox.Component.Editor.Node
   ) where
 
 import Prelude
-
 import Data.Array (catMaybes, mapWithIndex)
 import Data.Array (toUnfoldable) as Array
 import Data.Int (toNumber)
@@ -31,6 +30,7 @@ import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeDashArray, strokeLinecap, strokeWidth, transparent)
+import Math (pi)
 import Svg.Attributes (D(..), TextAnchor(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -98,9 +98,7 @@ displayArc spacing radius (Arc start end _) =
     , SA.fill $ Just transparent
     , SA.stroke $ Just $ SA.RGB 63 196 255
     , strokeWidth arcWidth
-    ,    
-    
-    strokeLinecap Round
+    , strokeLinecap Round
     ]
 
 constant :: forall r. HTML r Action
@@ -109,9 +107,9 @@ constant =
     [ SA.r nodeRadius
     , SA.fill $ Just transparent
     , SA.stroke $ Just $ SA.RGB 176 112 107
-    , strokeWidth arcWidth,
-    strokeLinecap Round
-    , strokeDashArray [ 5.0 ]
+    , strokeWidth arcWidth
+    , strokeLinecap Butt
+    , strokeDashArray [ pi * nodeRadius / 20.0 ]
     ]
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
