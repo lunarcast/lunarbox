@@ -9,6 +9,8 @@ module Lunarbox.Data.Dataflow.Expression
   , locations
   , lookup
   , printExpressionAt
+  , printRawExpression
+  , printSource
   , sumarizeExpression
   , inputs
   , wrap
@@ -154,6 +156,10 @@ printRawExpression print = case _ of
   Chain l (e : Nil) -> printRawExpression print e
   Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
   Chain _ Nil -> ""
+
+-- Print an expression without the locations
+printSource :: forall l. Show l => Expression l -> String
+printSource = printRawExpression (\e -> printSource e)
 
 -- Wrap an expression in another expression with a custom location
 wrap :: forall l. l -> Expression l -> Expression l

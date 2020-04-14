@@ -30,9 +30,9 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
-import Lunarbox.Control.Monad.Effect (print, printString)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression (Expression, printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
@@ -168,7 +168,7 @@ component =
             Right map -> map
             Left _ -> mempty
         printString $ printTypeMap typeMap
-        print expression'
+        printString $ printSource expression'
         -- TODO: make it so this accounts for errors
         modify_ $ Record.merge { expression: expression', typeMap }
     UpdateNodeGroup group -> do

@@ -2,6 +2,7 @@ module Lunarbox.Data.Editor.FunctionData
   ( FunctionData(..)
   , getFunctionData
   , internal
+  , outputData
   , _FunctionDataExternal
   , _FunctionDataInputs
   ) where
@@ -34,11 +35,15 @@ instance defaultFunctionData :: Default FunctionData where
       }
 
 -- Helpers
+-- Function data for output nodes
+outputData :: FunctionData
+outputData = internal [ { name: "return value" } ]
+
 getFunctionData :: (FunctionName -> FunctionData) -> Node -> FunctionData
 getFunctionData getter = case _ of
   ComplexNode { function } -> getter function
   -- TODO: find a good way to handle this
-  OutputNode _ -> def
+  OutputNode _ -> outputData
   InputNode -> def
 
 -- Create data for an internal function

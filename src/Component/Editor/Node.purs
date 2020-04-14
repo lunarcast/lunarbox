@@ -7,6 +7,7 @@ module Lunarbox.Component.Editor.Node
   ) where
 
 import Prelude
+
 import Data.Array (catMaybes, mapWithIndex)
 import Data.Array (toUnfoldable) as Array
 import Data.Int (toNumber)
@@ -29,7 +30,7 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Vector (Vec2)
-import Lunarbox.Svg.Attributes (arc, strokeWidth, transparent)
+import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeDashArray, strokeLinecap, strokeWidth, transparent)
 import Svg.Attributes (D(..), TextAnchor(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -90,13 +91,27 @@ output true =
     , SA.fill $ Just $ SA.RGB 118 255 0
     ]
 
-displayArc :: forall r. Number -> Arc String -> HTML r Action
-displayArc radius (Arc start end _) =
+displayArc :: forall r. Number -> Number -> Arc String -> HTML r Action
+displayArc spacing radius (Arc start end _) =
   SE.path
-    [ SA.d $ Abs <$> arc radius (start + arcSpacing) (end - arcSpacing)
+    [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
     , SA.fill $ Just transparent
     , SA.stroke $ Just $ SA.RGB 63 196 255
     , strokeWidth arcWidth
+    ,    
+    
+    strokeLinecap Round
+    ]
+
+constant :: forall r. HTML r Action
+constant =
+  SE.circle
+    [ SA.r nodeRadius
+    , SA.fill $ Just transparent
+    , SA.stroke $ Just $ SA.RGB 176 112 107
+    , strokeWidth arcWidth,
+    strokeLinecap Round
+    , strokeDashArray [ 5.0 ]
     ]
 
 component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
@@ -179,5 +194,12 @@ component =
             $ (label <$> _)
             <$> labels
         , output hasOutput
-        , SE.g [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ] ] $ displayArc nodeRadius <$> (List.toUnfoldable inputArcs)
+        , if List.null inputArcs then
+            constant
+          else
+            SE.g
+              [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ]
+              ]
+              $ displayArc (if List.length inputArcs == 1 then 0.0 else arcSpacing) nodeRadius
+              <$> (List.toUnfoldable inputArcs)
         ]

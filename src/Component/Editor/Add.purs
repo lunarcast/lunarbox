@@ -123,8 +123,7 @@ component =
                   [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
                   , onClick $ const $ guard isEditable $> SelectFunction name
                   ]
-                  [ icon "edit"
-                  ]
+                  [ icon "edit" ]
               ]
           ]
       ]
