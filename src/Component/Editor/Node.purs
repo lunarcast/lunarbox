@@ -14,7 +14,7 @@ import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
 import Data.List (List(..))
 import Data.List as List
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
@@ -31,6 +31,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _Nod
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeDashArray, strokeLinecap, strokeWidth, transparent)
 import Math (pi)
+import Record as Record
 import Svg.Attributes (D(..), TextAnchor(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -42,6 +43,7 @@ type State
     , functionData :: FunctionData
     , labels :: Array (Maybe String)
     , hasOutput :: Boolean
+    , inputColors :: List SA.Color
     }
 
 -- Lenses
@@ -50,6 +52,9 @@ _nodeData = prop (SProxy :: SProxy "nodeData")
 
 _position :: Lens' State (Vec2 Number)
 _position = _nodeData <<< _NodeDataPosition
+
+_inputColors :: Lens' State (List SA.Color)
+_inputColors = prop (SProxy :: _ "inputColors")
 
 _zPosition :: Lens' State Int
 _zPosition = _nodeData <<< _NodeDataZPosition
@@ -91,12 +96,12 @@ output true =
     , SA.fill $ Just $ SA.RGB 118 255 0
     ]
 
-displayArc :: forall r. Number -> Number -> Arc String -> HTML r Action
-displayArc spacing radius (Arc start end _) =
+displayArc :: forall r. Number -> Number -> SA.Color -> Arc String -> HTML r Action
+displayArc spacing radius color (Arc start end _) =
   SE.path
     [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
     , SA.fill $ Just transparent
-    , SA.stroke $ Just $ SA.RGB 63 196 255
+    , SA.stroke $ Just color
     , strokeWidth arcWidth
     , strokeLinecap Round
     ]
@@ -131,8 +136,17 @@ component =
     SetSelection value -> do
       modify_ $ set _stateSelected value
       when (value == true) $ raise Selected
-    Receive { labels } -> do
-      modify_ $ set _labels labels
+    Receive { labels, inputColors } -> do
+      oldColors <- gets $ view _inputColors
+      modify_
+        $ Record.merge
+            { labels
+            , inputColors:
+                if List.null oldColors then
+                  inputColors
+                else
+                  oldColors
+            }
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
@@ -176,6 +190,7 @@ component =
   , nodeData: NodeData { position, selected }
   , functionData
   , labels
+  , inputColors
   , hasOutput
   } =
     let
@@ -198,6 +213,18 @@ component =
             SE.g
               [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ]
               ]
-              $ displayArc (if List.length inputArcs == 1 then 0.0 else arcSpacing) nodeRadius
-              <$> (List.toUnfoldable inputArcs)
+              $ mapWithIndex
+                  ( \index arc ->
+                      let
+                        color = fromMaybe transparent $ List.index inputColors index
+
+                        spacing = if List.length inputArcs == 1 then 0.0 else arcSpacing
+                      in
+                        displayArc
+                          spacing
+                          nodeRadius
+                          color
+                          arc
+                  )
+                  (List.toUnfoldable inputArcs)
         ]

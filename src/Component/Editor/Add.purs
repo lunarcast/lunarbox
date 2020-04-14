@@ -9,8 +9,9 @@ module Lunarbox.Component.Editor.Add
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.MonadZero (guard)
+import Data.Array as Array
 import Data.Default (def)
-import Data.Lens (Lens')
+import Data.Lens (Lens', view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
@@ -26,7 +27,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
@@ -72,6 +73,7 @@ nodeInput name functionData =
   , functionData
   , labels: mempty
   , hasOutput: false
+  , inputColors: Array.toUnfoldable $ SA.RGB 176 112 107 <$ view _FunctionDataInputs functionData
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m

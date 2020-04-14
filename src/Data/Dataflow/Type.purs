@@ -2,12 +2,14 @@ module Lunarbox.Data.Dataflow.Type
   ( TVarName(..)
   , Type(..)
   , typeNumber
+  , inputs
   , typeBool
   , typeString
   , numberOfInputs
   ) where
 
 import Prelude
+import Data.List (List(..), (:))
 import Data.Newtype (class Newtype, unwrap)
 
 newtype TVarName
@@ -46,6 +48,13 @@ numberOfInputs' count = case _ of
 -- Returns the number of inputs a function with this type would have
 numberOfInputs :: Type -> Int
 numberOfInputs = numberOfInputs' 0
+
+-- Get all the inputs of a type
+-- Eg: a -> b -> c will return [a, b]
+inputs :: Type -> List Type
+inputs (TArrow i t) = i : inputs t
+
+inputs _ = Nil
 
 derive instance typeEq :: Eq Type
 

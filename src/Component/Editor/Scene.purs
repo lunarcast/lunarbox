@@ -8,7 +8,8 @@ module Lunarbox.Component.Editor.Scene
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
-import Data.Array (foldr, sortBy)
+import Data.Array (foldr, mapWithIndex, sortBy)
+import Data.Array as Array
 import Data.Default (def)
 import Data.Foldable (for_, traverse_)
 import Data.Int (toNumber)
@@ -22,6 +23,7 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
+import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Unfoldable (class Unfoldable)
 import Data.Vec (vec2)
@@ -29,29 +31,32 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, raise, request, tell)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
+import Lunarbox.Capability.Editor.Type (typeToColor)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
-import Lunarbox.Data.Dataflow.Type (TVarName, Type)
+import Lunarbox.Data.Dataflow.Type (Type(..))
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
-import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation)
+import Lunarbox.Data.Editor.FunctionData (FunctionData(..), getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctionData)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
+import Lunarbox.Math.SeededRandom (seededInt)
 import Record as Record
-import Svg.Attributes (Color)
+import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
-import Web.UIEvent.MouseEvent as ME
 import Type.Row (type (+))
+import Web.UIEvent.MouseEvent as ME
 
 type Input
   = ( project :: Project FunctionData NodeData
@@ -63,7 +68,7 @@ type Input
 type NonInputState r
   = ( lastMousePosition :: Maybe (Vec2 Number)
     , nodes :: List NodeId
-    , typeColors :: Map.Map TVarName Color
+    , typeColors :: Map Location Color
     | r
     )
 
@@ -75,6 +80,12 @@ type State
 -- Lenses
 _lastMousePosition :: Lens' State (Maybe (Vec2 Number))
 _lastMousePosition = prop (SProxy :: SProxy "lastMousePosition")
+
+_typeMap :: forall r. Lens' { typeMap :: Map Location Type | r } (Map Location Type)
+_typeMap = prop (SProxy :: _ "typeMap")
+
+_typeColors :: Lens' State (Map Location Color)
+_typeColors = prop (SProxy :: _ "typeColors")
 
 _project :: Lens' State (Project FunctionData NodeData)
 _project = prop (SProxy :: _ "project")
@@ -108,6 +119,7 @@ data Action
   | NodeSelected NodeId
   | SyncNodeGroup
   | TriggerNodeGroupSaving
+  | GenerateColors
 
 data Query a
   = BeforeFunctionChanging a
@@ -129,6 +141,10 @@ initialState { project, function, expression, typeMap } =
   , typeColors: mempty
   }
 
+-- Get a shade of gray based on a cusom int generator
+greyShade :: (Int -> Int -> Int) -> Color
+greyShade generate = let c = generate 100 255 in RGB c c c
+
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query { | Input } Output m
 component =
   mkComponent
@@ -140,6 +156,7 @@ component =
               { handleAction = handleAction
               , handleQuery = handleQuery
               , receive = Just <<< Receive
+              , initialize = Just GenerateColors
               }
     }
   where
@@ -156,6 +173,21 @@ component =
   handleAction = case _ of
     Receive input -> do
       modify_ $ Record.merge input
+      handleAction GenerateColors
+    GenerateColors -> do
+      typeMap <- gets $ view _typeMap
+      name <- gets $ view _functionName
+      let
+        nodes = Map.filterKeys (\location -> preview _ExtendedLocation location == Just name) typeMap
+
+        colors =
+          Map.mapMaybeWithKey
+            ( \location -> case _ of
+                TVarariable variableName -> Just $ greyShade $ seededInt $ show variableName
+                _ -> Nothing
+            )
+            nodes
+      modify_ $ set _typeColors colors
     MouseMove newPosition ->
       whenDragging do
         maybeOldPosition <- gets $ view _lastMousePosition
@@ -213,7 +245,7 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
-  render { project, expression, typeMap, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
+  render { project, expression, typeMap, typeColors, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
     SE.svg
       [ SA.width 100000.0
       , SA.height 100000.0
@@ -231,13 +263,30 @@ component =
       let
         getData name' = fromMaybe def $ preview (_projectFunctionData name') project
 
-        location = DeepLocation currentFunctionName $ Location id
+        generateLocation = DeepLocation currentFunctionName
+
+        pinLocation = generateLocation <<< DeepLocation id <<< InputPin
+
+        location = generateLocation $ Location id
 
         type' = Map.lookup location typeMap
 
         expression' = Expression.lookup location expression
 
         labels = [ show <$> type', sumarizeExpression <$> expression' ]
+
+        inputColors (FunctionData { inputs }) = fromMaybe mempty $ sequence $ mapWithIndex toColor inputs
+          where
+          toColor index _ =
+            let
+              currentLocation = pinLocation index
+
+              type'' = Map.lookup currentLocation typeMap
+            in
+              type''
+                >>= case _ of
+                    TVarariable name' -> Map.lookup currentLocation typeColors
+                    type''' -> typeToColor type'''
 
         name = case node of
           ComplexNode { function } -> function
@@ -254,6 +303,7 @@ component =
                 , nodeData
                 , selectable: true
                 , functionData
+                , inputColors: Array.toUnfoldable $ inputColors functionData
                 , labels: [ Just $ show name ] <> labels
                 , hasOutput: not $ is _OutputNode node
                 }

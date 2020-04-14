@@ -1,4 +1,6 @@
-module Lunarbox.Capability.Editor.Type (typeToColor) where
+module Lunarbox.Capability.Editor.Type
+  ( typeToColor
+  ) where
 
 import Prelude
 import Data.Maybe (Maybe(..))
