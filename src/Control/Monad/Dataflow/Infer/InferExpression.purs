@@ -1,5 +1,5 @@
 module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression
-  ( infer
+  ( infer, instantiate
   ) where
 
 import Prelude

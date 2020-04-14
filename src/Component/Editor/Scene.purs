@@ -33,7 +33,7 @@ import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
-import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Dataflow.Type (TVarName, Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
@@ -47,9 +47,11 @@ import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _projectFunctio
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Record as Record
+import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
+import Type.Row (type (+))
 
 type Input
   = ( project :: Project FunctionData NodeData
@@ -58,12 +60,16 @@ type Input
     , expression :: Expression Location
     )
 
+type NonInputState r
+  = ( lastMousePosition :: Maybe (Vec2 Number)
+    , nodes :: List NodeId
+    , typeColors :: Map.Map TVarName Color
+    | r
+    )
+
 type State
   = { 
-    | ( lastMousePosition :: Maybe (Vec2 Number)
-    , nodes :: List NodeId
-    | Input
-    )
+    | NonInputState + Input
     }
 
 -- Lenses
@@ -120,6 +126,7 @@ initialState { project, function, expression, typeMap } =
   , expression
   , lastMousePosition: Nothing
   , nodes: Set.toUnfoldable <$> G.keys $ view (_2 <<< _NodeGroupNodes) function
+  , typeColors: mempty
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query { | Input } Output m

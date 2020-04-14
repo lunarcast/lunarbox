@@ -12,7 +12,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (const, flip, ($))
 
 typeIf :: Scheme
-typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn typeReturn
+typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn $ TArrow typeReturn typeReturn
   where
   return = TVarName "a"
 

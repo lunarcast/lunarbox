@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Type
   , Type(..)
   , typeNumber
   , typeBool
+  , typeString
   , numberOfInputs
   ) where
 
@@ -32,6 +33,9 @@ typeNumber = TConstant "Number"
 
 typeBool :: Type
 typeBool = TConstant "Bool"
+
+typeString :: Type
+typeString = TConstant "String"
 
 -- Internal version of numberOfInputs which also takes an argument for the accumulated count
 numberOfInputs' :: Int -> Type -> Int

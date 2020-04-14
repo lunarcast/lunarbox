@@ -165,7 +165,7 @@ component =
       when (expression /= expression') do
         let
           typeMap = case solveExpression expression' of
-            Right map -> map
+            Right map -> Map.delete Nowhere map
             Left _ -> mempty
         printString $ printTypeMap typeMap
         printString $ printSource expression'

@@ -28,6 +28,7 @@ You can edit this file as you like.
   , "spec"
   , "tuples"
   , "typelevel"
+  , "typelevel-prelude"
   , "unsafe-coerce"
   ]
 , packages = ./packages.dhall
