@@ -8,7 +8,7 @@ module Lunarbox.Component.Editor.Scene
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (get, gets, modify_)
-import Data.Array (foldr, mapWithIndex, sortBy)
+import Data.Array (foldr, sortBy)
 import Data.Array as Array
 import Data.Default (def)
 import Data.Foldable (for_, traverse_)
@@ -16,7 +16,8 @@ import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _1, _2, is, preview, set, view)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.List (List)
+import Data.List (List, (:))
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -245,6 +246,7 @@ component =
       handleAction TriggerNodeGroupSaving
       pure $ Just k
 
+  render :: State -> HH.HTML _ Action
   render { project, expression, typeMap, typeColors, function: Tuple currentFunctionName (NodeGroup { nodes }) } =
     SE.svg
       [ SA.width 100000.0
@@ -265,8 +267,6 @@ component =
 
         generateLocation = DeepLocation currentFunctionName
 
-        pinLocation = generateLocation <<< DeepLocation id <<< InputPin
-
         location = generateLocation $ Location id
 
         type' = Map.lookup location typeMap
@@ -275,18 +275,21 @@ component =
 
         labels = [ show <$> type', sumarizeExpression <$> expression' ]
 
-        inputColors (FunctionData { inputs }) = fromMaybe mempty $ sequence $ mapWithIndex toColor inputs
+        pinLocations inputs = OutputPin : inputPints
           where
-          toColor index _ =
-            let
-              currentLocation = pinLocation index
+          inputPints = List.mapWithIndex (\index _ -> InputPin index) $ Array.toUnfoldable inputs
 
-              type'' = Map.lookup currentLocation typeMap
-            in
-              type''
-                >>= case _ of
-                    TVarariable name' -> Map.lookup currentLocation typeColors
-                    type''' -> typeToColor type'''
+        inputColors :: FunctionData -> Map Pin Color
+        inputColors (FunctionData { inputs }) = Map.fromFoldable $ fromMaybe mempty $ sequence $ toColor <$> pinLocations inputs
+          where
+          toColor currentLocation =
+            Map.lookup fullLocation typeMap
+              >>= case _ of
+                  TVarariable name' -> Map.lookup fullLocation typeColors
+                  type''' -> typeToColor type'''
+              <#> Tuple currentLocation
+            where
+            fullLocation = generateLocation $ DeepLocation id currentLocation
 
         name = case node of
           ComplexNode { function } -> function
@@ -303,7 +306,7 @@ component =
                 , nodeData
                 , selectable: true
                 , functionData
-                , inputColors: Array.toUnfoldable $ inputColors functionData
+                , colorMap: inputColors functionData
                 , labels: [ Just $ show name ] <> labels
                 , hasOutput: not $ is _OutputNode node
                 }

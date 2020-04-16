@@ -13,6 +13,7 @@ import Data.Array as Array
 import Data.Default (def)
 import Data.Lens (Lens', view)
 import Data.Lens.Record (prop)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
@@ -32,6 +33,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (describe)
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -73,7 +75,9 @@ nodeInput name functionData =
   , functionData
   , labels: mempty
   , hasOutput: false
-  , inputColors: Array.toUnfoldable $ SA.RGB 176 112 107 <$ view _FunctionDataInputs functionData
+  , colorMap: Map.fromFoldable $ 
+      Array.mapWithIndex 
+     (\index _ -> Tuple (InputPin index) $ SA.RGB 176 112 107) $ view _FunctionDataInputs functionData
   }
 
 component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m

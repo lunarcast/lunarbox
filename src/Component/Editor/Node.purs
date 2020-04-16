@@ -8,12 +8,14 @@ module Lunarbox.Component.Editor.Node
 
 import Prelude
 import Data.Array (catMaybes, mapWithIndex)
-import Data.Array (toUnfoldable) as Array
+import Data.Array (findIndex, toUnfoldable) as Array
 import Data.Int (toNumber)
 import Data.Lens (Lens', over, set, view)
 import Data.Lens.Record (prop)
 import Data.List (List(..))
 import Data.List as List
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
@@ -28,6 +30,7 @@ import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeDashArray, strokeLinecap, strokeWidth, transparent)
 import Math (pi)
@@ -43,7 +46,7 @@ type State
     , functionData :: FunctionData
     , labels :: Array (Maybe String)
     , hasOutput :: Boolean
-    , inputColors :: List SA.Color
+    , colorMap :: Map Pin SA.Color
     }
 
 -- Lenses
@@ -53,8 +56,8 @@ _nodeData = prop (SProxy :: SProxy "nodeData")
 _position :: Lens' State (Vec2 Number)
 _position = _nodeData <<< _NodeDataPosition
 
-_inputColors :: Lens' State (List SA.Color)
-_inputColors = prop (SProxy :: _ "inputColors")
+_colorMap :: Lens' State (Map Pin SA.Color)
+_colorMap = prop (SProxy :: _ "colorMap")
 
 _zPosition :: Lens' State Int
 _zPosition = _nodeData <<< _NodeDataZPosition
@@ -86,6 +89,10 @@ data Output
 
 type Input
   = State
+
+-- Get a color from a color Map
+getColorFrom :: forall k. Ord k => Map k SA.Color -> k -> SA.Color
+getColorFrom colorMap key = fromMaybe transparent $ Map.lookup key colorMap
 
 output :: forall r. Boolean -> HTML r Action
 output false = HH.text ""
@@ -136,14 +143,14 @@ component =
     SetSelection value -> do
       modify_ $ set _stateSelected value
       when (value == true) $ raise Selected
-    Receive { labels, inputColors } -> do
-      oldColors <- gets $ view _inputColors
+    Receive { labels, colorMap } -> do
+      oldColors <- gets $ view _colorMap
       modify_
         $ Record.merge
             { labels
-            , inputColors:
-                if List.null oldColors then
-                  inputColors
+            , colorMap:
+                if Map.size oldColors == 0 then
+                  colorMap
                 else
                   oldColors
             }
@@ -186,11 +193,12 @@ component =
       ]
       [ HH.text text ]
 
+  render :: State -> HTML _ Action
   render { selectable
   , nodeData: NodeData { position, selected }
   , functionData
   , labels
-  , inputColors
+  , colorMap
   , hasOutput
   } =
     let
@@ -213,18 +221,19 @@ component =
             SE.g
               [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ]
               ]
-              $ mapWithIndex
-                  ( \index arc ->
-                      let
-                        color = fromMaybe transparent $ List.index inputColors index
+              $ ( \arc@(Arc _ _ name) ->
+                    let
+                      index = Array.findIndex (\input -> name == input.name) $ view _FunctionDataInputs functionData
 
-                        spacing = if List.length inputArcs == 1 then 0.0 else arcSpacing
-                      in
-                        displayArc
-                          spacing
-                          nodeRadius
-                          color
-                          arc
-                  )
-                  (List.toUnfoldable inputArcs)
+                      color = fromMaybe transparent $ (getColorFrom colorMap <<< InputPin) <$> index
+
+                      spacing = if List.length inputArcs == 1 then 0.0 else arcSpacing
+                    in
+                      displayArc
+                        spacing
+                        nodeRadius
+                        color
+                        arc
+                )
+              <$> List.toUnfoldable inputArcs
         ]
