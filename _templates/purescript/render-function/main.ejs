@@ -1,7 +1,9 @@
 ---
 to: src/Component/<%= name.replace(/\./g, "/") %>.purs
 ---
-module Lunarbox.Component.<%= name %> where
+module Lunarbox.Component.<%= name %>
+  ( <%= renderFunction %>
+  ) where
 
 import Prelude
 import Halogen.HTML as HH
