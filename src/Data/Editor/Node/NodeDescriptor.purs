@@ -1,6 +1,8 @@
 module Lunarbox.Data.Editor.Node.NodeDescriptor
   ( describe
   , onlyEditable
+  , FunctionGraphNode
+  , NodeDescriptor
   ) where
 
 import Prelude

@@ -1,140 +1,95 @@
 module Lunarbox.Component.Editor.Add
-  ( State
-  , Query(..)
-  , Input
-  , component
-  , Output(..)
+  ( add
   ) where
 
 import Prelude
-import Control.Monad.Reader (class MonadAsk)
 import Control.MonadZero (guard)
 import Data.Array as Array
 import Data.Default (def)
-import Data.Lens (Lens', view)
-import Data.Lens.Record (prop)
+import Data.Lens (view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
-import Effect.Class (class MonadEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, put, raise)
-import Halogen.HTML (slot)
+import Halogen (ClassName(..))
+import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
+import Lunarbox.Component.Editor.Node (node)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
-import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
-import Lunarbox.Data.Editor.Node.NodeDescriptor (describe)
+import Lunarbox.Data.Editor.Node.NodeDescriptor (FunctionGraphNode, NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type State
+type Input
   = { project :: Project FunctionData NodeData
     , currentFunction :: Maybe FunctionName
     }
 
-_currentFunction :: Lens' State (Maybe FunctionName)
-_currentFunction = prop (SProxy :: _ "currentFunction")
-
-_project :: Lens' State (Project FunctionData NodeData)
-_project = prop (SProxy :: _ "project")
-
-data Action
-  = SetState State
-  | AddNode FunctionName
-  | SelectFunction FunctionName
-
-data Query a
-  = Void
-
-data Output
-  = SelectedFunction FunctionName
-  | AddedNode FunctionName
-
-type ChildSlots
-  = ( node :: Slot NodeC.Query NodeC.Output FunctionName )
-
-type Input
-  = State
+type Actions a
+  = { edit :: FunctionName -> Maybe a
+    , addNode :: FunctionName -> Maybe a
+    , select :: Maybe a
+    }
 
 nodeInput :: FunctionName -> FunctionData -> NodeC.Input
 nodeInput name functionData =
-  { selectable: false
-  , nodeData: def
+  { nodeData: def
   , node: ComplexNode { inputs: mempty, function: name }
   , functionData
   , labels: mempty
   , hasOutput: false
-  , colorMap: Map.fromFoldable $ 
-      Array.mapWithIndex 
-     (\index _ -> Tuple (InputPin index) $ SA.RGB 176 112 107) $ view _FunctionDataInputs functionData
+  , colorMap:
+    Map.fromFoldable
+      $ Array.mapWithIndex
+          (\index _ -> Tuple (InputPin index) $ SA.RGB 176 112 107)
+      $ view _FunctionDataInputs functionData
   }
 
-component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
-component =
-  mkComponent
-    { initialState: identity
-    , render
-    , eval:
-        mkEval
-          $ defaultEval
-              { handleAction = handleAction
-              , receive = Just <<< SetState
-              }
-    }
-  where
-  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
-  handleAction = case _ of
-    SelectFunction name -> raise $ SelectedFunction name
-    AddNode functionName -> raise $ AddedNode functionName
-    SetState state -> put state
+makeNode :: forall h a. Tuple FunctionGraphNode NodeDescriptor -> Actions a -> HTML h a
+makeNode (Tuple { functionData, name } { isUsable, isEditable }) { edit, addNode, select } =
+  HH.div [ className "node" ]
+    [ SE.svg
+        [ SA.width 75.0
+        , SA.height 75.0
+        , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
+        ]
+        [ node
+            (nodeInput name functionData)
+            { select }
+        ]
+    , container "node-data"
+        [ container "node-text"
+            [ container "node-name"
+                [ HH.text $ show name
+                ]
+            ]
+        , container "node-buttons"
+            [ HH.div
+                [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
+                , onClick $ const if isUsable then addNode name else Nothing
+                ]
+                [ icon "add" ]
+            , HH.div
+                [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
+                , onClick $ const if isEditable then edit name else Nothing
+                ]
+                [ icon "edit" ]
+            ]
+        ]
+    ]
 
-  makeNode (Tuple { functionData, name } { isUsable, isEditable }) =
-    HH.div [ className "node" ]
-      [ SE.svg
-          [ SA.width 75.0
-          , SA.height 75.0
-          , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
-          ]
-          [ slot
-              (SProxy :: _ "node")
-              name
-              NodeC.component
-              (nodeInput name functionData)
-              $ const Nothing
-          ]
-      , container "node-data"
-          [ container "node-text"
-              [ container "node-name"
-                  [ HH.text $ show name
-                  ]
-              ]
-          , container "node-buttons"
-              [ HH.div
-                  [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
-                  , onClick $ const $ guard isUsable $> AddNode name
-                  ]
-                  [ icon "add" ]
-              , HH.div
-                  [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
-                  , onClick $ const $ guard isEditable $> SelectFunction name
-                  ]
-                  [ icon "edit" ]
-              ]
-          ]
-      ]
-
-  render { project, currentFunction } =
-    container "nodes"
-      $ makeNode
-      <$> describe currentFunction project
+add :: forall h a. Input -> Actions a -> HTML h a
+add { project, currentFunction } actions =
+  container "nodes"
+    $ (flip makeNode) actions
+    <$> describe currentFunction project

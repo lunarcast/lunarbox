@@ -1,5 +1,6 @@
 module Lunarbox.Component.Editor.Node
   ( node
+  , Input
   ) where
 
 import Prelude
