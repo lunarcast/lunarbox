@@ -4,19 +4,21 @@ module Lunarbox.Component.Editor.Scene
   ) where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Array (sortBy)
 import Data.Array as Array
+import Data.Default (def)
 import Data.Either (Either, either, note)
 import Data.Int (toNumber)
 import Data.Lens (is, preview, view)
-import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe, fromMaybe)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
+import Debug.Trace (trace)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (typeToColor)
@@ -25,10 +27,10 @@ import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Type (Type(..))
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
+import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, hasOutput)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -105,11 +107,12 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
   nodeExpression <- note (MissingExpression id) $ Expression.lookup location expression
   let
     name = getNodeName node
-  nodeFunctionData <- note (MissingFunctionData name) $ Map.lookup name functionData
-  let
+
+    nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
+
     inputPints = List.mapWithIndex (\index _ -> InputPin index) $ Array.toUnfoldable $ view _FunctionDataInputs nodeFunctionData
 
-    pinLocations = OutputPin : inputPints
+    pinLocations = (OutputPin <$ guard (hasOutput node)) <> inputPints
 
     toColor currentLocation = do
       let
@@ -120,6 +123,8 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
         other -> note (UnableToColor other fullLocation) $ typeToColor other
       pure $ Tuple currentLocation color
   colorMap <- Map.fromFoldable <$> (sequence $ toColor <$> pinLocations)
+  let
+    a = trace colorMap \_ -> "hi"
   pure
     $ NodeC.node
         { node
@@ -148,6 +153,8 @@ scene state@{ project
       $ Map.toUnfoldable nodeData
 
   nodeHtml = sequence $ (createNodeComponent state actions <$> sortedNodes :: Array (Either _ _))
+
+  a = trace sortedNodes \_ -> "hi"
 
   success =
     SE.svg

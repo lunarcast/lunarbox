@@ -5,8 +5,9 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
+import Data.Default (def)
 import Data.Either (Either(..))
-import Data.Foldable (for_, sequence_, traverse_)
+import Data.Foldable (for_, sequence_)
 import Data.Lens (Lens', Traversal', _Just, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Record (prop)
@@ -31,7 +32,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
-import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -39,7 +40,7 @@ import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
@@ -87,6 +88,9 @@ type State
 _nodeData :: Lens' State (Map (Tuple FunctionName NodeId) NodeData)
 _nodeData = prop (SProxy :: _ "nodeData")
 
+_atNodeData :: FunctionName -> NodeId -> Lens' State (Maybe NodeData)
+_atNodeData name id = _nodeData <<< at (Tuple name id)
+
 _project :: Lens' State Project
 _project = prop (SProxy :: _ "project")
 
@@ -118,7 +122,7 @@ _stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe Node)
 _stateAtProjectNode name id = _project <<< _atProjectNode name id
 
 _nodeIsSelected :: FunctionName -> NodeId -> Traversal' State Boolean
-_nodeIsSelected name id = _nodeData <<< at (Tuple name id) <<< _Just <<< _NodeDataSelected
+_nodeIsSelected name id = _atNodeData name id <<< _Just <<< _NodeDataSelected
 
 _StateAtProjectFunction :: FunctionName -> Traversal' State (Maybe DataflowFunction)
 _StateAtProjectFunction name = _project <<< _atProjectFunction name
@@ -137,7 +141,6 @@ data Action
   | CreateFunction FunctionName
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
-  | UpdateNodeGroup NodeGroup
   | StartFunctionCreation
   | Compile
   | SceneMouseUp
@@ -169,7 +172,7 @@ component =
         , typeMap: mempty
         , colorMap: mempty
         , functionData: mempty
-        , nodeData: mempty
+        , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
         , currentFunction: Nothing
         , lastMousePosition: Nothing
         , expression: nullExpr Nowhere
@@ -180,6 +183,7 @@ component =
       mkEval
         $ defaultEval
             { handleAction = handleAction
+            , initialize = Just Compile
             }
     }
   where
@@ -199,11 +203,6 @@ component =
         -- printString $ printSource expression'
         -- TODO: make it so this accounts for errors
         modify_ $ Record.merge { expression: expression', typeMap }
-    UpdateNodeGroup group -> do
-      (gets $ view _StateCurrentFunction)
-        >>= traverse_ \currentFunction ->
-            modify_
-              $ set (_stateProjectNodeGroup currentFunction) group
     CreateNode name -> do
       Tuple id setId <- createId
       typeMap <- gets $ view _typeMap
@@ -236,7 +235,10 @@ component =
                 createNode =
                   set (_stateAtProjectNode currentFunction id)
                     $ Just node
-              modify_ $ createNode <<< setId <<< createColors
+
+                setNodeData = set (_atNodeData currentFunction id) def
+              print "here"
+              modify_ $ createNode <<< setId <<< createColors <<< setNodeData
               handleAction Compile
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab

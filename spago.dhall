@@ -10,6 +10,7 @@ You can edit this file as you like.
   , "colehaus-graphs"
   , "console"
   , "data-default"
+  , "debug"
   , "effect"
   , "generics-rep"
   , "halogen"

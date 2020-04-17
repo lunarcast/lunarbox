@@ -2,6 +2,7 @@ module Lunarbox.Data.Editor.Node
   ( Node(..)
   , ComplexNodeData
   , compileNode
+  , hasOutput
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
@@ -9,7 +10,7 @@ module Lunarbox.Data.Editor.Node
 
 import Prelude
 import Data.Default (def)
-import Data.Lens (Prism', Traversal', prism')
+import Data.Lens (Prism', Traversal', is, prism')
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, mapWithIndex)
 import Data.Maybe (Maybe(..), maybe)
@@ -35,6 +36,10 @@ data Node
   | ComplexNode
     ComplexNodeData
   | OutputNode (Maybe NodeId)
+
+-- Check if a node has an output pin
+hasOutput :: Node -> Boolean
+hasOutput = not <<< is _OutputNode
 
 functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
 functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
