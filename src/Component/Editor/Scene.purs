@@ -18,7 +18,6 @@ import Data.Maybe (Maybe, fromMaybe)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
-import Debug.Trace (trace)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (typeToColor)
@@ -123,8 +122,6 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
         other -> note (UnableToColor other fullLocation) $ typeToColor other
       pure $ Tuple currentLocation color
   colorMap <- Map.fromFoldable <$> (sequence $ toColor <$> pinLocations)
-  let
-    a = trace colorMap \_ -> "hi"
   pure
     $ NodeC.node
         { node
@@ -153,8 +150,6 @@ scene state@{ project
       $ Map.toUnfoldable nodeData
 
   nodeHtml = sequence $ (createNodeComponent state actions <$> sortedNodes :: Array (Either _ _))
-
-  a = trace sortedNodes \_ -> "hi"
 
   success =
     SE.svg
