@@ -7,7 +7,7 @@ import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, internal)
+import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (($), (+))
 
@@ -19,7 +19,7 @@ addRuntimeValue (Number n) (Number n') = Number $ n + n'
 
 addRuntimeValue _ _ = Null
 
-add :: NativeConfig FunctionData
+add :: NativeConfig
 add =
   NativeConfig
     { name: FunctionName "add"

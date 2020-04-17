@@ -4,21 +4,22 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
-import Data.Array as Array
-import Data.Default (def)
+import Data.Array (foldr, (..))
 import Data.Either (Either(..))
 import Data.Foldable (for_, sequence_, traverse_)
-import Data.Lens (Lens', Traversal', over, preview, set, view)
+import Data.Lens (Lens', Traversal', _Just, over, preview, set, view)
+import Data.Lens.At (at)
 import Data.Lens.Record (prop)
+import Data.List.Lazy as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
-import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
@@ -41,14 +42,18 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction, emptyProject)
 import Lunarbox.Data.Graph as G
+import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
+import Lunarbox.Svg.Attributes (transparent)
 import Record as Record
+import Svg.Attributes (Color)
 
 data Tab
   = Settings
@@ -68,15 +73,31 @@ tabIcon = case _ of
 type State
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
-    , project :: Project FunctionData NodeData
+    , project :: Project
     , nextId :: Int
     , currentFunction :: Maybe FunctionName
     , typeMap :: Map Location Type
+    , colorMap :: Map Location Color
     , expression :: Expression Location
+    , lastMousePosition :: Maybe (Vec2 Number)
+    , nodeData :: Map (Tuple FunctionName NodeId) NodeData
+    , functionData :: Map FunctionName FunctionData
     }
 
-_project :: Lens' State (Project FunctionData NodeData)
+_nodeData :: Lens' State (Map (Tuple FunctionName NodeId) NodeData)
+_nodeData = prop (SProxy :: _ "nodeData")
+
+_project :: Lens' State Project
 _project = prop (SProxy :: _ "project")
+
+_colorMap :: Lens' State (Map Location Color)
+_colorMap = prop (SProxy :: _ "colorMap")
+
+_atColorMap :: Location -> Traversal' State (Maybe Color)
+_atColorMap location = _colorMap <<< at location
+
+_lastMousePosition :: Lens' State (Maybe (Vec2 Number))
+_lastMousePosition = prop (SProxy :: _ "lastMousePosition")
 
 _expression :: Lens' State (Expression Location)
 _expression = prop (SProxy :: _ "expression")
@@ -87,16 +108,19 @@ _typeMap = prop (SProxy :: _ "typeMap")
 _nextId :: Lens' State Int
 _nextId = prop (SProxy :: _ "nextId")
 
-_StateProjectFunctions :: Lens' State (G.Graph FunctionName (Tuple (DataflowFunction NodeData) FunctionData))
+_StateProjectFunctions :: Lens' State (G.Graph FunctionName DataflowFunction)
 _StateProjectFunctions = _project <<< _ProjectFunctions
 
-_stateProjectNodeGroup :: FunctionName -> Traversal' State (NodeGroup NodeData)
+_stateProjectNodeGroup :: FunctionName -> Traversal' State NodeGroup
 _stateProjectNodeGroup name = _project <<< _projectNodeGroup name
 
-_stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe (Tuple Node NodeData))
+_stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe Node)
 _stateAtProjectNode name id = _project <<< _atProjectNode name id
 
-_StateAtProjectFunction :: FunctionName -> Traversal' State (Maybe (Tuple (DataflowFunction NodeData) FunctionData))
+_nodeIsSelected :: FunctionName -> NodeId -> Traversal' State Boolean
+_nodeIsSelected name id = _nodeData <<< at (Tuple name id) <<< _Just <<< _NodeDataSelected
+
+_StateAtProjectFunction :: FunctionName -> Traversal' State (Maybe DataflowFunction)
 _StateAtProjectFunction name = _project <<< _atProjectFunction name
 
 _StateCurrentFunction :: Lens' State (Maybe FunctionName)
@@ -111,50 +135,54 @@ _currentTab = prop (SProxy :: _ "currentTab")
 data Action
   = ChangeTab Tab
   | CreateFunction FunctionName
-  | StartFunctionCreation
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
-  | UpdateNodeGroup (NodeGroup NodeData)
-  | SyncProjectData
+  | UpdateNodeGroup NodeGroup
+  | StartFunctionCreation
   | Compile
+  | SceneMouseUp
+  | SceneMouseDown (Vec2 Number)
+  | SceneMouseMove (Vec2 Number)
+  | SelectNode NodeId
 
 data Query a
   = Void
 
 type ChildSlots
-  = ( scene :: Slot Scene.Query Scene.Output Unit
-    , tree :: Slot TreeC.Query TreeC.Output Unit
-    , add :: Slot AddC.Query AddC.Output Unit
+  = ( tree :: Slot TreeC.Query TreeC.Output Unit
     )
+
+-- This is a helper monad which just generates an id
+createId :: forall m. HalogenM State Action ChildSlots Void m (Tuple NodeId (State -> State))
+createId = do
+  { nextId } <- get
+  pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
 component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState:
-        const
-          { currentTab: Settings
-          , panelIsOpen: false
-          , project: loadPrelude $ emptyProject $ NodeId "firstOutput"
-          , nextId: 0
-          , currentFunction: Nothing
-          , expression: nullExpr Nowhere
-          , typeMap: mempty
-          }
+      const
+        { currentTab: Settings
+        , nextId: 0
+        , panelIsOpen: false
+        , typeMap: mempty
+        , colorMap: mempty
+        , functionData: mempty
+        , nodeData: mempty
+        , currentFunction: Nothing
+        , lastMousePosition: Nothing
+        , expression: nullExpr Nowhere
+        , project: loadPrelude $ emptyProject $ NodeId "firstOutput"
+        }
     , render
     , eval:
-        mkEval
-          $ defaultEval
-              { handleAction = handleAction
-              }
+      mkEval
+        $ defaultEval
+            { handleAction = handleAction
+            }
     }
   where
-  -- This is a helper monad which just generates an id
-  createId :: HalogenM State Action ChildSlots Void m NodeId
-  createId = do
-    { nextId } <- get
-    modify_ $ over _nextId (_ + 1)
-    pure $ NodeId $ show nextId
-
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
     Compile -> do
@@ -177,14 +205,24 @@ component =
             modify_
               $ set (_stateProjectNodeGroup currentFunction) group
     CreateNode name -> do
-      handleAction SyncProjectData
-      id <- createId
+      Tuple id setId <- createId
       typeMap <- gets $ view _typeMap
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
       maybeNodeFunction <- gets $ preview $ _StateAtProjectFunction name
-      for_ (join maybeNodeFunction) \(Tuple function functionData) -> do
+      for_ (join maybeNodeFunction) \function -> do
         let
           inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+
+          inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
+
+          createColors :: State -> State
+          createColors =
+            foldr
+              ( \location f ->
+                  (set (_atColorMap location) $ Just transparent) <<< f
+              )
+              identity
+              inputs
 
           node :: Node
           node =
@@ -193,12 +231,13 @@ component =
               , function: name
               }
         for_ maybeCurrentFunction
-          $ \currentFunction ->
-              modify_
-                $ set (_stateAtProjectNode currentFunction id)
-                $ Just
-                $ Tuple node def
-      handleAction Compile
+          $ \currentFunction -> do
+              let
+                createNode =
+                  set (_stateAtProjectNode currentFunction id)
+                    $ Just node
+              modify_ $ createNode <<< setId <<< createColors
+              handleAction Compile
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_
@@ -206,11 +245,11 @@ component =
           over _panelIsOpen not
         else
           set _currentTab newTab
-    SyncProjectData -> do
-      void $ query (SProxy :: _ "scene") unit $ tell Scene.BeforeFunctionChanging
     CreateFunction name -> do
-      id <- createId
-      modify_ $ over _project $ createFunction def def name id
+      Tuple id setId <- createId
+      let
+        setFunction = over _project $ createFunction name id
+      modify_ $ setId <<< setFunction
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SelectFunction name -> do
@@ -221,27 +260,27 @@ component =
       when (name /= oldName)
         $ sequence_ do
             currentFunction <- name
-            Tuple function _ <-
+            function <-
               G.lookup currentFunction functions
             pure do
-              handleAction SyncProjectData
               handleAction Compile
               -- And finally, save the selected function in the state
               modify_ $ set _StateCurrentFunction name
+    SceneMouseDown position -> do
+      modify_ $ set _lastMousePosition $ Just position
+    SceneMouseMove _ -> do
+      pure unit
+    SceneMouseUp -> do
+      pure unit
+    SelectNode id -> do
+      maybeCurrentFunction <- gets $ view _StateCurrentFunction
+      for_ maybeCurrentFunction \currentFunction -> do
+        modify_ $ set (_nodeIsSelected currentFunction id) true
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
     TreeC.CreatedFunction name -> Just $ CreateFunction name
     TreeC.SelectedFunction name -> Just $ SelectFunction name
-
-  handleAddOutput :: AddC.Output -> Maybe Action
-  handleAddOutput = case _ of
-    AddC.SelectedFunction name -> Just $ SelectFunction $ Just name
-    AddC.AddedNode name -> Just $ CreateNode name
-
-  handleSceneOutput :: Scene.Output -> Maybe Action
-  handleSceneOutput = case _ of
-    Scene.SaveNodeGroup group -> Just $ UpdateNodeGroup group
 
   sidebarIcon activeTab current =
     HH.div
@@ -263,7 +302,8 @@ component =
     where
     icon = sidebarIcon currentTab
 
-  panel { currentTab, project, currentFunction } = case currentTab of
+  panel :: State -> HH.HTML _ Action
+  panel { currentTab, project, currentFunction, functionData } = case currentTab of
     Settings ->
       container "panel-container"
         [ container "title" [ HH.text "Project settings" ]
@@ -278,10 +318,9 @@ component =
                 ]
             , HH.slot (SProxy :: _ "tree") unit TreeC.component
                 { functions:
-                    (maybe mempty pure currentFunction)
-                      <> ( Array.toUnfoldable $ (\(Tuple { name } _) -> name)
-                            <$> onlyEditable currentFunction project
-                        )
+                  (maybe mempty pure currentFunction)
+                    <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
+                      )
                 , selected: currentFunction
                 }
                 handleTreeOutput
@@ -290,24 +329,52 @@ component =
     Add ->
       container "panel-container"
         [ container "title" [ HH.text "Add node" ]
-        , slot (SProxy :: _ "add") unit AddC.component { project, currentFunction } handleAddOutput
+        , AddC.add { project, currentFunction, functionData }
+            { edit: Just <<< SelectFunction <<< Just
+            , addNode: Just <<< CreateNode
+            }
         ]
     _ -> HH.text "not implemented"
 
-  scene { project, currentFunction: maybeCurrentFunction, expression, typeMap } =
+  scene :: forall h. State -> HH.HTML h Action
+  scene { project
+  , currentFunction: maybeCurrentFunction
+  , expression
+  , typeMap
+  , lastMousePosition
+  , functionData
+  , nodeData
+  , colorMap
+  } =
     fromMaybe
-      (emptyEditor unit) do
+      emptyEditor do
       currentFunction <- maybeCurrentFunction
       group <-
         preview (_projectNodeGroup currentFunction) project
       pure
-        $ HH.slot
-            (SProxy :: _ "scene")
-            unit
-            Scene.component
-            { project, function: Tuple currentFunction group, expression, typeMap }
-            handleSceneOutput
+        $ Scene.scene
+            { project
+            , functionName: currentFunction
+            , nodeGroup: group
+            , typeColors: colorMap
+            , expression
+            , typeMap
+            , lastMousePosition
+            , functionData
+            , nodeData:
+              Map.fromFoldable
+                $ (uncurry \(Tuple _ id) value -> Tuple id value)
+                <$> ( List.filter (uncurry \(Tuple name _) _ -> name == currentFunction)
+                      $ Map.toUnfoldable nodeData
+                  )
+            }
+            { mouseDown: Just <<< SceneMouseDown
+            , mouseMove: Just <<< SceneMouseMove
+            , mouseUp: Just SceneMouseUp
+            , selectNode: Just <<< SelectNode
+            }
 
+  render :: State -> HH.HTML _ Action
   render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"

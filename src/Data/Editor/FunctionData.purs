@@ -20,9 +20,9 @@ newtype FunctionData
   = FunctionData
   { external :: Boolean
   , inputs ::
-      Array
-        { name :: String
-        }
+    Array
+      { name :: String
+      }
   }
 
 derive instance newtypeFunctionData :: Newtype FunctionData _
@@ -55,9 +55,9 @@ _FunctionData ::
   Lens' FunctionData
     { external :: Boolean
     , inputs ::
-        Array
-          { name :: String
-          }
+      Array
+        { name :: String
+        }
     }
 _FunctionData = iso unwrap wrap
 

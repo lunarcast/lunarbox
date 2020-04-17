@@ -7,7 +7,7 @@ import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, internal)
+import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (const, flip, ($))
 
@@ -23,7 +23,7 @@ evalIf (Bool true) = binaryFunction const
 
 evalIf _ = binaryFunction $ flip const
 
-if' :: NativeConfig FunctionData
+if' :: NativeConfig
 if' =
   NativeConfig
     { name: FunctionName "if"

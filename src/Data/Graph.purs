@@ -1,4 +1,16 @@
-module Lunarbox.Data.Graph where
+module Lunarbox.Data.Graph
+  ( Graph(..)
+  , toMap
+  , singleton
+  , insert
+  , lookup
+  , delete
+  , keys
+  , vertices
+  , toUnfoldable
+  , topologicalSort
+  , _Graph
+  ) where
 
 import Prelude
 import Data.Bifunctor (lmap)
@@ -62,6 +74,9 @@ instance indexGraph :: Ord k => Index (Graph k v) k v where
 instance atGraph :: Ord k => At (Graph k v) k v where
   -- good thing at least I understand this one:)
   at k = lens (lookup k) \m -> maybe (delete k m) (\v -> insert k v m)
+
+toMap :: forall k v. Ord k => Graph k v -> Map.Map k v
+toMap = map fst <<< unwrap
 
 singleton :: forall k v. Ord k => k -> v -> Graph k v
 singleton k v = Graph $ Map.singleton k $ Tuple v Set.empty

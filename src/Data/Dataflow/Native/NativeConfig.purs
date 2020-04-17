@@ -4,25 +4,25 @@ import Prelude
 import Data.Foldable (class Foldable, foldr)
 import Data.Lens (set)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
+import Lunarbox.Data.Dataflow.Expression (NativeExpression)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Project (Project, _atProjectFunction)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
-import Lunarbox.Data.Dataflow.Expression (NativeExpression)
 
-newtype NativeConfig f
+newtype NativeConfig
   = NativeConfig
-  { functionData :: f
+  { functionData :: FunctionData
   , expression :: NativeExpression
   , name :: FunctionName
   }
 
-loadNativeConfig :: forall f n. NativeConfig f -> Project f n -> Project f n
+loadNativeConfig :: NativeConfig -> Project -> Project
 loadNativeConfig (NativeConfig { functionData, expression, name }) =
   set (_atProjectFunction name)
     $ Just
-    $ Tuple (NativeFunction expression) functionData
+    $ (NativeFunction expression)
 
 -- I'm pretty proud of this one lol
-loadNativeConfigs :: forall d n f. Foldable f => f (NativeConfig d) -> Project d n -> Project d n
+loadNativeConfigs :: forall f. Foldable f => f (NativeConfig) -> Project -> Project
 loadNativeConfigs = flip $ foldr loadNativeConfig

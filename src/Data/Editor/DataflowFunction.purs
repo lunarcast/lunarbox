@@ -14,16 +14,16 @@ import Lunarbox.Data.Editor.NodeGroup (NodeGroup, compileNodeGroup)
 -- A dataflow function can either be:
 -- 1) A native function
 -- 2) A graph of nodes
-data DataflowFunction a
+data DataflowFunction
   = NativeFunction NativeExpression
-  | VisualFunction (NodeGroup a)
+  | VisualFunction NodeGroup
 
-compileDataflowFunction :: forall a. DataflowFunction a -> Expression NodeOrPinLocation
+compileDataflowFunction :: DataflowFunction -> Expression NodeOrPinLocation
 compileDataflowFunction = case _ of
   NativeFunction f -> Native Nowhere f
   VisualFunction g -> compileNodeGroup g
 
-_VisualFunction :: forall a. Prism' (DataflowFunction a) (NodeGroup a)
+_VisualFunction :: Prism' DataflowFunction NodeGroup
 _VisualFunction =
   prism' VisualFunction case _ of
     VisualFunction f -> Just f
