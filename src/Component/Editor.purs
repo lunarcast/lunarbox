@@ -2,7 +2,7 @@ module Lunarbox.Component.Editor (component, State, Action(..), Query, Tab) wher
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
-import Control.Monad.State (get, gets, modify_)
+import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
@@ -19,6 +19,7 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
+import Debug.Trace (trace)
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
 import Halogen.HTML as HH
@@ -43,7 +44,7 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -204,23 +205,24 @@ component =
         -- TODO: make it so this accounts for errors
         modify_ $ Record.merge { expression: expression', typeMap }
     CreateNode name -> do
+      print "here:)"
       Tuple id setId <- createId
       typeMap <- gets $ view _typeMap
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
       maybeNodeFunction <- gets $ preview $ _StateAtProjectFunction name
       for_ (join maybeNodeFunction) \function -> do
+        state <- get
         let
           inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
 
           inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
 
-          createColors :: State -> State
-          createColors =
+          state' =
             foldr
-              ( \location f ->
-                  (set (_atColorMap location) $ Just transparent) <<< f
+              ( \location ->
+                  set (_atColorMap location) $ Just transparent
               )
-              identity
+              state
               inputs
 
           node :: Node
@@ -232,14 +234,12 @@ component =
         for_ maybeCurrentFunction
           $ \currentFunction -> do
               let
-                createNode =
-                  set (_stateAtProjectNode currentFunction id)
-                    $ Just node
+                state'' = set (_stateAtProjectNode currentFunction id) (Just node) state'
 
-                setNodeData = set (_atNodeData currentFunction id) def
-              print "here"
-              modify_ $ createNode <<< setId <<< createColors <<< setNodeData
+                state''' = set (_atNodeData currentFunction id) (Just def) state''
+              void $ put $ setId state'''
               handleAction Compile
+              trace (Map.lookup (Tuple currentFunction id) state'''.nodeData) \_ -> pure unit
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_
@@ -270,10 +270,24 @@ component =
               modify_ $ set _StateCurrentFunction name
     SceneMouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
-    SceneMouseMove _ -> do
-      pure unit
+    SceneMouseMove position -> do
+      state@{ lastMousePosition } <- get
+      let
+        state' = set _lastMousePosition (Just position) state
+      for_ lastMousePosition \oldPosition -> do
+        let
+          offset = position - oldPosition
+
+          updateState =
+            over _nodeData
+              $ map \node@(NodeData { selected }) ->
+                  if selected then
+                    over _NodeDataPosition (_ + offset) node
+                  else
+                    node
+        put $ updateState state'
     SceneMouseUp -> do
-      pure unit
+      modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
       maybeCurrentFunction <- gets $ view _StateCurrentFunction
       for_ maybeCurrentFunction \currentFunction -> do
