@@ -19,6 +19,8 @@ module Lunarbox.Data.Editor.State
   , _panelIsOpen
   , _currentFunction
   , _currentTab
+  , _functionData
+  , _atFunctionData
   ) where
 
 import Prelude
@@ -82,6 +84,12 @@ _nodeData = prop (SProxy :: _ "nodeData")
 
 _atNodeData :: FunctionName -> NodeId -> Lens' State (Maybe NodeData)
 _atNodeData name id = _nodeData <<< at (Tuple name id)
+
+_functionData :: Lens' State (Map FunctionName FunctionData)
+_functionData = prop (SProxy :: _ "functionData")
+
+_atFunctionData :: FunctionName -> Lens' State (Maybe FunctionData)
+_atFunctionData name = _functionData <<< at name
 
 _project :: Lens' State Project
 _project = prop (SProxy :: _ "project")

@@ -59,6 +59,7 @@ data Action
   | SceneMouseDown (Vec2 Number)
   | SceneMouseMove (Vec2 Number)
   | SelectNode NodeId
+  | LoadNodes
 
 data Query a
   = Void
@@ -88,19 +89,22 @@ component =
         , currentFunction: Nothing
         , lastMousePosition: Nothing
         , expression: nullExpr Nowhere
-        , project: loadPrelude $ emptyProject $ NodeId "firstOutput"
+        , project: emptyProject $ NodeId "firstOutput"
         }
     , render
     , eval:
       mkEval
         $ defaultEval
             { handleAction = handleAction
-            , initialize = Just Compile
+            , initialize = Just LoadNodes
             }
     }
   where
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
+    LoadNodes -> do
+      modify_ loadPrelude
+      handleAction Compile
     Compile -> do
       { project, expression } <- get
       let
