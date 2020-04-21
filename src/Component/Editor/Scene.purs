@@ -118,7 +118,7 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
         fullLocation = generateLocation $ DeepLocation id currentLocation
       pinType <- note (MissingType fullLocation) $ Map.lookup fullLocation typeMap
       color <- case pinType of
-        TVarariable name' -> note (MissingColor fullLocation) $ Map.lookup fullLocation typeColors
+        TVarariable name' -> pure $ RGB 70 70 70 -- note (MissingColor fullLocation) $ Map.lookup fullLocation typeColors
         other -> note (UnableToColor other fullLocation) $ typeToColor other
       pure $ Tuple currentLocation color
   colorMap <- Map.fromFoldable <$> (sequence $ toColor <$> pinLocations)
