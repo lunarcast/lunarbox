@@ -1,4 +1,4 @@
-module Lunarbox.Component.Editor (component, State, Action(..), Query, Tab) where
+module Lunarbox.Component.Editor (component, Action(..), Query) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
@@ -8,18 +8,14 @@ import Data.Array (foldr, (..))
 import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Foldable (for_, sequence_)
-import Data.Lens (Lens', Traversal', _Just, over, preview, set, view)
-import Data.Lens.At (at)
-import Data.Lens.Record (prop)
+import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
-import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
-import Debug.Trace (trace)
 import Effect.Class (class MonadEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
 import Halogen.HTML as HH
@@ -35,107 +31,22 @@ import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
 import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Dataflow.Type (numberOfInputs)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction, emptyProject)
+import Lunarbox.Data.Editor.Project (_projectNodeGroup, compileProject, createFunction, emptyProject)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _project, _typeMap, tabIcon)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Lunarbox.Svg.Attributes (transparent)
 import Record as Record
-import Svg.Attributes (Color)
-
-data Tab
-  = Settings
-  | Add
-  | Tree
-  | Problems
-
-derive instance eqTab :: Eq Tab
-
-tabIcon :: Tab -> String
-tabIcon = case _ of
-  Settings -> "settings"
-  Add -> "add"
-  Tree -> "account_tree"
-  Problems -> "error"
-
-type State
-  = { currentTab :: Tab
-    , panelIsOpen :: Boolean
-    , project :: Project
-    , nextId :: Int
-    , currentFunction :: Maybe FunctionName
-    , typeMap :: Map Location Type
-    , colorMap :: Map Location Color
-    , expression :: Expression Location
-    , lastMousePosition :: Maybe (Vec2 Number)
-    , nodeData :: Map (Tuple FunctionName NodeId) NodeData
-    , functionData :: Map FunctionName FunctionData
-    }
-
-_nodeData :: Lens' State (Map (Tuple FunctionName NodeId) NodeData)
-_nodeData = prop (SProxy :: _ "nodeData")
-
-_atNodeData :: FunctionName -> NodeId -> Lens' State (Maybe NodeData)
-_atNodeData name id = _nodeData <<< at (Tuple name id)
-
-_project :: Lens' State Project
-_project = prop (SProxy :: _ "project")
-
-_colorMap :: Lens' State (Map Location Color)
-_colorMap = prop (SProxy :: _ "colorMap")
-
-_atColorMap :: Location -> Traversal' State (Maybe Color)
-_atColorMap location = _colorMap <<< at location
-
-_lastMousePosition :: Lens' State (Maybe (Vec2 Number))
-_lastMousePosition = prop (SProxy :: _ "lastMousePosition")
-
-_expression :: Lens' State (Expression Location)
-_expression = prop (SProxy :: _ "expression")
-
-_typeMap :: Lens' State (Map Location Type)
-_typeMap = prop (SProxy :: _ "typeMap")
-
-_nextId :: Lens' State Int
-_nextId = prop (SProxy :: _ "nextId")
-
-_StateProjectFunctions :: Lens' State (G.Graph FunctionName DataflowFunction)
-_StateProjectFunctions = _project <<< _ProjectFunctions
-
-_stateProjectNodeGroup :: FunctionName -> Traversal' State NodeGroup
-_stateProjectNodeGroup name = _project <<< _projectNodeGroup name
-
-_stateAtProjectNode :: FunctionName -> NodeId -> Traversal' State (Maybe Node)
-_stateAtProjectNode name id = _project <<< _atProjectNode name id
-
-_nodeIsSelected :: FunctionName -> NodeId -> Traversal' State Boolean
-_nodeIsSelected name id = _atNodeData name id <<< _Just <<< _NodeDataSelected
-
-_StateAtProjectFunction :: FunctionName -> Traversal' State (Maybe DataflowFunction)
-_StateAtProjectFunction name = _project <<< _atProjectFunction name
-
-_StateCurrentFunction :: Lens' State (Maybe FunctionName)
-_StateCurrentFunction = prop (SProxy :: _ "currentFunction")
-
-_panelIsOpen :: Lens' State Boolean
-_panelIsOpen = prop (SProxy :: _ "panelIsOpen")
-
-_currentTab :: Lens' State Tab
-_currentTab = prop (SProxy :: _ "currentTab")
 
 data Action
   = ChangeTab Tab
@@ -208,8 +119,8 @@ component =
       print "here:)"
       Tuple id setId <- createId
       typeMap <- gets $ view _typeMap
-      maybeCurrentFunction <- gets $ view _StateCurrentFunction
-      maybeNodeFunction <- gets $ preview $ _StateAtProjectFunction name
+      maybeCurrentFunction <- gets $ view _currentFunction
+      maybeNodeFunction <- gets $ preview $ _function name
       for_ (join maybeNodeFunction) \function -> do
         state <- get
         let
@@ -234,12 +145,11 @@ component =
         for_ maybeCurrentFunction
           $ \currentFunction -> do
               let
-                state'' = set (_stateAtProjectNode currentFunction id) (Just node) state'
+                state'' = set (_atNode currentFunction id) (Just node) state'
 
                 state''' = set (_atNodeData currentFunction id) (Just def) state''
               void $ put $ setId state'''
               handleAction Compile
-              trace (Map.lookup (Tuple currentFunction id) state'''.nodeData) \_ -> pure unit
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_
@@ -256,8 +166,8 @@ component =
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SelectFunction name -> do
       -- we need the current function to lookup the function in the function graph
-      oldName <- gets $ view _StateCurrentFunction
-      functions <- gets $ view _StateProjectFunctions
+      oldName <- gets $ view _currentFunction
+      functions <- gets $ view _functions
       -- this is here to update the function the Scene component renders
       when (name /= oldName)
         $ sequence_ do
@@ -267,7 +177,7 @@ component =
             pure do
               handleAction Compile
               -- And finally, save the selected function in the state
-              modify_ $ set _StateCurrentFunction name
+              modify_ $ set _currentFunction name
     SceneMouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
     SceneMouseMove position -> do
@@ -289,9 +199,9 @@ component =
     SceneMouseUp -> do
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
-      maybeCurrentFunction <- gets $ view _StateCurrentFunction
+      maybeCurrentFunction <- gets $ view _currentFunction
       for_ maybeCurrentFunction \currentFunction -> do
-        modify_ $ set (_nodeIsSelected currentFunction id) true
+        modify_ $ set (_isSelected currentFunction id) true
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
