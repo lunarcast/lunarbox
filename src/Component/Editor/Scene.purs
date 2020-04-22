@@ -4,6 +4,7 @@ module Lunarbox.Component.Editor.Scene
   ) where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Array (sortBy)
 import Data.Bifunctor (bimap)
 import Data.Default (def)
@@ -16,6 +17,7 @@ import Data.Maybe (Maybe, fromMaybe)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
+import Debug.Trace (trace)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
@@ -23,7 +25,7 @@ import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _LocationExtension)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
@@ -100,8 +102,15 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
     name = getNodeName node
 
     localTypeMap =
-      flip maybeBimap typeMap \location' type' ->
-        flip Tuple type' <$> preview (_LocationExtension <<< _LocationExtension) location'
+      flip maybeBimap typeMap \location' type' -> do
+        locationName <- preview _ExtendedLocation location'
+        locationId <- preview (_LocationExtension <<< _ExtendedLocation) location'
+        locationPin <- preview (_LocationExtension <<< _LocationExtension) location'
+        guard $ locationName == functionName
+        guard $ locationId == id
+        pure $ Tuple locationPin type'
+
+    a = trace (Map.toUnfoldable localTypeMap :: Array _) identity
 
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node

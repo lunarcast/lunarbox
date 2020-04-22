@@ -79,12 +79,6 @@ generateColorPair currentLocation pinType = do
   color <- case pinType of
     TVarariable name' -> Right $ RGB shade shade shade
       where
-      a =
-        if currentLocation == InputPin 0 then
-          trace name' identity
-        else
-          unit
-
       shade = seededInt (show name') 100 255
     other -> note (UnableToColor other) $ typeToColor other
   pure $ Tuple currentLocation color
