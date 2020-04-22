@@ -26,11 +26,11 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.pnpm-store
-          key: ${{ hashFiles('pnpm-lock.yaml') }}
+          key: "I wonder if anyone sees this"
       - name: Install dependencies
         run: pnpm i
-      - name: Build project
-        run: pnpm run build
+      # - name: Build project
+      #   run: pnpm run build
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
