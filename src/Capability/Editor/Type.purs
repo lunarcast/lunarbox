@@ -19,7 +19,6 @@ import Data.Set as Set
 import Data.String.CodeUnits as String
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
-import Debug.Trace (trace)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)

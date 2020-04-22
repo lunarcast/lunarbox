@@ -75,7 +75,9 @@ node { nodeData: NodeData { position }
     , onMouseDown $ const select
     ]
     [ overlays $ label <$> labels
-    , output hasOutput
+    , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
+    , output
+        hasOutput
         $ fromMaybe transparent
         $ Map.lookup OutputPin colorMap
     , let
