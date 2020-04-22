@@ -19,6 +19,7 @@ import Data.Set as Set
 import Data.String.CodeUnits as String
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
+import Debug.Trace (trace)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
@@ -78,6 +79,12 @@ generateColorPair currentLocation pinType = do
   color <- case pinType of
     TVarariable name' -> Right $ RGB shade shade shade
       where
+      a =
+        if currentLocation == InputPin 0 then
+          trace name' identity
+        else
+          unit
+
       shade = seededInt (show name') 100 255
     other -> note (UnableToColor other) $ typeToColor other
   pure $ Tuple currentLocation color

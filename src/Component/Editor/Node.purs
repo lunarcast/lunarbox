@@ -26,6 +26,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
 import Math (pi)
+import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -42,13 +43,13 @@ type Actions a
   = { select :: Maybe a
     }
 
-output :: forall r a. Boolean -> HTML r a
-output false = HH.text ""
+output :: forall r a. Boolean -> Color -> HTML r a
+output false _ = HH.text ""
 
-output true =
+output true color =
   SE.circle
     [ SA.r 10.0
-    , SA.fill $ Just $ SA.RGB 118 255 0
+    , SA.fill $ Just color
     ]
 
 constant :: forall r a. HTML r a
@@ -75,6 +76,8 @@ node { nodeData: NodeData { position }
     ]
     [ overlays $ label <$> labels
     , output hasOutput
+        $ fromMaybe transparent
+        $ Map.lookup OutputPin colorMap
     , let
         inputNames = Array.toUnfoldable $ _.name <$> inputs
 

@@ -26,7 +26,7 @@ import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..))
+import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
@@ -56,7 +56,7 @@ nodeInput typeMap name functionData =
   , node
   , functionData
   , labels: mempty
-  , hasOutput: false
+  , hasOutput: hasOutput node
   , colorMap:
     either (const mempty) identity
       $ generateTypeMap
