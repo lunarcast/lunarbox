@@ -29,8 +29,8 @@ jobs:
           key: ${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install dependencies
         run: pnpm i
-      - name: Build project
-        run: pnpm run build
+      # - name: Build project
+      #   run: pnpm run build
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
