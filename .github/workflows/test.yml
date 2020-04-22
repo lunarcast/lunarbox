@@ -31,7 +31,7 @@ jobs:
           path: ~/.pnpm-store
           key: "I wonder if anyone sees this"
       - name: Install purescript
-        run: pnpm i -G purs spago
+        run: pnpm i -g purs spago
       - name: Install dependencies
         run: pnpm i
       - name: Test project
