@@ -3,13 +3,13 @@ module Lunarbox.Data.Dataflow.Native.Prelude
   , loadPrelude
   ) where
 
-import Lunarbox.Data.Dataflow.Native.Math (add, addTo)
+import Lunarbox.Data.Dataflow.Native.ControlFlow (if')
+import Lunarbox.Data.Dataflow.Native.Math (add)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig, loadNativeConfigs)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.Project (Project)
+import Lunarbox.Data.Editor.State (State)
 
-configs :: Array (NativeConfig FunctionData)
-configs = [ add, addTo ]
+configs :: Array NativeConfig
+configs = [ add, if' ]
 
-loadPrelude :: forall n. Project FunctionData n -> Project FunctionData n
+loadPrelude :: State -> State
 loadPrelude = loadNativeConfigs configs

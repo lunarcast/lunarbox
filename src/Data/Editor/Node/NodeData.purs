@@ -7,6 +7,7 @@ module Lunarbox.Data.Editor.Node.NodeData
   ) where
 
 import Prelude
+import Data.Default (class Default)
 import Data.Lens (Lens', iso)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
@@ -27,16 +28,8 @@ derive instance eqNodeData :: Eq NodeData
 instance ordNodeData :: Ord NodeData where
   compare (NodeData { zPosition }) (NodeData ({ zPosition: zPosition' })) = compare zPosition zPosition'
 
-instance semigroupNodeData :: Semigroup NodeData where
-  append (NodeData { position, selected, zPosition }) (NodeData { position: position', selected: selected', zPosition: zPosition' }) =
-    NodeData
-      { position: position + position'
-      , selected: selected && selected'
-      , zPosition: zPosition + zPosition'
-      }
-
-instance monoidNodeData :: Monoid NodeData where
-  mempty = NodeData { position: zero, selected: false, zPosition: 0 }
+instance defaultNodeData :: Default NodeData where
+  def = NodeData { position: zero, selected: false, zPosition: 0 }
 
 -- Lenses
 _NodeData :: Lens' NodeData NodeDataContent

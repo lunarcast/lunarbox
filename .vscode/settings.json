@@ -1,4 +1,6 @@
 {
   "editor.formatOnSave": true,
-  "purescript.censorWarnings": ["ScopeShadowing"]
+  "purescript.censorWarnings": [
+    "ScopeShadowing"
+  ]
 }

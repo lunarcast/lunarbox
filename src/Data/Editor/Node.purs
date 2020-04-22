@@ -2,21 +2,24 @@ module Lunarbox.Data.Editor.Node
   ( Node(..)
   , ComplexNodeData
   , compileNode
+  , hasOutput
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
   ) where
 
 import Prelude
-import Data.Lens (Prism', Traversal', prism')
+import Data.Default (def)
+import Data.Lens (Prism', Traversal', is, prism')
 import Data.Lens.Record (prop)
-import Data.List (List, foldl)
+import Data.List (List, foldl, mapWithIndex)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr, toExpressionFromSelf, toExpressionWithLocation)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
 import Lunarbox.Data.Graph as G
 
 type ComplexNodeData
@@ -34,27 +37,37 @@ data Node
     ComplexNodeData
   | OutputNode (Maybe NodeId)
 
-functionCall :: forall l. l -> Expression l -> List (Expression l) -> Expression l
-functionCall = foldl <<< FunctionCall
+-- Check if a node has an output pin
+hasOutput :: Node -> Boolean
+hasOutput = not <<< is _OutputNode
 
-compileNode :: G.Graph NodeId Node -> NodeId -> Maybe (Expression NodeId) -> Maybe (Expression NodeId)
-compileNode nodes id maybeChild =
-  G.lookup id nodes
-    >>= case _ of
-        InputNode -> maybeChild
-        OutputNode childId -> Just $ maybe (nullExpr id) (toExpressionWithLocation id) childId
-        ComplexNode { inputs, function: functionName } ->
-          pure
-            $ case maybeChild of
-                Just child -> Let id (VarName $ show id) value child
-                Nothing -> value
-          where
-          value =
-            functionCall id (toExpressionWithLocation id functionName)
-              ( maybe (nullExpr id)
-                  toExpressionFromSelf
-                  <$> inputs
-              )
+functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
+functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
+
+compileNode :: G.Graph NodeId Node -> NodeId -> Expression NodeOrPinLocation -> Expression NodeOrPinLocation
+compileNode nodes id child =
+  flip (maybe nothing) (G.lookup id nodes) case _ of
+    InputNode -> inputNode id child
+    OutputNode outputId ->
+      outputNode id case outputId of
+        Just outputId' -> Variable (Location outputId') $ VarName $ show outputId'
+        Nothing -> nothing
+    ComplexNode { inputs, function } -> Let def name value child
+      where
+      name = VarName $ show id
+
+      calee = Variable (Location id) $ VarName $ show function
+
+      arguments =
+        mapWithIndex
+          ( \index id' ->
+              wrap (DeepLocation id $ InputPin index) case id' of
+                Just id'' -> Variable Nowhere $ VarName $ show id''
+                Nothing -> nothing
+          )
+          inputs
+
+      value = functionCall (DeepLocation id OutputPin) calee arguments
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData
@@ -69,8 +82,8 @@ _ComplexNodeInputs = _ComplexNode <<< prop (SProxy :: _ "inputs")
 _ComplexNodeFunction :: Traversal' Node FunctionName
 _ComplexNodeFunction = _ComplexNode <<< prop (SProxy :: _ "function")
 
-_OutputNode :: Prism' Node NodeId
+_OutputNode :: Prism' Node (Maybe NodeId)
 _OutputNode =
-  prism' (OutputNode <<< Just) case _ of
-    OutputNode v -> v
+  prism' OutputNode case _ of
+    OutputNode v -> Just v
     _ -> Nothing

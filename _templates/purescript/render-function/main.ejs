@@ -1,0 +1,18 @@
+---
+to: src/Component/<%= name.replace(/\./g, "/") %>.purs
+---
+module Lunarbox.Component.<%= name %>
+  ( <%= renderFunction %>
+  ) where
+
+import Prelude
+import Halogen.HTML as HH
+import Halogen.HTML (HTML)
+
+type Actions a
+  = {}
+
+type Input = Unit
+
+<%= renderFunction %> :: forall h a. Input -> Actions a -> HTML h a
+<%= renderFunction %> state actions = HH.text "unimplemented"

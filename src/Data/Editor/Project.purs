@@ -1,6 +1,5 @@
 module Lunarbox.Data.Editor.Project
   ( Project(..)
-  , getType
   , compileProject
   , createEmptyFunction
   , emptyProject
@@ -15,97 +14,83 @@ module Lunarbox.Data.Editor.Project
   ) where
 
 import Prelude
-import Data.Either (hush)
-import Data.Lens (Lens', Traversal', _1, _2, over, view)
+import Data.Lens (Lens', Traversal', _Just, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (class Unfoldable)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
-import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
+import Lunarbox.Data.Editor.ExtendedLocation (normalize)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 
--- Location for stuff in Projects
-type Location
-  = ExtendedLocation FunctionName NodeId
-
-newtype Project f n
+newtype Project
   = Project
-  { functions :: G.Graph FunctionName (Tuple (DataflowFunction n) f)
+  { functions :: G.Graph FunctionName DataflowFunction
   , main :: FunctionName
   }
 
-derive instance newtypeProject :: Newtype (Project f n) _
+derive instance newtypeProject :: Newtype Project _
 
-_ProjectFunctions :: forall f n. Lens' (Project f n) (G.Graph FunctionName (Tuple (DataflowFunction n) f))
+_ProjectFunctions :: Lens' Project (G.Graph FunctionName DataflowFunction)
 _ProjectFunctions = newtypeIso <<< prop (SProxy :: _ "functions")
 
-_ProjectMain :: forall f n. Lens' (Project f n) FunctionName
+_ProjectMain :: Lens' Project FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
-compileProject :: forall f n. Project f n -> Expression Location
-compileProject = compileGraph <<< map fst <<< view _ProjectFunctions
+compileProject :: Project -> Expression Location
+compileProject = map normalize <<< compileGraph compileDataflowFunction <<< view _ProjectFunctions
 
--- takes a location and a project and get the type at that location
-getType :: forall f n. Location -> Project f n -> Maybe Type
-getType location project =
-  let
-    typemap = hush $ solveExpression $ compileProject project
-  in
-    typemap >>= Map.lookup location
-
-createEmptyFunction :: forall a. a -> NodeId -> DataflowFunction a
-createEmptyFunction data' id =
+createEmptyFunction :: NodeId -> DataflowFunction
+createEmptyFunction id =
   VisualFunction
     $ NodeGroup
         { inputs: mempty
-        , nodes: G.singleton id $ Tuple (OutputNode Nothing) data'
+        , nodes: G.singleton id $ OutputNode Nothing
         , output: id
         }
 
-emptyProject :: forall f n. Monoid f => Monoid n => NodeId -> Project f n
+emptyProject :: NodeId -> Project
 emptyProject id =
   Project
     { main: FunctionName "main"
-    , functions: G.singleton (FunctionName "main") $ Tuple function mempty
+    , functions: G.singleton (FunctionName "main") function
     }
   where
-  function = createEmptyFunction mempty id
+  function = createEmptyFunction id
 
-createFunction :: forall f n. f -> n -> FunctionName -> NodeId -> Project f n -> Project f n
-createFunction functionData nodeData name outputId =
-  over
-    _ProjectFunctions
-    $ G.insert name (Tuple function functionData)
-  where
-  function = createEmptyFunction nodeData outputId
+createFunction :: FunctionName -> NodeId -> Project -> Project
+createFunction name outputId =
+  set
+    (_atProjectFunction name)
+    $ Just
+    $ createEmptyFunction outputId
 
-getFunctions :: forall u a b. Unfoldable u => Project a b -> u FunctionName
+getFunctions :: forall u. Unfoldable u => Project -> u FunctionName
 getFunctions = Set.toUnfoldable <<< G.keys <<< view _ProjectFunctions
 
-_atProjectFunction :: forall f n. FunctionName -> Traversal' (Project f n) (Maybe (Tuple (DataflowFunction n) f))
+_atProjectFunction :: FunctionName -> Traversal' Project (Maybe DataflowFunction)
 _atProjectFunction name = _ProjectFunctions <<< at name
 
-_projectNodeGroup :: forall f n. FunctionName -> Traversal' (Project f n) (NodeGroup n)
-_projectNodeGroup name = _ProjectFunctions <<< ix name <<< _1 <<< _VisualFunction
+_projectNodeGroup :: FunctionName -> Traversal' Project NodeGroup
+_projectNodeGroup name = _ProjectFunctions <<< ix name <<< _VisualFunction
 
-_atProjectNode :: forall f n. FunctionName -> NodeId -> Traversal' (Project f n) (Maybe (Tuple Node n))
-_atProjectNode name id = _projectNodeGroup name <<< _NodeGroupNodes <<< at id
+_atProjectNodeGroup :: FunctionName -> Traversal' Project NodeGroup
+_atProjectNodeGroup name = _ProjectFunctions <<< at name <<< _Just <<< _VisualFunction
 
-_projectFunctionData :: forall f n. FunctionName -> Traversal' (Project f n) f
-_projectFunctionData name = _ProjectFunctions <<< ix name <<< _2
+_atProjectNode :: FunctionName -> NodeId -> Traversal' Project (Maybe Node)
+_atProjectNode name id = _atProjectNodeGroup name <<< _NodeGroupNodes <<< at id
+
+_projectFunctionData :: FunctionName -> Traversal' Project DataflowFunction
+_projectFunctionData name = _ProjectFunctions <<< ix name

@@ -6,7 +6,7 @@ import Data.Map as Map
 import Data.Set as Set
 import Lunarbox.Control.Monad.Dataflow.Solve (Solve, throwTypeError)
 import Lunarbox.Data.Dataflow.Class.Substituable (class Substituable, Substitution(..), apply, ftv)
-import Lunarbox.Data.Dataflow.Type (TVarName, Type(..), typeNull)
+import Lunarbox.Data.Dataflow.Type (TVarName, Type(..))
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
 
 -- check if a type is recursive
@@ -22,7 +22,7 @@ bindVariable a t
 
 unify :: forall l. Type -> Type -> Solve l Substitution
 unify t t'
-  | t == t' || t == typeNull || t' == typeNull = pure mempty
+  | t == t' = pure mempty
 
 unify (TVarariable v) t = bindVariable v t
 

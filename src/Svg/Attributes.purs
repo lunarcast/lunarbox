@@ -1,6 +1,23 @@
-module Lunarbox.Svg.Attributes where
+module Lunarbox.Svg.Attributes
+  ( strokeWidth
+  , arc
+  , chord
+  , transparent
+  , strokeDashArray,
+  strokeLinecap,
+  Linecap(..)
+  ) where
 
-import Halogen.HTML (IProp)
+import Prelude
+import Core (attr)
+import Data.String (joinWith)
+import Data.Typelevel.Num (d0, d1)
+import Data.Vec (vec2, (!!))
+import Halogen.HTML (AttrName(..), IProp)
+import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), length)
+import Lunarbox.Data.Vector (Vec2)
+import Math (Radians, cos, pi, sin)
+import Svg.Attributes (Color(..), Command(..))
 import Svg.Attributes as SA
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -8,3 +25,55 @@ import Unsafe.Coerce (unsafeCoerce)
 -- so I made a wrapper which allows me anywhere where I can use a stroke 
 strokeWidth :: forall r i. Number -> IProp ( stroke :: String | r ) i
 strokeWidth = unsafeCoerce SA.strokeWidth
+
+-- The halogen-svg lib doesn't support this so I had to make my own
+strokeDashArray :: forall r i. Array Number -> IProp ( stroke :: String | r ) i
+strokeDashArray = unsafeCoerce $ attr (AttrName "stroke-dasharray") <<< joinWith ","
+
+-- stroke linecaps for svg
+data Linecap
+  = Butt
+  | Round
+  | Square
+
+instance showLinecap :: Show Linecap where
+  show Butt = "butt"
+  show Round = "round"
+  show Square = "square"
+
+-- Same reason I have this as strokeDashArray
+strokeLinecap :: forall r i. Linecap -> IProp ( stroke :: String | r ) i
+strokeLinecap = unsafeCoerce <<< attr (AttrName "stroke-linecap") <<< show
+
+polarToCartesian :: Number -> Radians -> Vec2 Number
+polarToCartesian radius angle = (radius * _) <$> vec2 (cos angle) (sin angle)
+
+arcLength :: Radians -> Radians -> Radians
+arcLength start end = length $ Arc start end unit
+
+-- The A command for svg is pretty hard to use. 
+-- This is a wrapper which allows using it for circle arcs
+arc :: Number -> Radians -> Radians -> Array Command
+arc radius startAngle endAngle =
+  let
+    start = polarToCartesian radius endAngle
+
+    end = polarToCartesian radius startAngle
+
+    largeArcFlag = not $ arcLength startAngle endAngle >= pi
+  in
+    [ M (start !! d0) $ start !! d1, A radius radius 0.0 largeArcFlag true (end !! d0) (end !! d1) ]
+
+-- Like an arc but goes directly to the target
+chord :: Number -> Radians -> Radians -> Array Command
+chord radius startAngle endAngle =
+  let
+    start = polarToCartesian radius endAngle
+
+    end = polarToCartesian radius startAngle
+  in
+    [ M (start !! d0) $ start !! d1, L (end !! d0) (end !! d1) ]
+
+-- Transparent color
+transparent :: Color
+transparent = RGBA 0 0 0 0.0

@@ -1,183 +1,106 @@
 module Lunarbox.Component.Editor.Node
-  ( component
-  , Query(..)
-  , Output(..)
+  ( node
   , Input
-  , State
   ) where
 
 import Prelude
-import Data.Array (catMaybes, mapWithIndex)
-import Data.Int (toNumber)
-import Data.Lens (Lens', over, set, view)
-import Data.Lens.Record (prop)
-import Data.Maybe (Maybe(..))
-import Data.Symbol (SProxy(..))
+import Data.Array (toUnfoldable) as Array
+import Data.List (List(..))
+import Data.List as List
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
-import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_, raise)
+import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
-import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
-import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation)
+import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), fillWith)
+import Lunarbox.Component.Editor.Node.Input (input)
+import Lunarbox.Component.Editor.Node.Label (label)
+import Lunarbox.Component.Editor.Node.Overlays (overlays)
+import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Vector (Vec2)
-import Lunarbox.Svg.Attributes (strokeWidth)
-import Svg.Attributes (TextAnchor(..))
+import Lunarbox.Data.Editor.Node.NodeData (NodeData(..))
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
+import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
+import Math (pi)
+import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type State
+type Input
   = { nodeData :: NodeData
     , node :: Node
-    , selectable :: Boolean
+    , labels :: Array String
     , functionData :: FunctionData
-    , name :: FunctionName
-    , expression :: Expression (ExtendedLocation FunctionName NodeId)
-    , type' :: Type
+    , colorMap :: Map Pin SA.Color
+    , hasOutput :: Boolean
     }
 
--- Lenses
-_nodeData :: Lens' State NodeData
-_nodeData = prop (SProxy :: SProxy "nodeData")
-
-_position :: Lens' State (Vec2 Number)
-_position = _nodeData <<< _NodeDataPosition
-
-_zPosition :: Lens' State Int
-_zPosition = _nodeData <<< _NodeDataZPosition
-
-_stateSelected :: Lens' State Boolean
-_stateSelected = _nodeData <<< _NodeDataSelected
-
-_type :: Lens' State Type
-_type = prop (SProxy :: _ "type'")
-
-_selectable :: Lens' State Boolean
-_selectable = prop (SProxy :: _ "selectable")
-
-_expression :: Lens' State (Expression (ExtendedLocation FunctionName NodeId))
-_expression = prop (SProxy :: _ "expression")
-
-data Action
-  = SetSelection Boolean
-  | Receive Input
-
-data Query a
-  = Unselect a
-  | GetData (NodeData -> a)
-  | Drag (Vec2 Number) a
-  | SetZPosition Int a
-
-type ChildSlots
-  = ()
-
-data Output
-  = Selected
-
-type Input
-  = State
-
-component :: forall m. MonadEffect m => Component HH.HTML Query Input Output m
-component =
-  mkComponent
-    { initialState: identity
-    , render
-    , eval:
-        mkEval
-          $ defaultEval
-              { handleAction = handleAction
-              , handleQuery = handleQuery
-              , receive = Just <<< Receive
-              }
+type Actions a
+  = { select :: Maybe a
     }
-  where
-  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
-  handleAction = case _ of
-    SetSelection value -> do
-      modify_ $ set _stateSelected value
-      when (value == true) $ raise Selected
-    Receive { expression } -> do
-      modify_ $ set _expression expression
 
-  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
-  handleQuery = case _ of
-    Unselect inner -> do
-      modify_ $ set _stateSelected false
-      pure $ Just inner
-    Drag offest inner -> do
-      selected <- gets $ view _stateSelected
-      when selected $ modify_ $ over _position $ (+) offest
-      pure $ Just inner
-    -- This runs when the Scene component wants us to save the data
-    GetData k -> do
-      nodeData <- gets $ view _nodeData
-      pure $ Just $ k nodeData
-    SetZPosition value k -> do
-      modify_ $ set _zPosition value
-      pure $ Just k
+output :: forall r a. Boolean -> Color -> HTML r a
+output false _ = HH.text ""
 
-  overlays elements =
-    SE.g []
-      $ mapWithIndex
-          ( \index elem ->
-              SE.g
-                [ SA.transform
-                    [ SA.Translate 0.0 $ toNumber $ (index + 1) * -20
-                    ]
-                ]
-                [ elem ]
-          )
-      $ catMaybes
-          elements
+output true color =
+  SE.circle
+    [ SA.r 10.0
+    , SA.fill $ Just color
+    ]
 
-  render { selectable
-  , functionData: FunctionData { image, scale }
-  , nodeData: NodeData { position, selected }
-  , name
-  , expression
-  , type'
-  } =
-    SE.g
-      [ SA.transform
-          [ SA.Translate (position !! d0) (position !! d1) ]
-      , onMouseDown $ const $ if selectable then Just $ SetSelection true else Nothing
-      ]
-      [ SE.circle
-          [ SA.r $ toNumber $ scale !! d0 / 2 - 5
-          , SA.cx $ toNumber $ scale !! d0 / 2
-          , SA.cy $ toNumber $ scale !! d0 / 2
-          , SA.fill $ Just $ SA.RGBA 0 0 0 0.0
-          , SA.stroke $ Just $ if (selected && selectable) then SA.RGB 118 255 2 else SA.RGB 63 196 255
-          , strokeWidth 5.0
-          ]
-      , overlays
-          [ Just
-              $ SE.text
-                  [ SA.text_anchor AnchorMiddle
-                  , SA.x $ toNumber $ scale !! d0 / 2
-                  , SA.fill $ Just $ SA.RGB 63 196 255
-                  ]
-                  [ HH.text $ show name ]
-          , Just
-              $ SE.text
-                  [ SA.text_anchor AnchorMiddle
-                  , SA.x $ toNumber $ scale !! d0 / 2
-                  , SA.fill $ Just $ SA.RGB 63 196 255
-                  ]
-                  [ HH.text $ sumarizeExpression expression ]
-          , Just
-              $ SE.text
-                  [ SA.text_anchor AnchorMiddle
-                  , SA.x $ toNumber $ scale !! d0 / 2
-                  , SA.fill $ Just $ SA.RGB 63 196 255
-                  ]
-                  [ HH.text $ show type' ]
-          ]
-      ]
+constant :: forall r a. HTML r a
+constant =
+  SE.circle
+    [ SA.r nodeRadius
+    , SA.fill $ Just transparent
+    , SA.stroke $ Just $ SA.RGB 176 112 107
+    , strokeWidth arcWidth
+    , strokeLinecap Butt
+    , strokeDashArray [ pi * nodeRadius / 20.0 ]
+    ]
+
+node :: forall h a. Input -> Actions a -> HTML h a
+node { nodeData: NodeData { position }
+, functionData: FunctionData { inputs }
+, labels
+, colorMap
+, hasOutput
+} { select } =
+  SE.g
+    [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
+    , onMouseDown $ const select
+    ]
+    [ overlays $ label <$> labels
+    , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
+    , output
+        hasOutput
+        $ fromMaybe transparent
+        $ Map.lookup OutputPin colorMap
+    , let
+        inputNames = Array.toUnfoldable $ _.name <$> inputs
+
+        inputArcs = fillWith inputNames Nil
+      in
+        if List.null inputArcs then
+          constant
+        else
+          SE.g
+            [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ]
+            ]
+            $ ( \arc@(Arc _ _ name) ->
+                  input
+                    { arc
+                    , spacing: if List.length inputArcs == 1 then 0.0 else arcSpacing
+                    , radius: nodeRadius
+                    , color:
+                      fromMaybe transparent do
+                        index <- List.findIndex (name == _) inputNames
+                        Map.lookup (InputPin index) colorMap
+                    }
+              )
+            <$> List.toUnfoldable inputArcs
+    ]

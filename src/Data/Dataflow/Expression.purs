@@ -9,8 +9,11 @@ module Lunarbox.Data.Dataflow.Expression
   , locations
   , lookup
   , printExpressionAt
+  , printRawExpression
+  , printSource
   , sumarizeExpression
   , inputs
+  , wrap
   ) where
 
 import Prelude
@@ -20,7 +23,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Dataflow.Scheme (Scheme)
 
 newtype VarName
   = VarName String
@@ -47,7 +50,7 @@ instance showLiteral :: Show Literal where
   show LNull = "null"
 
 data NativeExpression
-  = NativeExpression Type RuntimeValue
+  = NativeExpression Scheme RuntimeValue
 
 derive instance eqNativeExpression :: Eq NativeExpression
 
@@ -134,7 +137,7 @@ printExpressionAt location =
 
 -- Prints an expression and stops when changing locations
 sumarizeExpression :: forall l. Show l => Eq l => Expression l -> String
-sumarizeExpression expression = printExpressionAt (getLocation expression) expression
+sumarizeExpression = printRawExpression $ const "..."
 
 -- Prints an expression without it's location. 
 -- Uses a custom function to print the recursive Expressions.
@@ -150,5 +153,14 @@ printRawExpression print = case _ of
   If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
   Native _ (NativeExpression t _) -> "native :: " <> show t
-  Chain l (e : es) -> "{" <> show e <> "," <> (show $ Chain l es) <> "}"
+  Chain l (e : Nil) -> printRawExpression print e
+  Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
   Chain _ Nil -> ""
+
+-- Print an expression without the locations
+printSource :: forall l. Show l => Expression l -> String
+printSource = printRawExpression (\e -> printSource e)
+
+-- Wrap an expression in another expression with a custom location
+wrap :: forall l. l -> Expression l -> Expression l
+wrap location = Chain location <<< pure

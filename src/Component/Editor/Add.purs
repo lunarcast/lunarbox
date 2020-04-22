@@ -1,145 +1,114 @@
 module Lunarbox.Component.Editor.Add
-  ( State
-  , Query(..)
-  , Input
-  , component
-  , Output(..)
+  ( add
   ) where
 
 import Prelude
-import Control.Monad.Reader (class MonadAsk)
 import Control.MonadZero (guard)
-import Data.Int (toNumber)
-import Data.Lens (Lens', view)
-import Data.Lens.Record (prop)
-import Data.Maybe (Maybe(..))
-import Data.Symbol (SProxy(..))
+import Data.Default (def)
+import Data.Either (either)
+import Data.List ((!!))
+import Data.Map as Map
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
-import Data.Typelevel.Num (d0, d1)
-import Data.Vec ((!!))
-import Effect.Class (class MonadEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, put, raise)
-import Halogen.HTML (slot)
+import Halogen (ClassName(..))
+import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
+import Lunarbox.Capability.Editor.Type (generateTypeMap)
+import Lunarbox.Component.Editor.Node (node)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
-import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
+import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
+import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataScale)
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.Node (Node(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData)
-import Lunarbox.Data.Editor.Node.NodeDescriptor (describe)
+import Lunarbox.Data.Editor.Location (Location)
+import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
+import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type State
-  = { project :: Project FunctionData NodeData
-    , currentFunction :: Maybe FunctionName
-    }
-
-_currentFunction :: Lens' State (Maybe FunctionName)
-_currentFunction = prop (SProxy :: _ "currentFunction")
-
-_project :: Lens' State (Project FunctionData NodeData)
-_project = prop (SProxy :: _ "project")
-
-data Action
-  = SetState State
-  | AddNode FunctionName
-  | SelectFunction FunctionName
-
-data Query a
-  = Void
-
-data Output
-  = SelectedFunction FunctionName
-  | AddedNode FunctionName
-
-type ChildSlots
-  = ( node :: Slot NodeC.Query NodeC.Output FunctionName )
-
 type Input
-  = State
-
-nodeInput :: FunctionName -> FunctionData -> NodeC.Input
-nodeInput name functionData =
-  { selectable: false
-  , nodeData: mempty
-  , node: ComplexNode { inputs: mempty, function: name }
-  , functionData
-  , name
-  , expression: nullExpr $ Location name
-  , type': TVarariable $ TVarName "doen't need a type"
-  }
-
-component :: forall m. MonadEffect m => MonadAsk Config m => Component HH.HTML Query Input Output m
-component =
-  mkComponent
-    { initialState: identity
-    , render
-    , eval:
-        mkEval
-          $ defaultEval
-              { handleAction = handleAction
-              , receive = Just <<< SetState
-              }
+  = { project :: Project
+    , currentFunction :: Maybe FunctionName
+    , functionData :: Map.Map FunctionName FunctionData
+    , typeMap :: Map.Map Location Type
     }
+
+type Actions a
+  = { edit :: FunctionName -> Maybe a
+    , addNode :: FunctionName -> Maybe a
+    }
+
+resolvePin :: Pin -> Type -> Maybe Type
+resolvePin (InputPin index) type' = inputs type' !! index
+
+resolvePin OutputPin type' = Just $ output type'
+
+nodeInput :: Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input
+nodeInput typeMap name functionData =
+  { nodeData: def
+  , node
+  , functionData
+  , labels: mempty
+  , hasOutput: hasOutput node
+  , colorMap:
+    either (const mempty) identity
+      $ generateTypeMap
+          (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
+          functionData
+          node
+  }
   where
-  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
-  handleAction = case _ of
-    SelectFunction name -> raise $ SelectedFunction name
-    AddNode functionName -> raise $ AddedNode functionName
-    SetState state -> put state
+  node = ComplexNode { inputs: mempty, function: name }
 
-  makeNode (Tuple { functionData, name } { isUsable, isEditable }) =
-    let
-      scale = view _FunctionDataScale functionData
-
-      side = toNumber $ max (scale !! d0) (scale !! d1)
-    in
-      HH.div [ className "node" ]
-        [ SE.svg
-            [ SA.width 75.0
-            , SA.height 75.0
-            , SA.viewBox 0.0 0.0 side side
-            ]
-            [ slot
-                (SProxy :: _ "node")
-                name
-                NodeC.component
-                (nodeInput name functionData)
-                $ const Nothing
-            ]
-        , container "node-data"
-            [ container "node-text"
-                [ container "node-name"
-                    [ HH.text $ show name
-                    ]
+makeNode :: forall h a. Actions a -> NodeDescriptor -> FunctionName -> Map.Map Location Type -> FunctionData -> HTML h a
+makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
+  HH.div [ className "node" ]
+    [ SE.svg
+        [ SA.width 75.0
+        , SA.height 75.0
+        , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
+        ]
+        [ node
+            (nodeInput typeMap name functionData)
+            { select: Nothing }
+        ]
+    , container "node-data"
+        [ container "node-text"
+            [ container "node-name"
+                [ HH.text $ show name
                 ]
-            , container "node-buttons"
-                [ HH.div
-                    [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
-                    , onClick $ const $ guard isUsable $> AddNode name
-                    ]
-                    [ icon "add" ]
-                , HH.div
-                    [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
-                    , onClick $ const $ guard isEditable $> SelectFunction name
-                    ]
-                    [ icon "edit"
-                    ]
+            ]
+        , container "node-buttons"
+            [ HH.div
+                [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
+                , onClick $ const if isUsable then addNode name else Nothing
                 ]
+                [ icon "add" ]
+            , HH.div
+                [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
+                , onClick $ const if isEditable then edit name else Nothing
+                ]
+                [ icon "edit" ]
             ]
         ]
+    ]
 
-  render { project, currentFunction } =
-    container "nodes"
-      $ makeNode
-      <$> describe currentFunction project
+add :: forall h a. Input -> Actions a -> HTML h a
+add { project, currentFunction, functionData, typeMap } actions =
+  container "nodes"
+    $ ( \(Tuple name descriptor) ->
+          let
+            functionData' = fromMaybe def $ Map.lookup name functionData
+          in
+            makeNode actions descriptor name typeMap functionData'
+      )
+    <$> ( Map.toUnfoldable
+          $ describe currentFunction project
+      )
