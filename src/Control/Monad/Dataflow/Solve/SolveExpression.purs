@@ -9,6 +9,7 @@ import Data.Array as Array
 import Data.Either (Either)
 import Data.Map as Map
 import Data.Tuple (Tuple(..))
+import Lunarbox.Capability.Editor.Type (prettify)
 import Lunarbox.Control.Monad.Dataflow.Infer (InferEnv(..), InferOutput(..), runInfer)
 import Lunarbox.Control.Monad.Dataflow.Infer.InferExpression (infer)
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
@@ -38,6 +39,6 @@ solveExpression expression = do
 -- helper to print a typemap
 printTypeMap :: forall l. Show l => Ord l => Map.Map l Type -> String
 printTypeMap =
-  foldr (\(Tuple location type') result -> result <> "\n" <> show location <> " = " <> show type') ""
+  foldr (\(Tuple location type') result -> result <> "\n" <> show location <> " = " <> show (prettify type')) ""
     <<< Array.sortBy (\(Tuple _ a) (Tuple _ b) -> compare (show a) $ show b)
     <<< Map.toUnfoldable

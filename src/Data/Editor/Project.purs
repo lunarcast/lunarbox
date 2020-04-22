@@ -26,7 +26,6 @@ import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (normalize)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -50,7 +49,7 @@ _ProjectMain :: Lens' Project FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
 compileProject :: Project -> Expression Location
-compileProject = map normalize <<< compileGraph compileDataflowFunction <<< view _ProjectFunctions
+compileProject (Project { functions, main }) = compileGraph compileDataflowFunction functions main
 
 createEmptyFunction :: NodeId -> DataflowFunction
 createEmptyFunction id =

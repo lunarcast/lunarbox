@@ -40,7 +40,7 @@ compileNodeGroup group@(NodeGroup { nodes, output, inputs }) =
   let
     ordered = orderNodes group
 
-    bodyNodes = output : (ordered \\ inputs)
+    bodyNodes = output : (ordered \\ (output : inputs))
 
     return =
       foldl

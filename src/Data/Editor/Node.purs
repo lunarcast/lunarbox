@@ -9,7 +9,6 @@ module Lunarbox.Data.Editor.Node
   ) where
 
 import Prelude
-import Data.Default (def)
 import Data.Lens (Prism', Traversal', is, prism')
 import Data.Lens.Record (prop)
 import Data.List (List, foldl, mapWithIndex)
@@ -52,7 +51,7 @@ compileNode nodes id child =
       outputNode id case outputId of
         Just outputId' -> Variable (Location outputId') $ VarName $ show outputId'
         Nothing -> nothing
-    ComplexNode { inputs, function } -> Let def name value child
+    ComplexNode { inputs, function } -> Let Nowhere name value child
       where
       name = VarName $ show id
 

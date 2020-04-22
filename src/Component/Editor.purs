@@ -115,6 +115,7 @@ component =
           typeMap = case solveExpression expression' of
             Right map -> Map.delete Nowhere map
             Left _ -> mempty
+        print $ expression
         printString $ printTypeMap typeMap
         -- printString $ printSource expression'
         -- TODO: make it so this accounts for errors
@@ -152,7 +153,9 @@ component =
                 state'' = set (_atNode currentFunction id) (Just node) state'
 
                 state''' = set (_atNodeData currentFunction id) (Just def) state''
-              void $ put $ setId state'''
+
+                state'''' = over _functions (G.insertEdge name currentFunction) state'''
+              void $ put $ setId state''''
               handleAction Compile
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
