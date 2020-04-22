@@ -1,20 +1,26 @@
 module Lunarbox.Capability.Editor.Type
-  ( typeToColor
+  ( ColoringError(..)
+  , typeToColor
   , generateTypeMap
-  , ColoringError(..)
+  , prettify
   ) where
 
 import Prelude
 import Control.MonadZero (guard)
+import Data.Array ((!!))
 import Data.Array as Array
 import Data.Either (Either(..), note)
+import Data.Enum (enumFromTo)
 import Data.Lens (view)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Set as Set
+import Data.String.CodeUnits as String
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.Type (Type(..), typeBool, typeNumber, typeString)
+import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, hasOutput)
@@ -86,3 +92,39 @@ generateTypeMap getType functionData node = Map.fromFoldable <$> pairs
         $ (\pin -> generateColorPair pin <$> getType pin)
         <$> pinLocations functionData node
     )
+
+alphabet :: Array String
+alphabet = String.singleton <$> enumFromTo 'a' 'z'
+
+alphabetSize :: Int
+alphabetSize = Array.length alphabet
+
+-- Prettify variable names in types. Should only be used for pretty printing
+prettify :: Type -> Type
+prettify type' =
+  let
+    free = Set.toUnfoldable $ ftv type'
+
+    freeCount = Array.length free
+
+    subst =
+      Substitution $ Map.fromFoldable
+        $ Array.mapWithIndex
+            ( \index name ->
+                Tuple name
+                  $ TVarariable
+                      let
+                        char =
+                          TVarName
+                            $ fromMaybe (show name)
+                            $ alphabet
+                            !! index `mod` alphabetSize
+                      in
+                        if index < alphabetSize then
+                          char
+                        else
+                          char <> (TVarName $ show $ index / alphabetSize)
+            )
+            free
+  in
+    apply subst type'

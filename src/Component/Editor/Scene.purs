@@ -18,7 +18,7 @@ import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
-import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap)
+import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
@@ -111,7 +111,11 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
         , nodeData
         , functionData: nodeFunctionData
         , colorMap
-        , labels: [ show name, show nodeType, sumarizeExpression nodeExpression ]
+        , labels:
+          [ show name
+          , show $ prettify nodeType
+          , sumarizeExpression nodeExpression
+          ]
         , hasOutput: not $ is _OutputNode node
         }
         { select: selectNode id }

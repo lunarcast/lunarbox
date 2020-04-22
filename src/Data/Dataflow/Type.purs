@@ -22,6 +22,8 @@ derive instance ordTVarName :: Ord TVarName
 
 derive instance newtypeTVarName :: Newtype TVarName _
 
+derive newtype instance semigroupTVarName :: Semigroup TVarName
+
 instance tvarShow :: Show TVarName where
   show = unwrap
 
