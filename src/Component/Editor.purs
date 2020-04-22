@@ -233,7 +233,7 @@ component =
     icon = sidebarIcon currentTab
 
   panel :: State -> HH.HTML _ Action
-  panel { currentTab, project, currentFunction, functionData } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap } = case currentTab of
     Settings ->
       container "panel-container"
         [ container "title" [ HH.text "Project settings" ]
@@ -259,7 +259,7 @@ component =
     Add ->
       container "panel-container"
         [ container "title" [ HH.text "Add node" ]
-        , AddC.add { project, currentFunction, functionData }
+        , AddC.add { project, currentFunction, functionData, typeMap }
             { edit: Just <<< SelectFunction <<< Just
             , addNode: Just <<< CreateNode
             }

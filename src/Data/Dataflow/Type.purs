@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Type
   , Type(..)
   , typeNumber
   , inputs
+  , output
   , typeBool
   , typeString
   , numberOfInputs
@@ -55,6 +56,12 @@ inputs :: Type -> List Type
 inputs (TArrow i t) = i : inputs t
 
 inputs _ = Nil
+
+-- Get the output of a type
+output :: Type -> Type
+output (TArrow _ outputType) = output outputType
+
+output type' = type'
 
 derive instance typeEq :: Eq Type
 

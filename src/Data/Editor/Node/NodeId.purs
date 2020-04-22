@@ -1,6 +1,7 @@
 module Lunarbox.Data.Editor.Node.NodeId where
 
 import Prelude
+import Data.Default (class Default)
 import Data.Lens (Lens')
 import Data.Newtype (class Newtype, unwrap)
 import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, toExpression)
@@ -14,6 +15,9 @@ derive instance eqNodeId :: Eq NodeId
 derive instance ordNodeId :: Ord NodeId
 
 derive instance newtypeNodeId :: Newtype NodeId _
+
+instance defaultNodeId :: Default NodeId where
+  def = NodeId ""
 
 instance showNodeId :: Show NodeId where
   show = unwrap

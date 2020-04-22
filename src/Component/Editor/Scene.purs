@@ -4,14 +4,12 @@ module Lunarbox.Component.Editor.Scene
   ) where
 
 import Prelude
-import Control.MonadZero (guard)
 import Data.Array (sortBy)
-import Data.Array as Array
+import Data.Bifunctor (bimap)
 import Data.Default (def)
 import Data.Either (Either, either, note)
 import Data.Int (toNumber)
-import Data.Lens (is, preview, view)
-import Data.List as List
+import Data.Lens (is, preview)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
@@ -20,21 +18,21 @@ import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
-import Lunarbox.Capability.Editor.Type (typeToColor)
+import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
-import Lunarbox.Data.Dataflow.Type (Type(..))
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, getFunctionData)
+import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _LocationExtension)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, hasOutput)
+import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..))
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
+import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
 import Svg.Attributes (Color(..))
@@ -67,8 +65,7 @@ data NodeBuildingError
   | MissingExpression NodeId
   | MissingNode NodeId
   | MissingType Location
-  | MissingColor Location
-  | UnableToColor Type Location
+  | LiftedError ColoringError
 
 instance showNodeBuildingError :: Show NodeBuildingError where
   show = case _ of
@@ -76,8 +73,7 @@ instance showNodeBuildingError :: Show NodeBuildingError where
     MissingExpression id -> "Cannot find compiliation result for node " <> show id
     MissingNode id -> "Cannot find node " <> show id
     MissingType location -> "Cannot find inferred type for " <> show location
-    MissingColor location -> "Cannot find color for " <> show location
-    UnableToColor type' location -> "Unable to encode type " <> show type' <> " into a color at " <> show location
+    LiftedError error -> show error
 
 type NodeBuild
   = Either NodeBuildingError
@@ -107,21 +103,12 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
   let
     name = getNodeName node
 
+    localTypeMap =
+      flip maybeBimap typeMap \location' type' ->
+        flip Tuple type' <$> preview (_LocationExtension <<< _LocationExtension) location'
+
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
-
-    inputPints = List.mapWithIndex (\index _ -> InputPin index) $ Array.toUnfoldable $ view _FunctionDataInputs nodeFunctionData
-
-    pinLocations = (OutputPin <$ guard (hasOutput node)) <> inputPints
-
-    toColor currentLocation = do
-      let
-        fullLocation = generateLocation $ DeepLocation id currentLocation
-      pinType <- note (MissingType fullLocation) $ Map.lookup fullLocation typeMap
-      color <- case pinType of
-        TVarariable name' -> pure $ RGB 70 70 70 -- note (MissingColor fullLocation) $ Map.lookup fullLocation typeColors
-        other -> note (UnableToColor other fullLocation) $ typeToColor other
-      pure $ Tuple currentLocation color
-  colorMap <- Map.fromFoldable <$> (sequence $ toColor <$> pinLocations)
+  colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node
   pure
     $ NodeC.node
         { node

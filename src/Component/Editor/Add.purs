@@ -4,9 +4,9 @@ module Lunarbox.Component.Editor.Add
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array as Array
 import Data.Default (def)
-import Data.Lens (view)
+import Data.Either (either)
+import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
@@ -15,13 +15,17 @@ import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
+import Lunarbox.Capability.Editor.Type (generateTypeMap)
 import Lunarbox.Component.Editor.Node (node)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -33,6 +37,7 @@ type Input
   = { project :: Project
     , currentFunction :: Maybe FunctionName
     , functionData :: Map.Map FunctionName FunctionData
+    , typeMap :: Map.Map Location Type
     }
 
 type Actions a
@@ -40,22 +45,30 @@ type Actions a
     , addNode :: FunctionName -> Maybe a
     }
 
-nodeInput :: FunctionName -> FunctionData -> NodeC.Input
-nodeInput name functionData =
+resolvePin :: Pin -> Type -> Maybe Type
+resolvePin (InputPin index) type' = inputs type' !! index
+
+resolvePin OutputPin type' = Just $ output type'
+
+nodeInput :: Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input
+nodeInput typeMap name functionData =
   { nodeData: def
-  , node: ComplexNode { inputs: mempty, function: name }
+  , node
   , functionData
   , labels: mempty
   , hasOutput: false
   , colorMap:
-    Map.fromFoldable
-      $ Array.mapWithIndex
-          (\index _ -> Tuple (InputPin index) $ SA.RGB 176 112 107)
-      $ view _FunctionDataInputs functionData
+    either (const mempty) identity
+      $ generateTypeMap
+          (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
+          functionData
+          node
   }
+  where
+  node = ComplexNode { inputs: mempty, function: name }
 
-makeNode :: forall h a. Actions a -> NodeDescriptor -> FunctionName -> FunctionData -> HTML h a
-makeNode { edit, addNode } { isUsable, isEditable } name functionData =
+makeNode :: forall h a. Actions a -> NodeDescriptor -> FunctionName -> Map.Map Location Type -> FunctionData -> HTML h a
+makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
   HH.div [ className "node" ]
     [ SE.svg
         [ SA.width 75.0
@@ -63,7 +76,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name functionData =
         , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
         ]
         [ node
-            (nodeInput name functionData)
+            (nodeInput typeMap name functionData)
             { select: Nothing }
         ]
     , container "node-data"
@@ -88,10 +101,13 @@ makeNode { edit, addNode } { isUsable, isEditable } name functionData =
     ]
 
 add :: forall h a. Input -> Actions a -> HTML h a
-add { project, currentFunction, functionData } actions =
+add { project, currentFunction, functionData, typeMap } actions =
   container "nodes"
     $ ( \(Tuple name descriptor) ->
-          makeNode actions descriptor name $ fromMaybe def $ Map.lookup name functionData
+          let
+            functionData' = fromMaybe def $ Map.lookup name functionData
+          in
+            makeNode actions descriptor name typeMap functionData'
       )
     <$> ( Map.toUnfoldable
           $ describe currentFunction project

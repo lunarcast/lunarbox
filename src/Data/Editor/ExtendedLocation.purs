@@ -9,7 +9,7 @@ module Lunarbox.Data.Editor.ExtendedLocation
   ) where
 
 import Prelude
-import Data.Default (class Default)
+import Data.Default (class Default, def)
 import Data.Lens (Prism', prism')
 import Data.List ((:), List(..))
 import Data.Maybe (Maybe(..))
@@ -41,8 +41,8 @@ _LocationExtensionWithDefault default =
     DeepLocation _ l -> Just l
     _ -> Nothing
 
-_LocationExtension :: forall l l'. Monoid l => Prism' (ExtendedLocation l l') l'
-_LocationExtension = _LocationExtensionWithDefault mempty
+_LocationExtension :: forall l l'. Default l => Prism' (ExtendedLocation l l') l'
+_LocationExtension = _LocationExtensionWithDefault def
 
 _ExtendedLocation :: forall l l'. Prism' (ExtendedLocation l l') l
 _ExtendedLocation =
