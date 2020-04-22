@@ -16,6 +16,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (generateTypeMap, prettify)
+import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
 import Lunarbox.Component.Editor.Node (node)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
@@ -30,6 +31,7 @@ import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
+import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -50,7 +52,7 @@ resolvePin (InputPin index) type' = inputs type' !! index
 
 resolvePin OutputPin type' = Just $ output type'
 
-nodeInput :: Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input
+nodeInput :: forall h a. Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input h a
 nodeInput typeMap name functionData =
   { nodeData: def
   , node
@@ -87,8 +89,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
             , container "node-type"
                 $ fromMaybe mempty
                 $ pure
-                <<< HH.text
-                <<< show
+                <<< highlightTypeToHTML (RGB 255 255 255)
                 <<< prettify
                 <$> Map.lookup (Location name) typeMap
             ]

@@ -17,7 +17,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown)
 import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), fillWith)
 import Lunarbox.Component.Editor.Node.Input (input)
-import Lunarbox.Component.Editor.Node.Label (label)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
@@ -30,10 +29,10 @@ import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type Input
+type Input h a
   = { nodeData :: NodeData
     , node :: Node
-    , labels :: Array String
+    , labels :: Array (HTML h a)
     , functionData :: FunctionData
     , colorMap :: Map Pin SA.Color
     , hasOutput :: Boolean
@@ -63,7 +62,7 @@ constant =
     , strokeDashArray [ pi * nodeRadius / 20.0 ]
     ]
 
-node :: forall h a. Input -> Actions a -> HTML h a
+node :: forall h a. Input h a -> Actions a -> HTML h a
 node { nodeData: NodeData { position }
 , functionData: FunctionData { inputs }
 , labels
@@ -74,7 +73,7 @@ node { nodeData: NodeData { position }
     [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
     , onMouseDown $ const select
     ]
-    [ overlays $ label <$> labels
+    [ overlays labels
     , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
     , output
         hasOutput
