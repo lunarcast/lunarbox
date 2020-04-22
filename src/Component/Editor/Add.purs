@@ -15,7 +15,7 @@ import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Capability.Editor.Type (generateTypeMap)
+import Lunarbox.Capability.Editor.Type (generateTypeMap, prettify)
 import Lunarbox.Component.Editor.Node (node)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
@@ -84,6 +84,13 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
             [ container "node-name"
                 [ HH.text $ show name
                 ]
+            , container "node-type"
+                $ fromMaybe mempty
+                $ pure
+                <<< HH.text
+                <<< show
+                <<< prettify
+                <$> Map.lookup (Location name) typeMap
             ]
         , container "node-buttons"
             [ HH.div
