@@ -34,7 +34,7 @@ jobs:
         run: pnpm i -g purescript spago
       - name: Install dependencies
         run: pnpm i
-      - name: Test project
-        run: pnpm test
       - name: Build project
         run: pnpm run build
+      - name: Test project
+        run: pnpm test
