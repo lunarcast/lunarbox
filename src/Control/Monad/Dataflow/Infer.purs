@@ -4,6 +4,7 @@ module Lunarbox.Control.Monad.Dataflow.Infer
   , InferEnv(..)
   , Infer(..)
   , _count
+  , _usedNames
   , _location
   , _typeEnv
   , _constraints
@@ -24,6 +25,7 @@ import Control.Monad.Writer (class MonadTell, class MonadWriter)
 import Data.Either (Either)
 import Data.Lens (Lens', iso, set, view)
 import Data.Lens.Record (prop)
+import Data.List (List(..))
 import Data.Map as Map
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
@@ -58,18 +60,26 @@ _typeMap = newtypeIso <<< prop (SProxy :: _ "typeMap")
 newtype InferState
   = InferState
   { count :: Int
+  , usedNames :: List String
   }
 
 derive instance newtypeInferState :: Newtype InferState _
 
 instance semigruopInferState :: Semigroup InferState where
-  append (InferState { count }) (InferState { count: count' }) = InferState { count: count + count' }
+  append (InferState { count, usedNames }) (InferState { count: count', usedNames: usedNames' }) =
+    InferState
+      { count: count + count'
+      , usedNames: usedNames <> usedNames'
+      }
 
 instance monoidInferState :: Monoid InferState where
-  mempty = InferState { count: 0 }
+  mempty = InferState { count: 0, usedNames: Nil }
 
 _count :: Lens' InferState Int
 _count = iso unwrap wrap <<< prop (SProxy :: _ "count")
+
+_usedNames :: Lens' InferState (List String)
+_usedNames = iso unwrap wrap <<< prop (SProxy :: _ "usedNames")
 
 newtype InferEnv l
   = InferEnv
@@ -104,12 +114,12 @@ createConstraint typeLeft typeRight = do
   tell
     $ InferOutput
         { constraints:
-            ConstraintSet $ pure
-              $ Constraint
-                  { source
-                  , typeRight
-                  , typeLeft
-                  }
+          ConstraintSet $ pure
+            $ Constraint
+                { source
+                , typeRight
+                , typeLeft
+                }
         , typeMap: mempty
         }
 

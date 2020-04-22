@@ -19,7 +19,7 @@ import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 
 -- Takes an expression and returns a typeMap
-solveExpression :: forall l. Ord l => Expression l -> Either (TypeError l) (Map.Map l Type)
+solveExpression :: forall l. Ord l => Show l => Expression l -> Either (TypeError l) (Map.Map l Type)
 solveExpression expression = do
   let
     location = getLocation expression

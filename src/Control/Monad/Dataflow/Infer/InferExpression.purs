@@ -6,13 +6,14 @@ import Prelude
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (asks, local)
 import Control.Monad.State (gets, modify_)
-import Data.Array (foldr, zip)
+import Data.Array (find, foldr, zip)
+import Data.List ((:))
 import Data.Lens (over, view)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Data.Set as Set
 import Data.Traversable (traverse)
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _location, _typeEnv, createConstraint, rememberType, withLocation)
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
@@ -23,11 +24,26 @@ import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
 
 -- Create a fewsh type variable
 -- Uses the state from within the Infer monad to prevent duplicates
-fresh :: forall l. Ord l => Infer l Type
+fresh :: forall l. Ord l => Show l => Infer l Type
 fresh = do
-  inferState <- gets $ view _count
-  modify_ $ over _count (_ + 1)
-  pure $ TVarariable $ TVarName $ "t" <> show inferState
+  location <- asks $ view _location
+  used <- gets $ view _usedNames
+  if isJust $ find (_ == show location) used then do
+    count <- gets $ view _count
+    modify_
+      $ over _count (_ + 1)
+    pure
+      $ TVarariable
+      $ TVarName
+      $ "t"
+      <> show count
+  else do
+    modify_
+      $ over _usedNames (show location : _)
+    pure
+      $ TVarariable
+      $ TVarName
+      $ show location
 
 -- Create a scope for a variable to be in
 createClosure :: forall l a. Ord l => VarName -> Scheme -> Infer l a -> Infer l a
@@ -40,7 +56,7 @@ createClosure name scheme =
     local $ over _typeEnv scope
 
 -- The opposite of generalie. Takes a Forall type and creates a type out of it it
-instantiate :: forall l. Ord l => Scheme -> Infer l Type
+instantiate :: forall l. Ord l => Show l => Scheme -> Infer l Type
 instantiate (Forall q t) = do
   q' <- traverse (const fresh) q
   let
@@ -56,7 +72,7 @@ generalize t = do
   pure $ Forall qunatifiers t
 
 -- Lookup a TypeEnv and return the type. If the type doen't exist an error is thrown 
-lookupEnv :: forall l. Ord l => VarName -> Infer l Type
+lookupEnv :: forall l. Ord l => Show l => VarName -> Infer l Type
 lookupEnv var = do
   location <- asks $ view _location
   (TypeEnv env) <- asks $ view _typeEnv
@@ -65,7 +81,7 @@ lookupEnv var = do
     Just s -> instantiate s
 
 -- Infers a type and marks it location on the typeMap
-infer :: forall l. Ord l => Expression l -> Infer l Type
+infer :: forall l. Ord l => Show l => Expression l -> Infer l Type
 infer expression =
   withLocation (getLocation expression) do
     type' <- case expression of

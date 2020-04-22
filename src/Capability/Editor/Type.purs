@@ -7,7 +7,7 @@ module Lunarbox.Capability.Editor.Type
 import Prelude
 import Control.MonadZero (guard)
 import Data.Array as Array
-import Data.Either (Either, note)
+import Data.Either (Either(..), note)
 import Data.Lens (view)
 import Data.List as List
 import Data.Map as Map
@@ -19,6 +19,7 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, hasOutput)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
+import Lunarbox.Math.SeededRandom (seededInt)
 import Svg.Attributes (Color(..))
 
 -- Calculates the averege of 2 ints
@@ -69,7 +70,9 @@ pinLocations functionData node = (OutputPin <$ guard (hasOutput node)) <> inputP
 generateColorPair :: Pin -> Type -> Either ColoringError (Tuple Pin Color)
 generateColorPair currentLocation pinType = do
   color <- case pinType of
-    TVarariable name' -> pure $ RGB 70 70 70 -- note (MissingColor fullLocation) $ Map.lookup fullLocation typeColors
+    TVarariable name' -> Right $ RGB shade shade shade
+      where
+      shade = seededInt (show name') 100 255
     other -> note (UnableToColor other) $ typeToColor other
   pure $ Tuple currentLocation color
 

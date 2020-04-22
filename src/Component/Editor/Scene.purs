@@ -35,7 +35,7 @@ import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
-import Svg.Attributes (Color(..))
+import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
@@ -77,10 +77,6 @@ instance showNodeBuildingError :: Show NodeBuildingError where
 
 type NodeBuild
   = Either NodeBuildingError
-
--- Get a shade of gray based on a cusom int generator
-greyShade :: (Int -> Int -> Int) -> Color
-greyShade generate = let c = generate 100 255 in RGB c c c
 
 getNodeName :: Node -> FunctionName
 getNodeName = case _ of
