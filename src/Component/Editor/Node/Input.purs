@@ -5,6 +5,7 @@ module Lunarbox.Component.Editor.Node.Input
 import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML (HTML)
+import Halogen.HTML.Events (onClick)
 import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..))
 import Lunarbox.Data.Editor.Constants (arcWidth)
 import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeLinecap, strokeWidth, transparent)
@@ -19,12 +20,14 @@ type Input
     , color :: Color
     }
 
-input :: forall h a. Input -> HTML h a
-input { radius, spacing, arc: Arc start end _, color } =
+input :: forall h a. Input -> Maybe a -> HTML h a
+input { radius, spacing, arc: Arc start end _, color } selectInput =
   SE.path
     [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
     , SA.fill $ Just transparent
     , SA.stroke $ Just color
+    , SA.class_ "node-input"
     , strokeWidth arcWidth
     , strokeLinecap Round
+    , onClick $ const selectInput
     ]

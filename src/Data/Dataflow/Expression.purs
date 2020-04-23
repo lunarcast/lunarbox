@@ -14,6 +14,10 @@ module Lunarbox.Data.Dataflow.Expression
   , sumarizeExpression
   , inputs
   , wrap
+  , optimize
+  , removeWrappers
+  , wrapWith
+  , wrappers
   ) where
 
 import Prelude
@@ -24,6 +28,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Scheme (Scheme)
+import Lunarbox.Data.String (indent)
 
 newtype VarName
   = VarName String
@@ -59,7 +64,7 @@ data Expression l
   | FunctionCall l (Expression l) (Expression l)
   | Lambda l VarName (Expression l)
   | Literal l Literal
-  | Let l VarName (Expression l) (Expression l)
+  | Let l Boolean VarName (Expression l) (Expression l)
   | If l (Expression l) (Expression l) (Expression l)
   | FixPoint l (Expression l)
   | Chain l (List (Expression l))
@@ -76,7 +81,7 @@ getLocation = case _ of
   FunctionCall l _ _ -> l
   Lambda l _ _ -> l
   Literal l _ -> l
-  Let l _ _ _ -> l
+  Let l _ _ _ _ -> l
   If l _ _ _ -> l
   FixPoint l _ -> l
   Native l _ -> l
@@ -89,7 +94,7 @@ toMap expression =
     <> case expression of
         FunctionCall _ calee input -> toMap calee <> toMap input
         Lambda _ _ body -> toMap body
-        Let _ _ value body -> toMap value <> toMap body
+        Let _ _ _ value body -> toMap value <> toMap body
         If _ condition then' else' -> toMap condition <> toMap then' <> toMap else'
         Chain _ expressions -> foldr (\expression' -> (<>) $ toMap expression') mempty expressions
         FixPoint _ body -> toMap body
@@ -139,19 +144,39 @@ printExpressionAt location =
 sumarizeExpression :: forall l. Show l => Eq l => Expression l -> String
 sumarizeExpression = printRawExpression $ const "..."
 
+printRawLet :: forall l. (Expression l -> String) -> Expression l -> String
+printRawLet print (Let _ _ name value _) = indent 2 (unwrap name <> " = " <> print value) <> "\n"
+
+printRawLet _ _ = ""
+
+printLet :: forall l. Boolean -> (Expression l -> String) -> Expression l -> String
+printLet true print expression@(Let _ _ _ _ _) = "let\n" <> printLet false print expression
+
+printLet false print expression@(Let _ _ _ _ next@(Let _ _ _ _ _)) = printRawLet print expression <> printLet false print next
+
+printLet false print expression@(Let _ _ _ _ next) = printRawLet print expression <> "in\n" <> indent 2 (print next)
+
+printLet _ _ _ = ""
+
 -- Prints an expression without it's location. 
 -- Uses a custom function to print the recursive Expressions.
 -- Only used internally inside the show instance 
 -- to not reepat the location printing code every time
 printRawExpression :: forall l. Show l => (Expression l -> String) -> Expression l -> String
-printRawExpression print = case _ of
+printRawExpression print expression = case expression of
   Variable _ name -> unwrap name
   FunctionCall _ f i -> print f <> " " <> print i
   Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
   Literal _ literal -> show literal
-  Let _ name value body -> "let " <> unwrap name <> " = " <> print value <> " in " <> print body
-  If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
+  Let _ _ _ _ _ -> printLet true (printRawExpression print) expression
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
+  If _ cond then' else' ->
+    "if\n"
+      <> indent 2 (print cond)
+      <> "\nthen\n"
+      <> indent 2 (print then')
+      <> "\nelse\n"
+      <> indent 2 (print else')
   Native _ (NativeExpression t _) -> "native :: " <> show t
   Chain l (e : Nil) -> printRawExpression print e
   Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
@@ -164,3 +189,40 @@ printSource = printRawExpression (\e -> printSource e)
 -- Wrap an expression in another expression with a custom location
 wrap :: forall l. l -> Expression l -> Expression l
 wrap location = Chain location <<< pure
+
+-- Unwrap an expression as much as possible
+removeWrappers :: forall l. Expression l -> Expression l
+removeWrappers (Chain _ (expression : Nil)) = removeWrappers expression
+
+removeWrappers expression = expression
+
+-- Collect all the locations something is wrapped in
+wrappers :: forall l. Expression l -> List l
+wrappers (Chain location (expression : Nil)) = location : wrappers expression
+
+wrappers _ = Nil
+
+-- Wrap an expression with a list of locations
+wrapWith :: forall l. List l -> Expression l -> Expression l
+wrapWith (location : locations') = wrapWith locations' <<< wrap location
+
+wrapWith Nil = identity
+
+-- Optimize an expression
+optimize :: forall l. Expression l -> Expression l
+optimize expression@(Let location generalize name value body) = case removeWrappers body of
+  Variable location' name'
+    | name == name' -> wrapWith (wrappers body) $ wrap location' $ optimize value
+  _ -> Let location generalize name (optimize value) $ optimize body
+
+optimize (FunctionCall location calee argument) = FunctionCall location (optimize calee) $ optimize argument
+
+optimize (Lambda location argument body) = Lambda location argument $ optimize body
+
+optimize (If location condition then' else') = If location (optimize condition) (optimize then') $ optimize else'
+
+optimize (FixPoint location body) = FixPoint location $ optimize body
+
+optimize (Chain location expressions) = Chain location $ optimize <$> expressions
+
+optimize expression = expression

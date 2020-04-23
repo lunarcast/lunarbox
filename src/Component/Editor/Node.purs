@@ -14,10 +14,9 @@ import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseDown)
+import Halogen.HTML.Events (onClick, onMouseDown)
 import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), fillWith)
 import Lunarbox.Component.Editor.Node.Input (input)
-import Lunarbox.Component.Editor.Node.Label (label)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..))
@@ -30,10 +29,10 @@ import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type Input
+type Input h a
   = { nodeData :: NodeData
     , node :: Node
-    , labels :: Array String
+    , labels :: Array (HTML h a)
     , functionData :: FunctionData
     , colorMap :: Map Pin SA.Color
     , hasOutput :: Boolean
@@ -41,15 +40,19 @@ type Input
 
 type Actions a
   = { select :: Maybe a
+    , selectInput :: Int -> Maybe a
+    , selectOutput :: Maybe a
     }
 
-output :: forall r a. Boolean -> Color -> HTML r a
-output false _ = HH.text ""
+output :: forall r a. Boolean -> Maybe a -> Color -> HTML r a
+output false _ _ = HH.text ""
 
-output true color =
+output true selectOutput color =
   SE.circle
     [ SA.r 10.0
     , SA.fill $ Just color
+    , SA.class_ "node-output"
+    , onClick $ const selectOutput
     ]
 
 constant :: forall r a. HTML r a
@@ -63,21 +66,25 @@ constant =
     , strokeDashArray [ pi * nodeRadius / 20.0 ]
     ]
 
-node :: forall h a. Input -> Actions a -> HTML h a
+node :: forall h a. Input h a -> Actions a -> HTML h a
 node { nodeData: NodeData { position }
 , functionData: FunctionData { inputs }
 , labels
 , colorMap
 , hasOutput
-} { select } =
+} { select
+, selectOutput
+, selectInput
+} =
   SE.g
     [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
     , onMouseDown $ const select
     ]
-    [ overlays $ label <$> labels
+    [ overlays labels
     , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
     , output
         hasOutput
+        selectOutput
         $ fromMaybe transparent
         $ Map.lookup OutputPin colorMap
     , let
@@ -92,15 +99,24 @@ node { nodeData: NodeData { position }
             [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ]
             ]
             $ ( \arc@(Arc _ _ name) ->
-                  input
-                    { arc
-                    , spacing: if List.length inputArcs == 1 then 0.0 else arcSpacing
-                    , radius: nodeRadius
-                    , color:
-                      fromMaybe transparent do
-                        index <- List.findIndex (name == _) inputNames
-                        Map.lookup (InputPin index) colorMap
-                    }
+                  let
+                    maybeIndex = List.findIndex (name == _) inputNames
+                  in
+                    input
+                      { arc
+                      , spacing:
+                        if List.length inputArcs == 1 then
+                          0.0
+                        else
+                          arcSpacing
+                      , radius: nodeRadius
+                      , color:
+                        fromMaybe transparent do
+                          index <- maybeIndex
+                          Map.lookup (InputPin index) colorMap
+                      }
+                      $ maybeIndex
+                      >>= selectInput
               )
             <$> List.toUnfoldable inputArcs
     ]

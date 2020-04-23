@@ -3,18 +3,20 @@ module Lunarbox.Data.Editor.Node
   , ComplexNodeData
   , compileNode
   , hasOutput
+  , getInputs
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
+  , _nodeInputs
   ) where
 
 import Prelude
-import Data.Default (def)
-import Data.Lens (Prism', Traversal', is, prism')
+import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Record (prop)
-import Data.List (List, foldl, mapWithIndex)
+import Data.List (List(..), foldl, mapWithIndex, (!!))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -37,9 +39,21 @@ data Node
     ComplexNodeData
   | OutputNode (Maybe NodeId)
 
+instance showNode :: Show Node where
+  show InputNode = "InputNode"
+  show (OutputNode id) = "Output " <> maybe "???" show id
+  show (ComplexNode data') = show data'
+
 -- Check if a node has an output pin
 hasOutput :: Node -> Boolean
 hasOutput = not <<< is _OutputNode
+
+-- Get all inputs of a node
+getInputs :: Node -> List (Maybe NodeId)
+getInputs = case _ of
+  ComplexNode { inputs } -> inputs
+  OutputNode input -> pure input
+  InputNode -> Nil
 
 functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
 functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
@@ -50,24 +64,27 @@ compileNode nodes id child =
     InputNode -> inputNode id child
     OutputNode outputId ->
       outputNode id case outputId of
-        Just outputId' -> Variable (Location outputId') $ VarName $ show outputId'
+        Just outputId' -> Variable Nowhere $ VarName $ show outputId'
         Nothing -> nothing
-    ComplexNode { inputs, function } -> Let def name value child
+    ComplexNode { inputs, function } -> Let Nowhere false name value child
       where
       name = VarName $ show id
 
-      calee = Variable (Location id) $ VarName $ show function
+      calee = Variable Nowhere $ VarName $ show function
 
       arguments =
         mapWithIndex
           ( \index id' ->
-              wrap (DeepLocation id $ InputPin index) case id' of
-                Just id'' -> Variable Nowhere $ VarName $ show id''
-                Nothing -> nothing
+              let
+                location = DeepLocation id $ InputPin index
+              in
+                case id' of
+                  Just id'' -> Variable location $ VarName $ show id''
+                  Nothing -> nullExpr location
           )
           inputs
 
-      value = functionCall (DeepLocation id OutputPin) calee arguments
+      value = wrap (Location id) $ functionCall (DeepLocation id OutputPin) calee arguments
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData
@@ -87,3 +104,10 @@ _OutputNode =
   prism' OutputNode case _ of
     OutputNode v -> Just v
     _ -> Nothing
+
+_nodeInputs :: Lens' Node (List (Maybe NodeId))
+_nodeInputs =
+  lens getInputs \node -> case node of
+    InputNode -> const node
+    OutputNode inner -> OutputNode <<< join <<< (_ !! 0)
+    ComplexNode _ -> flip (set _ComplexNodeInputs) node

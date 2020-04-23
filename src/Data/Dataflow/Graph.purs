@@ -5,37 +5,33 @@ module Lunarbox.Data.Dataflow.Graph
 import Prelude
 import Data.Lens (view)
 import Data.Lens.At (at)
-import Data.List (catMaybes, foldr, reverse)
+import Data.List (catMaybes, foldr)
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression, VarName(..))
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), letWithLocation)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Graph (Graph, topologicalSort)
 
 -- Takes a key and a graph and uses that to produce an Expression
 compileGraphNode :: forall k v l. Ord k => (v -> Expression l) -> Graph k v -> k -> Maybe (Tuple k (Expression (ExtendedLocation k l)))
-compileGraphNode toExpression graph key = Tuple key <$> map (DeepLocation key) <$> toExpression <$> view (at key) graph
+compileGraphNode toExpression graph key = Tuple key <$> wrap (Location key) <$> map (DeepLocation key) <$> toExpression <$> view (at key) graph
 
 -- Takes a graph of something and compiles it into an Expression
-compileGraph :: forall k v l. Ord k => Eq l => Show k => (v -> Expression l) -> Graph k v -> Expression (ExtendedLocation k l)
-compileGraph toExpression graph =
+compileGraph :: forall k v l. Ord k => Eq l => Show k => Show l => (v -> Expression l) -> Graph k v -> k -> Expression (ExtendedLocation k l)
+compileGraph toExpression graph main =
   let
     sorted =
-      reverse
-        $ topologicalSort
-            graph
+      topologicalSort
+        graph
 
     emptyExpression = nullExpr Nowhere
   in
     foldr
       ( \(Tuple key value) body ->
-          if body == emptyExpression then
-            value
-          else
-            letWithLocation (Location key) (VarName $ show key) value body
+          Let Nowhere true (VarName $ show key) value body
       )
-      emptyExpression
+      (Variable Nowhere $ VarName $ show main)
       $ catMaybes
       $ compileGraphNode toExpression graph
       <$> sorted

@@ -20,7 +20,9 @@ import Data.Vec (vec2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
+import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
 import Lunarbox.Component.Editor.Node as NodeC
+import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Type (Type)
@@ -36,7 +38,7 @@ import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
-import Svg.Attributes (Color)
+import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.UIEvent.MouseEvent as ME
@@ -58,6 +60,8 @@ type Actions a
     , mouseDown :: Vec2 Number -> Maybe a
     , selectNode :: NodeId -> Maybe a
     , mouseUp :: Maybe a
+    , selectInput :: NodeId -> Int -> Maybe a
+    , selectOutput :: NodeId -> Maybe a
     }
 
 -- Errors which could arise while creating the node svg
@@ -89,7 +93,13 @@ getNode :: FunctionName -> NodeId -> Project -> NodeBuild Node
 getNode name id = note (MissingNode id) <<< join <<< (preview $ _atProjectNode name id)
 
 createNodeComponent :: forall h a. Input -> Actions a -> Tuple NodeId NodeData -> NodeBuild (HH.HTML h a)
-createNodeComponent { functionName, project, typeMap, expression, functionData, typeColors } { selectNode } (Tuple id nodeData) = do
+createNodeComponent { functionName
+, project
+, typeMap
+, expression
+, functionData
+, typeColors
+} { selectNode, selectInput, selectOutput } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
 
@@ -118,13 +128,16 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
         , functionData: nodeFunctionData
         , colorMap
         , labels:
-          [ show name
-          , show $ prettify nodeType
-          , sumarizeExpression nodeExpression
+          [ labelText $ show name
+          , label $ highlightTypeToSvg (RGB 255 255 255) $ prettify nodeType
+          , labelText $ sumarizeExpression nodeExpression
           ]
         , hasOutput: not $ is _OutputNode node
         }
-        { select: selectNode id }
+        { select: selectNode id
+        , selectInput: selectInput id
+        , selectOutput: selectOutput id
+        }
 
 scene :: forall h a. Input -> Actions a -> HH.HTML h a
 scene state@{ project
