@@ -1,3 +1,39 @@
+# [1.7.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.6.0...v1.7.0) (2020-04-22)
+
+
+### Bug Fixes
+
+* correct linecaping for nodes without inputs ([7bdb410](https://github.com/Mateiadrielrafael/lunarbox/commit/7bdb4106744956087de6ca39a5ff7e60ac3b39d4))
+* FINALLY FIXED TYPES NOT APPEARING ON TOP OF NODES ([b0bf340](https://github.com/Mateiadrielrafael/lunarbox/commit/b0bf340fbd2322b13923df1aeb7b80b3c765918f))
+* fixed compilaion results only containing output nodes ([a38790a](https://github.com/Mateiadrielrafael/lunarbox/commit/a38790ac628362fdf991cd85bf1754aba6b314c4))
+* fixed infinite recursion when detecting an intersection ([a03ecd7](https://github.com/Mateiadrielrafael/lunarbox/commit/a03ecd73062d033e80368b534da0ffa87f361d28))
+* fixed partial initial loading of native functions ([84b7335](https://github.com/Mateiadrielrafael/lunarbox/commit/84b73356bb6c89c07b188cdc02dbf7b709c73b44))
+* fixed some input pins having the wrong color ([44e4f1e](https://github.com/Mateiadrielrafael/lunarbox/commit/44e4f1eb7b40e94d0c576270f445fad1531738a1))
+* fixed some random problems with node compiling ([81cf7fd](https://github.com/Mateiadrielrafael/lunarbox/commit/81cf7fd5a3ecabd944f0d0ddfe85bdaf7d0cb683))
+* for now unkown colors just become gray ([01f01cd](https://github.com/Mateiadrielrafael/lunarbox/commit/01f01cdd1f009ed412a2ac62378bb910bedcf130))
+* now you can drag nodes even from the empty spaces between input arcs ([5e24521](https://github.com/Mateiadrielrafael/lunarbox/commit/5e2452144787c047bfe6a45fcd51bb744ea18f55))
+* removed debug logs ([804b101](https://github.com/Mateiadrielrafael/lunarbox/commit/804b10119e87da07cec34d06af8ea617ccf56237))
+
+
+### Features
+
+* arc overlapping solver ([4cab578](https://github.com/Mateiadrielrafael/lunarbox/commit/4cab578b1a22c419197c8adbe1e612ba3f8db493))
+* colored node inputs ([f8f2809](https://github.com/Mateiadrielrafael/lunarbox/commit/f8f2809f109ed018c49898ad9e89c76406387669))
+* colored outputs ([eddd2b3](https://github.com/Mateiadrielrafael/lunarbox/commit/eddd2b33b2df3591d3f9755a4670c422a86e6893))
+* colored types on the Add panel ([364ce5b](https://github.com/Mateiadrielrafael/lunarbox/commit/364ce5b5555a39b0372dd15010e18006a403ce4e))
+* display errors with a nice illustration ([97cd0fc](https://github.com/Mateiadrielrafael/lunarbox/commit/97cd0fc58f12f3e208194845976258a52805ec63))
+* dotted lines ([77ca8d7](https://github.com/Mateiadrielrafael/lunarbox/commit/77ca8d7f484a3dfa3c4fec8a55b49123812213e0))
+* empty space filling alg for arcs on a circle ([67e37a6](https://github.com/Mateiadrielrafael/lunarbox/commit/67e37a62828d5050034b7ffca21b518b8a09e3d1))
+* free type variable finding for the Scene component ([7b934df](https://github.com/Mateiadrielrafael/lunarbox/commit/7b934df584351fb90be837316a1c43ffbc5714f4))
+* got dnd back ([b4c0bc9](https://github.com/Mateiadrielrafael/lunarbox/commit/b4c0bc9d0abd508bdb7bb883bf519a63472dba01))
+* helper to draw chords ([26abe47](https://github.com/Mateiadrielrafael/lunarbox/commit/26abe477ff5826e84cb4892e6e560887c4f9b4b8))
+* only compile when necessary ([ca719cc](https://github.com/Mateiadrielrafael/lunarbox/commit/ca719cce17761e91d1fee285a0efbd5c43df2da8))
+* random colors for unkown types ([cbdedf0](https://github.com/Mateiadrielrafael/lunarbox/commit/cbdedf01cbda04753b05b5ff35a752abed4c7f74))
+* rendering for node inputs! ([e505b1d](https://github.com/Mateiadrielrafael/lunarbox/commit/e505b1d1a84a67f9cdf7e99a9bc929ab56c570a0))
+* some more coloring stuff ([2ff7081](https://github.com/Mateiadrielrafael/lunarbox/commit/2ff70816f9fda4a120f4f6475f6a0cc661823e4f))
+* started work on pin locations ([c6a1747](https://github.com/Mateiadrielrafael/lunarbox/commit/c6a1747b22a2fac8398130be8d9e199d5372f2b9))
+* type prettifying ([0996d07](https://github.com/Mateiadrielrafael/lunarbox/commit/0996d072198708e4a392787e301cc438e72e0cfd))
+
 # [1.6.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.5.0...v1.6.0) (2020-04-04)
 
 
