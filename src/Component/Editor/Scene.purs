@@ -60,7 +60,7 @@ type Actions a
     , mouseDown :: Vec2 Number -> Maybe a
     , selectNode :: NodeId -> Maybe a
     , mouseUp :: Maybe a
-    , selectInput :: Tuple NodeId Int -> Maybe a
+    , selectInput :: NodeId -> Int -> Maybe a
     , selectOutput :: NodeId -> Maybe a
     }
 
@@ -135,7 +135,7 @@ createNodeComponent { functionName
         , hasOutput: not $ is _OutputNode node
         }
         { select: selectNode id
-        , selectInput: selectInput <<< Tuple id
+        , selectInput: selectInput id
         , selectOutput: selectOutput id
         }
 

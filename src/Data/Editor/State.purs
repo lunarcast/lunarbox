@@ -27,26 +27,29 @@ module Lunarbox.Data.Editor.State
   ) where
 
 import Prelude
-import Data.Lens (Lens', Traversal', _Just)
+import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.Map (Map)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
+import Data.Typelevel.Undefined (undefined)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node)
+import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup)
 import Lunarbox.Data.Graph as G
+import Lunarbox.Data.Lens (listToArrayIso)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes (Color)
 
@@ -149,3 +152,46 @@ _partialFrom = _partialConnection <<< _from
 
 _partialTo :: Lens' State (Maybe (Tuple NodeId Int))
 _partialTo = _partialConnection <<< _to
+
+_currentNodeGroup :: Lens' State (Maybe NodeGroup)
+_currentNodeGroup =
+  ( lens
+      ( \state -> do
+          currentFunction <- view _currentFunction state
+          preview (_nodeGroup currentFunction) state
+      )
+      ( \state maybeValue ->
+          fromMaybe state do
+            value <- maybeValue
+            currentFunction <- view _currentFunction state
+            pure $ set (_nodeGroup currentFunction) value state
+      )
+  )
+
+_currentNodes :: Traversal' State (G.Graph NodeId Node)
+_currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
+
+_atCurrentNode :: NodeId -> Traversal' State (Maybe Node)
+_atCurrentNode id = _currentNodes <<< at id
+
+-- Helpers
+tryConnecting :: State -> State
+tryConnecting state =
+  fromMaybe state do
+    from <- view _partialFrom state
+    Tuple toId toIndex <- view _partialTo state
+    currentNodeGroup <- view _currentNodeGroup state
+    let
+      state' = over _currentNodes (G.insertEdge from toId) state
+
+      state'' =
+        set
+          ( _atCurrentNode toId
+              <<< _Just
+              <<< _nodeInputs
+              <<< listToArrayIso
+              <<< ix toIndex
+          )
+          (Just from)
+          state
+    undefined
