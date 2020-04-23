@@ -24,6 +24,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Scheme (Scheme)
+import Lunarbox.Data.String (indent)
 
 newtype VarName
   = VarName String
@@ -139,19 +140,39 @@ printExpressionAt location =
 sumarizeExpression :: forall l. Show l => Eq l => Expression l -> String
 sumarizeExpression = printRawExpression $ const "..."
 
+printRawLet :: forall l. (Expression l -> String) -> Expression l -> String
+printRawLet print (Let _ name value _) = indent 2 (unwrap name <> " = " <> print value) <> "\n"
+
+printRawLet _ _ = ""
+
+printLet :: forall l. Boolean -> (Expression l -> String) -> Expression l -> String
+printLet true print expression@(Let _ _ _ _) = "let\n" <> printLet false print expression
+
+printLet false print expression@(Let _ _ _ next@(Let _ _ _ _)) = printRawLet print expression <> printLet false print next
+
+printLet false print expression@(Let _ _ _ next) = printRawLet print expression <> "in\n" <> indent 2 (print next)
+
+printLet _ _ _ = ""
+
 -- Prints an expression without it's location. 
 -- Uses a custom function to print the recursive Expressions.
 -- Only used internally inside the show instance 
 -- to not reepat the location printing code every time
 printRawExpression :: forall l. Show l => (Expression l -> String) -> Expression l -> String
-printRawExpression print = case _ of
+printRawExpression print expression = case expression of
   Variable _ name -> unwrap name
   FunctionCall _ f i -> print f <> " " <> print i
   Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
   Literal _ literal -> show literal
-  Let _ name value body -> "let " <> unwrap name <> " = " <> print value <> " in " <> print body
-  If _ c t f -> "if " <> print c <> " then " <> print t <> " else " <> print f
+  Let _ _ _ _ -> printLet true (printRawExpression print) expression
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
+  If _ cond then' else' ->
+    "if\n"
+      <> indent 2 (print cond)
+      <> "\nthen\n"
+      <> indent 2 (print then')
+      <> "\nelse\n"
+      <> indent 2 (print else')
   Native _ (NativeExpression t _) -> "native :: " <> show t
   Chain l (e : Nil) -> printRawExpression print e
   Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"

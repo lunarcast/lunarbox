@@ -6,7 +6,6 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
-import Data.Either (Either(..))
 import Data.Foldable (for_, sequence_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
@@ -28,9 +27,10 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
 import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
+import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
@@ -40,13 +40,12 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _Nod
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.Project (_projectNodeGroup, compileProject, createFunction, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.Project (_projectNodeGroup, createFunction, emptyProject)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atCurrentNode, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, compile, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Lunarbox.Svg.Attributes (transparent)
-import Record as Record
 
 data Action
   = ChangeTab Tab
@@ -54,7 +53,6 @@ data Action
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | StartFunctionCreation
-  | Compile
   | SceneMouseUp
   | SceneMouseDown (Vec2 Number)
   | SceneMouseMove (Vec2 Number)
@@ -106,23 +104,7 @@ component =
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
     LoadNodes -> do
-      modify_ loadPrelude
-      handleAction Compile
-    Compile -> do
-      { project, expression } <- get
-      let
-        expression' = compileProject project
-      -- we only run the type inference algorithm if the expression changed
-      when (expression /= expression') do
-        let
-          typeMap = case solveExpression expression' of
-            Right map -> Map.delete Nowhere map
-            Left _ -> mempty
-        print $ expression
-        printString $ printTypeMap typeMap
-        -- printString $ printSource expression'
-        -- TODO: make it so this accounts for errors
-        modify_ $ Record.merge { expression: expression', typeMap }
+      modify_ $ compile <<< loadPrelude
     CreateNode name -> do
       print "here:)"
       Tuple id setId <- createId
@@ -158,8 +140,7 @@ component =
                 state''' = set (_atNodeData currentFunction id) (Just def) state''
 
                 state'''' = over _functions (G.insertEdge name currentFunction) state'''
-              void $ put $ setId state''''
-              handleAction Compile
+              void $ put $ compile $ setId state''''
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       modify_
@@ -185,9 +166,8 @@ component =
             function <-
               G.lookup currentFunction functions
             pure do
-              handleAction Compile
               -- And finally, save the selected function in the state
-              modify_ $ set _currentFunction name
+              modify_ $ set _currentFunction name <<< compile
     SceneMouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
     SceneMouseMove position -> do
@@ -222,6 +202,12 @@ component =
       let
         setFrom = set _partialFrom $ Just id
       modify_ $ tryConnecting <<< setFrom
+      s <- gets $ view _typeMap
+      e <- gets $ view _expression
+      s' <- gets $ preview $ _atCurrentNode $ NodeId "firstOutput"
+      printString $ printTypeMap s
+      printString $ printSource e
+      print s'
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

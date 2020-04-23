@@ -3,6 +3,7 @@ module Lunarbox.Data.Editor.State
   , Tab(..)
   , tabIcon
   , tryConnecting
+  , compile
   , _nodeData
   , _atNodeData
   , _project
@@ -31,18 +32,21 @@ module Lunarbox.Data.Editor.State
   ) where
 
 import Prelude
+import Data.Either (Either(..))
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
-import Data.Typelevel.Undefined (undefined)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
@@ -51,7 +55,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (listToArrayIso)
 import Lunarbox.Data.Vector (Vec2)
@@ -179,6 +183,23 @@ _atCurrentNode :: NodeId -> Traversal' State (Maybe Node)
 _atCurrentNode id = _currentNodes <<< at id
 
 -- Helpers
+-- Compile a project
+compile :: State -> State
+compile state@{ project, expression, typeMap } =
+  let
+    expression' = compileProject project
+
+    typeMap' =
+      -- we only run the type inference algorithm if the expression changed
+      if (expression == expression') then
+        typeMap
+      else case solveExpression expression' of
+        Right map -> Map.delete Nowhere map
+        -- TODO: make it so this accounts for errors
+        Left _ -> mempty
+  in
+    state { expression = expression', typeMap = typeMap' }
+
 -- Tries connecting the pins the user selected
 tryConnecting :: State -> State
 tryConnecting state =
@@ -199,4 +220,6 @@ tryConnecting state =
           )
           (Just from)
           state
-    undefined
+
+      state''' = set _partialTo Nothing $ set _partialFrom Nothing state''
+    pure $ compile state'''

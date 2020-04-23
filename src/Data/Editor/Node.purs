@@ -11,9 +11,9 @@ module Lunarbox.Data.Editor.Node
   ) where
 
 import Prelude
-import Data.Lens (Iso', Lens', Prism', Traversal', is, iso, lens, prism', review, set, view)
+import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Record (prop)
-import Data.List (List(..), (:), (!!), foldl, mapWithIndex)
+import Data.List (List(..), foldl, mapWithIndex, (!!))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
@@ -38,6 +38,11 @@ data Node
     ComplexNodeData
   | OutputNode (Maybe NodeId)
 
+instance showNode :: Show Node where
+  show InputNode = "InputNode"
+  show (OutputNode id) = "Output " <> maybe "???" show id
+  show (ComplexNode data') = show data'
+
 -- Check if a node has an output pin
 hasOutput :: Node -> Boolean
 hasOutput = not <<< is _OutputNode
@@ -46,7 +51,7 @@ hasOutput = not <<< is _OutputNode
 getInputs :: Node -> List (Maybe NodeId)
 getInputs = case _ of
   ComplexNode { inputs } -> inputs
-  OutputNode input -> Just <$> view _maybeToList input
+  OutputNode input -> pure input
   InputNode -> Nil
 
 functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
@@ -96,12 +101,9 @@ _OutputNode =
     OutputNode v -> Just v
     _ -> Nothing
 
-_maybeToList :: forall a. Iso' (Maybe a) (List a)
-_maybeToList = iso (maybe Nil (_ : Nil)) (_ !! 0)
-
 _nodeInputs :: Lens' Node (List (Maybe NodeId))
 _nodeInputs =
   lens getInputs \node -> case node of
     InputNode -> const node
-    OutputNode inner -> OutputNode <<< join <<< review _maybeToList
+    OutputNode inner -> OutputNode <<< join <<< (_ !! 0)
     ComplexNode _ -> flip (set _ComplexNodeInputs) node

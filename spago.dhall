@@ -31,6 +31,7 @@ You can edit this file as you like.
   , "routing-duplex"
   , "sized-vectors"
   , "spec"
+  , "stringutils"
   , "tuples"
   , "typelevel"
   , "typelevel-prelude"
