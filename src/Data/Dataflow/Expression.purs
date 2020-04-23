@@ -14,6 +14,10 @@ module Lunarbox.Data.Dataflow.Expression
   , sumarizeExpression
   , inputs
   , wrap
+  , optimize
+  , removeWrappers
+  , wrapWith
+  , wrappers
   ) where
 
 import Prelude
@@ -185,3 +189,40 @@ printSource = printRawExpression (\e -> printSource e)
 -- Wrap an expression in another expression with a custom location
 wrap :: forall l. l -> Expression l -> Expression l
 wrap location = Chain location <<< pure
+
+-- Unwrap an expression as much as possible
+removeWrappers :: forall l. Expression l -> Expression l
+removeWrappers (Chain _ (expression : Nil)) = removeWrappers expression
+
+removeWrappers expression = expression
+
+-- Collect all the locations something is wrapped in
+wrappers :: forall l. Expression l -> List l
+wrappers (Chain location (expression : Nil)) = location : wrappers expression
+
+wrappers _ = Nil
+
+-- Wrap an expression with a list of locations
+wrapWith :: forall l. List l -> Expression l -> Expression l
+wrapWith (location : locations') = wrapWith locations' <<< wrap location
+
+wrapWith Nil = identity
+
+-- Optimize an expression
+optimize :: forall l. Expression l -> Expression l
+optimize expression@(Let location name value body) = case removeWrappers body of
+  Variable location' name'
+    | name == name' -> wrapWith (wrappers body) $ wrap location' $ optimize value
+  _ -> Let location name (optimize value) $ optimize body
+
+optimize (FunctionCall location calee argument) = FunctionCall location (optimize calee) $ optimize argument
+
+optimize (Lambda location argument body) = Lambda location argument $ optimize body
+
+optimize (If location condition then' else') = If location (optimize condition) (optimize then') $ optimize else'
+
+optimize (FixPoint location body) = FixPoint location $ optimize body
+
+optimize (Chain location expressions) = Chain location $ optimize <$> expressions
+
+optimize expression = expression

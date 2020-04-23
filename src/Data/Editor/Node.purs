@@ -16,6 +16,7 @@ import Data.Lens.Record (prop)
 import Data.List (List(..), foldl, mapWithIndex, (!!))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
+import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -63,24 +64,27 @@ compileNode nodes id child =
     InputNode -> inputNode id child
     OutputNode outputId ->
       outputNode id case outputId of
-        Just outputId' -> Variable (Location outputId') $ VarName $ show outputId'
+        Just outputId' -> Variable Nowhere $ VarName $ show outputId'
         Nothing -> nothing
     ComplexNode { inputs, function } -> Let Nowhere name value child
       where
       name = VarName $ show id
 
-      calee = Variable (Location id) $ VarName $ show function
+      calee = Variable Nowhere $ VarName $ show function
 
       arguments =
         mapWithIndex
           ( \index id' ->
-              wrap (DeepLocation id $ InputPin index) case id' of
-                Just id'' -> Variable Nowhere $ VarName $ show id''
-                Nothing -> nothing
+              let
+                location = DeepLocation id $ InputPin index
+              in
+                case id' of
+                  Just id'' -> Variable location $ VarName $ show id''
+                  Nothing -> nullExpr location
           )
           inputs
 
-      value = functionCall (DeepLocation id OutputPin) calee arguments
+      value = wrap (Location id) $ functionCall (DeepLocation id OutputPin) calee arguments
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData
