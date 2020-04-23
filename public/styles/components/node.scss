@@ -5,9 +5,9 @@
 }
 
 .node-input {
-  transition: transform $transition-time;
+  transition: stroke-width $transition-time, filter $transition-time;
 }
 
 .node-input:hover {
-  transform: scale(1.1);
+  stroke-width: 9px;
 }
