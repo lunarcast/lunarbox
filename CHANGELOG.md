@@ -1,3 +1,21 @@
+# [1.8.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.7.0...v1.8.0) (2020-04-23)
+
+
+### Features
+
+* A function to add a connection to a state ([9e0a425](https://github.com/Mateiadrielrafael/lunarbox/commit/9e0a42511e6631b21d15ee9103ec55a32216c34b))
+* basic types and stuff for PartialConnections ([f3f8fbf](https://github.com/Mateiadrielrafael/lunarbox/commit/f3f8fbf34f471ccb95f96b75d8ec76d51c44c0a5))
+* CONNECTIONS!!! ([e7fd0dc](https://github.com/Mateiadrielrafael/lunarbox/commit/e7fd0dc81a0b8365a335ada7f42e32c8c19a63df))
+* display the types on the Add panel ([c500728](https://github.com/Mateiadrielrafael/lunarbox/commit/c500728d5e1ae3bfe6541d72e5063d8182c81e23))
+* experimental connections ([f95e1ef](https://github.com/Mateiadrielrafael/lunarbox/commit/f95e1efba47fa294af8c82251fc53d168abad559))
+* expression optimization ([57e4175](https://github.com/Mateiadrielrafael/lunarbox/commit/57e417582143c0d5e540c9f8bb78862d93ef57f9))
+* instead of increasing the radius of node inputs now I increase the stroke-width ([9ea094d](https://github.com/Mateiadrielrafael/lunarbox/commit/9ea094d5d20c4bd9a3ef3be472f6a23390f11064))
+* making node inputs bigger on hover ([6604ff1](https://github.com/Mateiadrielrafael/lunarbox/commit/6604ff1c3aeb7ba0b0fad61b4c8e97c343bd0313))
+* pretty printing of expressions ([410cb4b](https://github.com/Mateiadrielrafael/lunarbox/commit/410cb4bccfd9f7fd92d5d7bc6c8447886e165fab))
+* scaling of outputs on hover ([825dd81](https://github.com/Mateiadrielrafael/lunarbox/commit/825dd81a8d028ff111aba2f57ad0540035fdd3ad))
+* syntax highlighting everywhere!!! (and fixed wrong output types) ([02070b4](https://github.com/Mateiadrielrafael/lunarbox/commit/02070b4f3ffc93a6489f1b5612fd8f0ac0f7a62e))
+* type syntax highlighting ([c669772](https://github.com/Mateiadrielrafael/lunarbox/commit/c66977295994f37a7f6ed7c13da175858eed7f15))
+
 # [1.7.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.6.0...v1.7.0) (2020-04-22)
 
 
