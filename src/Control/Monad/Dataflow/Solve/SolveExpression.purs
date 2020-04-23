@@ -39,6 +39,6 @@ solveExpression expression = do
 -- helper to print a typemap
 printTypeMap :: forall l. Show l => Ord l => Map.Map l Type -> String
 printTypeMap =
-  foldr (\(Tuple location type') result -> result <> "\n" <> show location <> " = " <> show (prettify type')) ""
+  foldr (\(Tuple location type') result -> result <> "\n" <> show location <> " = " <> show (type')) ""
     <<< Array.sortBy (\(Tuple _ a) (Tuple _ b) -> compare (show a) $ show b)
     <<< Map.toUnfoldable

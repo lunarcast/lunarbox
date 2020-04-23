@@ -7,8 +7,8 @@ import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (asks, local)
 import Control.Monad.State (gets, modify_)
 import Data.Array (find, foldr, zip)
-import Data.List ((:))
 import Data.Lens (over, view)
+import Data.List ((:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust)
 import Data.Set as Set
@@ -97,9 +97,9 @@ infer expression =
         tv <- fresh
         createConstraint funcType (inputType `TArrow` tv)
         pure tv
-      Let _ name value body -> do
+      Let _ shouldGeneralize name value body -> do
         t <- infer value
-        inner <- generalize t
+        inner <- if shouldGeneralize then generalize t else pure $ Forall [] t
         createClosure name inner (infer body)
       If _ condition onTrue onFalse -> do
         conditionType <- infer condition

@@ -219,7 +219,7 @@ tryConnecting state =
               <<< ix toIndex
           )
           (Just from)
-          state
+          state'
 
       state''' = set _partialTo Nothing $ set _partialFrom Nothing state''
     pure $ compile state'''

@@ -10,10 +10,12 @@ module Lunarbox.Data.Graph
   , toUnfoldable
   , insertEdge
   , topologicalSort
+  , edges
   , _Graph
   ) where
 
 import Prelude
+import Data.Array as Array
 import Data.Bifunctor (lmap, rmap)
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Graph as CG
@@ -103,6 +105,13 @@ toUnfoldable (Graph m) = Map.toUnfoldable $ fst <$> m
 --  Insert an edge from the start key to the end key.
 insertEdge :: forall k v. Ord k => k -> k -> Graph k v -> Graph k v
 insertEdge from to (Graph g) = Graph $ Map.alter (map (rmap (Set.insert to))) from g
+
+-- Get all the edges from a graph
+edges :: forall k v u. Unfoldable u => Ord k => Graph k v -> u (Tuple k k)
+edges (Graph map) =
+  Map.toUnfoldable map
+    >>= (\(Tuple from (Tuple _ to)) -> Tuple from <$> Set.toUnfoldable to)
+    # Array.toUnfoldable
 
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k

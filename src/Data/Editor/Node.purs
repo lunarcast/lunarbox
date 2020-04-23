@@ -66,7 +66,7 @@ compileNode nodes id child =
       outputNode id case outputId of
         Just outputId' -> Variable Nowhere $ VarName $ show outputId'
         Nothing -> nothing
-    ComplexNode { inputs, function } -> Let Nowhere name value child
+    ComplexNode { inputs, function } -> Let Nowhere false name value child
       where
       name = VarName $ show id
 
