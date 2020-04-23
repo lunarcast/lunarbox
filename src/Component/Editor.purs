@@ -58,6 +58,8 @@ data Action
   | SceneMouseUp
   | SceneMouseDown (Vec2 Number)
   | SceneMouseMove (Vec2 Number)
+  | SelectInput NodeId Int
+  | SelectOutput NodeId
   | SelectNode NodeId
   | LoadNodes
 
@@ -90,6 +92,7 @@ component =
         , lastMousePosition: Nothing
         , expression: nullExpr Nowhere
         , project: emptyProject $ NodeId "firstOutput"
+        , partialConnection: def
         }
     , render
     , eval:
@@ -209,6 +212,10 @@ component =
       maybeCurrentFunction <- gets $ view _currentFunction
       for_ maybeCurrentFunction \currentFunction -> do
         modify_ $ set (_isSelected currentFunction id) true
+    SelectInput _ _ -> do
+      pure unit
+    SelectOutput id -> do
+      pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

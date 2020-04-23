@@ -21,6 +21,9 @@ module Lunarbox.Data.Editor.State
   , _currentTab
   , _functionData
   , _atFunctionData
+  , _partialConnection
+  , _partialFrom
+  , _partialTo
   ) where
 
 import Prelude
@@ -41,6 +44,7 @@ import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
+import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
@@ -76,6 +80,7 @@ type State
     , lastMousePosition :: Maybe (Vec2 Number)
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
     , functionData :: Map FunctionName FunctionData
+    , partialConnection :: PartialConnection
     }
 
 -- Lenses
@@ -135,3 +140,12 @@ _panelIsOpen = prop (SProxy :: _ "panelIsOpen")
 
 _currentTab :: Lens' State Tab
 _currentTab = prop (SProxy :: _ "currentTab")
+
+_partialConnection :: Lens' State PartialConnection
+_partialConnection = prop (SProxy :: _ "partialConnection")
+
+_partialFrom :: Lens' State ((Maybe NodeId))
+_partialFrom = _partialConnection <<< _from
+
+_partialTo :: Lens' State (Maybe (Tuple NodeId Int))
+_partialTo = _partialConnection <<< _to

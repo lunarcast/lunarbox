@@ -11,6 +11,7 @@ import Data.Lens.Record (prop)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Lens (newtypeIso)
 
@@ -18,7 +19,7 @@ import Lunarbox.Data.Lens (newtypeIso)
 newtype PartialConnection
   = PartialConnection
   { from :: Maybe NodeId
-  , to :: Maybe NodeId
+  , to :: Maybe (Tuple NodeId Int)
   }
 
 -- Typeclass instances
@@ -32,5 +33,5 @@ derive newtype instance defaultPartialConnection :: Default PartialConnection
 _from :: Lens' PartialConnection (Maybe NodeId)
 _from = newtypeIso <<< prop (SProxy :: _ "from")
 
-_to :: Lens' PartialConnection (Maybe NodeId)
+_to :: Lens' PartialConnection (Maybe (Tuple NodeId Int))
 _to = newtypeIso <<< prop (SProxy :: _ "to")

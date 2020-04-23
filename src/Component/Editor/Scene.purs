@@ -60,6 +60,8 @@ type Actions a
     , mouseDown :: Vec2 Number -> Maybe a
     , selectNode :: NodeId -> Maybe a
     , mouseUp :: Maybe a
+    , selectInput :: Tuple NodeId Int -> Maybe a
+    , selectOutput :: NodeId -> Maybe a
     }
 
 -- Errors which could arise while creating the node svg
@@ -91,7 +93,13 @@ getNode :: FunctionName -> NodeId -> Project -> NodeBuild Node
 getNode name id = note (MissingNode id) <<< join <<< (preview $ _atProjectNode name id)
 
 createNodeComponent :: forall h a. Input -> Actions a -> Tuple NodeId NodeData -> NodeBuild (HH.HTML h a)
-createNodeComponent { functionName, project, typeMap, expression, functionData, typeColors } { selectNode } (Tuple id nodeData) = do
+createNodeComponent { functionName
+, project
+, typeMap
+, expression
+, functionData
+, typeColors
+} { selectNode, selectInput, selectOutput } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
 
@@ -126,7 +134,10 @@ createNodeComponent { functionName, project, typeMap, expression, functionData, 
           ]
         , hasOutput: not $ is _OutputNode node
         }
-        { select: selectNode id }
+        { select: selectNode id
+        , selectInput: selectInput <<< Tuple id
+        , selectOutput: selectOutput id
+        }
 
 scene :: forall h a. Input -> Actions a -> HH.HTML h a
 scene state@{ project

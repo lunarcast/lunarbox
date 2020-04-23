@@ -40,6 +40,8 @@ type Input h a
 
 type Actions a
   = { select :: Maybe a
+    , selectInput :: Int -> Maybe a
+    , selectOutput :: Maybe a
     }
 
 output :: forall r a. Boolean -> Color -> HTML r a

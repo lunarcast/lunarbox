@@ -79,7 +79,10 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
         ]
         [ node
             (nodeInput typeMap name functionData)
-            { select: Nothing }
+            { select: Nothing
+            , selectOutput: Nothing
+            , selectInput: const Nothing
+            }
         ]
     , container "node-data"
         [ container "node-text"
