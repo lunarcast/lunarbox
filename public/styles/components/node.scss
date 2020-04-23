@@ -1,3 +1,13 @@
+@import "../theme.scss";
+
 .node.selected {
   border: 10px solid red;
+}
+
+.node-input {
+  transition: transform $transition-time;
+}
+
+.node-input:hover {
+  transform: scale(1.1);
 }

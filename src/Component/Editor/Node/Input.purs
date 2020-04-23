@@ -27,4 +27,5 @@ input { radius, spacing, arc: Arc start end _, color } =
     , SA.stroke $ Just color
     , strokeWidth arcWidth
     , strokeLinecap Round
+    , SA.class_ "node-input"
     ]
