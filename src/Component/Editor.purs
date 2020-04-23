@@ -41,7 +41,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, compileProject, createFunction, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, tabIcon)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -213,9 +213,15 @@ component =
       for_ maybeCurrentFunction \currentFunction -> do
         modify_ $ set (_isSelected currentFunction id) true
     SelectInput id index -> do
-      modify_ $ set _partialTo $ Just $ Tuple id index
+      s <- gets $ view _partialTo
+      let
+        setTo = set _partialTo $ Just $ Tuple id index
+      print s
+      modify_ $ tryConnecting <<< setTo
     SelectOutput id -> do
-      modify_ $ set _partialFrom $ Just id
+      let
+        setFrom = set _partialFrom $ Just id
+      modify_ $ tryConnecting <<< setFrom
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

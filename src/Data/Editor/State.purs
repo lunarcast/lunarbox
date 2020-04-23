@@ -2,6 +2,7 @@ module Lunarbox.Data.Editor.State
   ( State
   , Tab(..)
   , tabIcon
+  , tryConnecting
   , _nodeData
   , _atNodeData
   , _project
@@ -24,6 +25,9 @@ module Lunarbox.Data.Editor.State
   , _partialConnection
   , _partialFrom
   , _partialTo
+  , _currentNodes
+  , _atCurrentNode
+  , _currentNodeGroup
   ) where
 
 import Prelude
@@ -175,6 +179,7 @@ _atCurrentNode :: NodeId -> Traversal' State (Maybe Node)
 _atCurrentNode id = _currentNodes <<< at id
 
 -- Helpers
+-- Tries connecting the pins the user selected
 tryConnecting :: State -> State
 tryConnecting state =
   fromMaybe state do
