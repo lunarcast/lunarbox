@@ -6,7 +6,7 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
-import Data.Foldable (for_, sequence_)
+import Data.Foldable (for_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
@@ -27,7 +27,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -39,8 +39,8 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _Nod
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.Project (_projectNodeGroup, createFunction, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, compile, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functionData, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, initializeFunction, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -147,25 +147,13 @@ component =
         else
           set _currentTab newTab
     CreateFunction name -> do
-      Tuple id setId <- createId
-      let
-        setFunction = over _project $ createFunction name id
-      modify_ $ setId <<< setFunction
+      modify_ $ initializeFunction name
+      s <- gets $ view _functionData
+      print s
+      print name
+    SelectFunction name -> modify_ $ setCurrentFunction name
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SelectFunction name -> do
-      -- we need the current function to lookup the function in the function graph
-      oldName <- gets $ view _currentFunction
-      functions <- gets $ view _functions
-      -- this is here to update the function the Scene component renders
-      when (name /= oldName)
-        $ sequence_ do
-            currentFunction <- name
-            function <-
-              G.lookup currentFunction functions
-            pure do
-              -- And finally, save the selected function in the state
-              modify_ $ set _currentFunction name <<< compile
     SceneMouseDown position -> do
       modify_ $ set _lastMousePosition $ Just position
     SceneMouseMove position -> do

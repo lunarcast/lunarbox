@@ -21,7 +21,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
-import Lunarbox.Component.Editor.Node (renderNode)
+import Lunarbox.Component.Editor.Node (SelectionStatus(..), renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
@@ -137,6 +137,7 @@ createNodeComponent { functionName
           , labelText $ sumarizeExpression nodeExpression
           ]
         , hasOutput: not $ is _OutputNode node
+        , selectionStatus: NothingSelected
         }
         { select: selectNode id
         , selectInput: selectInput id

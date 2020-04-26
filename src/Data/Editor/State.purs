@@ -4,6 +4,8 @@ module Lunarbox.Data.Editor.State
   , tabIcon
   , tryConnecting
   , compile
+  , setCurrentFunction
+  , initializeFunction
   , _nodeData
   , _atNodeData
   , _project
@@ -32,6 +34,7 @@ module Lunarbox.Data.Editor.State
   ) where
 
 import Prelude
+import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
@@ -52,10 +55,10 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (listToArrayIso)
 import Lunarbox.Data.Vector (Vec2)
@@ -176,6 +179,19 @@ _currentNodeGroup =
       )
   )
 
+_atCurrentNodeData :: NodeId -> Traversal' State (Maybe NodeData)
+_atCurrentNodeData id =
+  lens
+    ( \state -> do
+        currentFunction <- view _currentFunction state
+        view (_atNodeData currentFunction id) state
+    )
+    ( \state value ->
+        fromMaybe state do
+          currentFunction <- view _currentFunction state
+          pure $ set (_atNodeData currentFunction id) value state
+    )
+
 _currentNodes :: Traversal' State (G.Graph NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
@@ -223,3 +239,25 @@ tryConnecting state =
 
       state''' = set _partialTo Nothing $ set _partialFrom Nothing state''
     pure $ compile state'''
+
+-- Set the function the user is editing at the moment
+setCurrentFunction :: Maybe FunctionName -> State -> State
+setCurrentFunction = set _currentFunction
+
+-- Creates a function, adds an output node and set it as the current edited function
+initializeFunction :: FunctionName -> State -> State
+initializeFunction name state =
+  let
+    id = NodeId $ show name <> "-output"
+
+    function = createFunction name id
+
+    state' = over _project function state
+
+    state''' = set (_atNodeData name id) (Just def) state''
+
+    state'''' = set (_atFunctionData name) (Just def) state'''
+
+    state'' = setCurrentFunction (Just name) state'
+  in
+    compile state''''

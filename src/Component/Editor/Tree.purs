@@ -76,11 +76,11 @@ component =
     { initialState: (\{ functions, selected } -> { functions, selected, creating: false, validationError: Nothing })
     , render
     , eval:
-        mkEval
-          $ defaultEval
-              { handleAction = handleAction
-              , handleQuery = handleQuery
-              }
+      mkEval
+        $ defaultEval
+            { handleAction = handleAction
+            , handleQuery = handleQuery
+            }
     }
   where
   -- we need a ref to access the content of the input element
@@ -139,8 +139,6 @@ component =
                 -- this notifies the parent element we just created a new function
                 -- the parent ususally has to add the function to the graph
                 raise $ CreatedFunction functionName
-                -- we also need to make the parent select this function too
-                raise $ SelectedFunction $ Just functionName
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of

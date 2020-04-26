@@ -8,6 +8,8 @@ module Lunarbox.Data.Editor.Node.NodeData
 
 import Prelude
 import Data.Default (class Default)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Lens (Lens', iso)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
@@ -24,6 +26,11 @@ newtype NodeData
 derive instance newtypeNodeData :: Newtype NodeData _
 
 derive instance eqNodeData :: Eq NodeData
+
+derive instance genericNodeData :: Generic NodeData _
+
+instance showNodeData :: Show NodeData where
+  show = genericShow
 
 instance ordNodeData :: Ord NodeData where
   compare (NodeData { zPosition }) (NodeData ({ zPosition: zPosition' })) = compare zPosition zPosition'

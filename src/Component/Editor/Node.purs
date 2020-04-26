@@ -1,6 +1,7 @@
 module Lunarbox.Component.Editor.Node
-  ( renderNode
-  , Input
+  ( Input
+  , SelectionStatus(..)
+  , renderNode
   ) where
 
 import Prelude
@@ -35,6 +36,12 @@ import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
+-- A node can either have one of it's inputs, it's output or nothing selected
+data SelectionStatus
+  = InputSelected Int
+  | OutputSelected
+  | NothingSelected
+
 type Input h a
   = { nodeData :: NodeData
     , node :: Node
@@ -43,6 +50,7 @@ type Input h a
     , colorMap :: Map Pin SA.Color
     , hasOutput :: Boolean
     , nodeDataMap :: Map NodeId NodeData
+    , selectionStatus :: SelectionStatus
     }
 
 type Actions a
@@ -81,6 +89,7 @@ renderNode { nodeData: nodeData
 , hasOutput
 , node
 , nodeDataMap
+, selectionStatus
 } { select
 , selectOutput
 , selectInput

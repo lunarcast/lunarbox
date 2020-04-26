@@ -9,6 +9,8 @@ module Lunarbox.Data.Editor.FunctionData
 
 import Prelude
 import Data.Default (class Default, def)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Lens (Lens', iso, set)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype, unwrap, wrap)
@@ -25,7 +27,12 @@ newtype FunctionData
       }
   }
 
+derive instance genericFunctionData :: Generic FunctionData _
+
 derive instance newtypeFunctionData :: Newtype FunctionData _
+
+instance showFunctionData :: Show FunctionData where
+  show = genericShow
 
 instance defaultFunctionData :: Default FunctionData where
   def =
