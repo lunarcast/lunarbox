@@ -19,7 +19,9 @@ import Data.List (List(..), catMaybes, nub, (..), zip, (:))
 import Data.List as List
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..), fst)
+import Debug.Trace (trace)
 import Lunarbox.Data.Duplet (Duplet(..))
+import Lunarbox.Data.Functor (indexed)
 import Lunarbox.Data.List (chunk)
 import Lunarbox.Data.Math (normalizeAngle)
 import Math (Radians, tau)
@@ -121,22 +123,22 @@ emptySpaces arcs =
 fillWith :: forall a. Ord a => List a -> List (Arc a) -> List (Arc a)
 fillWith arcs toFill = filled <> toFill
   where
-  spaces = emptySpaces toFill
+  spaces = normalize <$> emptySpaces toFill
+
+  a = if List.length spaces == 1 then trace spaces identity else unit
 
   chunkSize = ceil $ (toNumber $ List.length arcs) / (toNumber $ List.length spaces)
 
-  range = 0 .. (chunkSize - 1)
-
   filled =
     (zip spaces $ chunk chunkSize arcs)
-      >>= ( \(Tuple arc keys) ->
+      >>= ( \(Tuple arc@(Arc spaceStart _ _) keys) ->
             let
               arcLength = length arc / (toNumber $ List.length keys)
             in
-              zip range keys
+              indexed keys
                 <#> \(Tuple index key) ->
                     let
-                      start = toNumber index * arcLength
+                      start = spaceStart + toNumber index * arcLength
                     in
                       Arc start (start + arcLength) key
         )
