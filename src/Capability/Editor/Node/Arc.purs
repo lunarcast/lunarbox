@@ -15,11 +15,10 @@ import Data.Foldable (minimumBy)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Int (ceil, toNumber)
-import Data.List (List(..), catMaybes, nub, (..), zip, (:))
+import Data.List (List(..), catMaybes, nub, zip, (:))
 import Data.List as List
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..), fst)
-import Debug.Trace (trace)
 import Lunarbox.Data.Duplet (Duplet(..))
 import Lunarbox.Data.Functor (indexed)
 import Lunarbox.Data.List (chunk)
@@ -124,8 +123,6 @@ fillWith :: forall a. Ord a => List a -> List (Arc a) -> List (Arc a)
 fillWith arcs toFill = filled <> toFill
   where
   spaces = normalize <$> emptySpaces toFill
-
-  a = if List.length spaces == 1 then trace spaces identity else unit
 
   chunkSize = ceil $ (toNumber $ List.length arcs) / (toNumber $ List.length spaces)
 

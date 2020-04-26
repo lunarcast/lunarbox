@@ -10,12 +10,11 @@ import Data.List (List(..))
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (fromMaybe, isNothing)
-import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
-import Debug.Trace (trace)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..), fillWith, normalize, rotate, solveOverlaps)
-import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node, connectedInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Functor (indexed)
@@ -30,9 +29,9 @@ halfPi = pi / 2.0
 getArcs :: (Map.Map NodeId NodeData) -> NodeData -> Node -> List (List (Arc Int))
 getArcs nodeDataMap nodeData node = rotated
   where
-  inputs = indexed $ view _nodeInputs node
+  inputs = indexed $ getInputs node
 
-  connected = List.catMaybes $ (uncurry $ (<$>) <<< Tuple) <$> inputs
+  connected = connectedInputs node
 
   maxHalfArcLength =
     pi
@@ -62,8 +61,6 @@ getArcs nodeDataMap nodeData node = rotated
               normalize $ Arc (angle - maxHalfArcLength) (angle + maxHalfArcLength) index
         )
       <$> connected
-
-  a = if connectedArcs == pure Nil <> Nil then unit else trace connectedArcs identity
 
   unconnected = fst <$> List.filter (isNothing <<< snd) inputs
 
