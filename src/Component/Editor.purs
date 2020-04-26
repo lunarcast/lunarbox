@@ -40,7 +40,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functionData, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, initializeFunction, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functionData, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -154,16 +154,18 @@ component =
     SelectFunction name -> modify_ $ setCurrentFunction name
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SceneMouseDown position -> do
-      modify_ $ set _lastMousePosition $ Just position
+    SceneMouseDown position -> getSceneMousePosition position >>= put
     SceneMouseMove position -> do
       state@{ lastMousePosition } <- get
+      state' <- getSceneMousePosition position
       let
-        state' = set _lastMousePosition (Just position) state
-      for_ lastMousePosition \oldPosition -> do
-        let
-          offset = position - oldPosition
+        relativePosition = view _lastMousePosition state'
 
+        maybeOffset = (-) <$> relativePosition <*> lastMousePosition
+      -- print relativePosition
+      -- print lastMousePosition
+      for_ maybeOffset \offset -> do
+        let
           updateState =
             over _nodeData
               $ map \node@(NodeData { selected }) ->
@@ -173,6 +175,7 @@ component =
                     node
         put $ updateState state'
     SceneMouseUp -> do
+      print "here"
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
       maybeCurrentFunction <- gets $ view _currentFunction
@@ -257,6 +260,7 @@ component =
   , functionData
   , nodeData
   , colorMap
+  , partialConnection
   } =
     fromMaybe
       emptyEditor do
@@ -273,6 +277,7 @@ component =
             , typeMap
             , lastMousePosition
             , functionData
+            , partialConnection
             , nodeData:
               Map.fromFoldable
                 $ (uncurry \(Tuple _ id) value -> Tuple id value)

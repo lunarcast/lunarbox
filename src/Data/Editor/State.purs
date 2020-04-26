@@ -6,6 +6,8 @@ module Lunarbox.Data.Editor.State
   , compile
   , setCurrentFunction
   , initializeFunction
+  , setRelativeMousePosition
+  , getSceneMousePosition
   , _nodeData
   , _atNodeData
   , _project
@@ -35,6 +37,7 @@ module Lunarbox.Data.Editor.State
 
 import Prelude
 import Data.Default (def)
+import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
@@ -45,6 +48,9 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
+import Data.Vec (vec2)
+import Effect.Class (class MonadEffect)
+import Halogen (HalogenM, get, liftEffect)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Type (Type)
@@ -63,6 +69,7 @@ import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (listToArrayIso)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes (Color)
+import Web.HTML.HTMLElement (DOMRect)
 
 data Tab
   = Settings
@@ -261,3 +268,14 @@ initializeFunction name state =
     state'' = setCurrentFunction (Just name) state'
   in
     compile state''''
+
+-- Helper function to set the mouse position relative to the svg element
+setRelativeMousePosition :: DOMRect -> Vec2 Number -> State -> State
+setRelativeMousePosition { top, left } position = set _lastMousePosition $ Just $ position - vec2 left top
+
+-- Helper to update the mouse position of the svg scene
+getSceneMousePosition :: forall q i o m. MonadEffect m => Vec2 Number -> HalogenM State q i o m State
+getSceneMousePosition position = do
+  state <- get
+  bounds <- liftEffect getSceneBoundingBox
+  pure $ setRelativeMousePosition bounds position state

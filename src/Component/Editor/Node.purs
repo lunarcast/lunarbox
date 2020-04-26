@@ -14,7 +14,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
-import Halogen.HTML (HTML)
+import Halogen.HTML (HTML, IProp)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
@@ -30,11 +30,13 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.NodeInput (getArcs)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Math (normalizeAngle)
+import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
 import Math (cos, pi, sin)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 -- A node can either have one of it's inputs, it's output or nothing selected
 data SelectionStatus
@@ -51,6 +53,7 @@ type Input h a
     , hasOutput :: Boolean
     , nodeDataMap :: Map NodeId NodeData
     , selectionStatus :: SelectionStatus
+    , lastMousePosition :: Vec2 Number
     }
 
 type Actions a
@@ -90,13 +93,14 @@ renderNode { nodeData: nodeData
 , node
 , nodeDataMap
 , selectionStatus
+, lastMousePosition
 } { select
 , selectOutput
 , selectInput
 } =
   SE.g
     [ SA.transform [ SA.Translate (centerPosition !! d0) (centerPosition !! d1) ]
-    , onMouseDown $ const select
+    , allowMoving
     ]
     $ [ overlays maxRadius labels
       , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
@@ -105,13 +109,30 @@ renderNode { nodeData: nodeData
     <> [ output
           hasOutput
           selectOutput
-          $ fromMaybe transparent
-          $ Map.lookup OutputPin colorMap
+          outputColor
       ]
+    <> outputPartialEdge
   where
+  allowMoving :: forall r. IProp ( onMouseDown ∷ MouseEvent | r ) _
+  allowMoving = onMouseDown $ const select
+
+  outputColor =
+    fromMaybe transparent
+      $ Map.lookup OutputPin colorMap
+
   centerPosition = view _NodeDataPosition nodeData
 
   inputArcs = getArcs nodeDataMap nodeData node
+
+  outputPartialEdge = case selectionStatus of
+    OutputSelected ->
+      pure
+        $ renderEdge
+            { from: zero
+            , to: lastMousePosition - centerPosition
+            , color: outputColor
+            }
+    _ -> mempty
 
   maxRadius = nodeRadius + (toNumber $ List.length inputArcs - 1) * inputLayerOffset
 
@@ -131,6 +152,12 @@ renderNode { nodeData: nodeData
                         -- The radius of the arc
                         radius = nodeRadius + (toNumber layer) * inputLayerOffset
 
+                        -- Position of the middle of this arc
+                        inputPosition = vec2 (cos angle * radius) (sin angle * radius)
+
+                        -- The color of the input arc
+                        inputColor = fromMaybe transparent $ Map.lookup (InputPin index) colorMap
+
                         -- The edge to render
                         edge =
                           maybe mempty pure do
@@ -139,14 +166,24 @@ renderNode { nodeData: nodeData
                             color <- Map.lookup (InputPin index) colorMap
                             let
                               targetPosition = view _NodeDataPosition targetData
-
-                              inputPosition = vec2 (cos angle * radius) (sin angle * radius)
                             pure
                               $ renderEdge
                                   { from: inputPosition
                                   , to: targetPosition - centerPosition
                                   , color
                                   }
+
+                        -- partialEdge = case selectionStatus of
+                        --   InputSelected selectionIndex
+                        --     | selectionIndex == index ->
+                        --       pure
+                        --         $ renderEdge
+                        --             { from: inputPosition
+                        --             , to: lastMousePosition - centerPosition
+                        --             , color: inputColor
+                        --             }
+                        --   _ -> mempty
+                        partialEdge = mempty
 
                         -- The actual svg for the input arc
                         inputSvg =
@@ -158,11 +195,11 @@ renderNode { nodeData: nodeData
                               else
                                 arcSpacing
                             , radius
-                            , color: fromMaybe transparent $ Map.lookup (InputPin index) colorMap
+                            , color: inputColor
                             }
                             $ selectInput index
                       in
-                        inputSvg : edge
+                        inputSvg : edge <> partialEdge
             )
         # join
         # List.toUnfoldable

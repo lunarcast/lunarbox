@@ -1,17 +1,19 @@
 module Lunarbox.Data.Editor.PartialConnection
   ( PartialConnection(..)
+  , getSelectionStatus
   , _from
   , _to
   ) where
 
 import Prelude
 import Data.Default (class Default)
-import Data.Lens (Lens')
+import Data.Lens (Lens', view)
 import Data.Lens.Record (prop)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple)
+import Data.Tuple (Tuple(..))
+import Lunarbox.Component.Editor.Node (SelectionStatus(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Lens (newtypeIso)
 
@@ -28,6 +30,16 @@ derive instance eqPartialConnection :: Eq PartialConnection
 derive instance newtypePartialConnection :: Newtype PartialConnection _
 
 derive newtype instance defaultPartialConnection :: Default PartialConnection
+
+-- TTransform a PartialConnection into a SelectionStatus which can be understood by the Node component
+getSelectionStatus :: PartialConnection -> NodeId -> SelectionStatus
+getSelectionStatus partialConnection id =
+  if view _from partialConnection == Just id then
+    OutputSelected
+  else case view _to partialConnection of
+    Just (Tuple partialConnectionId index)
+      | partialConnectionId == id -> InputSelected index
+    _ -> NothingSelected
 
 -- Lenses
 _from :: Lens' PartialConnection (Maybe NodeId)

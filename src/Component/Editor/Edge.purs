@@ -8,6 +8,7 @@ import Data.Maybe (Maybe(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (HTML)
+import Halogen.HTML.Events (onClick)
 import Lunarbox.Data.Editor.Constants (connectionsWidth)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (strokeWidth)
@@ -30,5 +31,6 @@ renderEdge { from, to, color } =
     , SA.x2 $ to !! d0
     , SA.y2 $ to !! d1
     , SA.stroke $ Just color
+    , onClick $ const Nothing
     , strokeWidth connectionsWidth
     ]
