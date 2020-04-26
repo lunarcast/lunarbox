@@ -28,6 +28,6 @@ input { radius, spacing, arc: Arc start end _, color } selectInput =
     , SA.stroke $ Just color
     , SA.class_ "node-input"
     , strokeWidth arcWidth
-    , strokeLinecap Round
+    , strokeLinecap Butt
     , onClick $ const selectInput
     ]

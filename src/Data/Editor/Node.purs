@@ -55,9 +55,11 @@ getInputs = case _ of
   OutputNode input -> pure input
   InputNode -> Nil
 
+-- Declare a call on a curried function with any number of arguments
 functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
 functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
 
+-- Compile a node into an expression
 compileNode :: G.Graph NodeId Node -> NodeId -> Expression NodeOrPinLocation -> Expression NodeOrPinLocation
 compileNode nodes id child =
   flip (maybe nothing) (G.lookup id nodes) case _ of
