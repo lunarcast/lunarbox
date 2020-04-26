@@ -99,6 +99,7 @@ createNodeComponent { functionName
 , expression
 , functionData
 , typeColors
+, nodeData: nodeDataMap
 } { selectNode, selectInput, selectOutput } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
@@ -122,11 +123,12 @@ createNodeComponent { functionName
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node
   pure
-    $ NodeC.node
+    $ NodeC.renderNode
         { node
         , nodeData
         , functionData: nodeFunctionData
         , colorMap
+        , nodeDataMap
         , labels:
           [ labelText $ show name
           , label $ highlightTypeToSvg (RGB 255 255 255) $ prettify nodeType

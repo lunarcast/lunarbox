@@ -1,14 +1,15 @@
 module Lunarbox.Component.Editor.Node
-  ( node
+  ( renderNode
   , Input
   ) where
 
 import Prelude
+import Data.Int (toNumber)
+import Data.Lens (view)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (HTML)
@@ -19,9 +20,10 @@ import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.Node (Node)
+import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..))
-import Lunarbox.Data.Editor.Node.NodeInput (arcs)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.NodeInput (getArcs)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
 import Math (pi)
@@ -36,6 +38,7 @@ type Input h a
     , functionData :: FunctionData
     , colorMap :: Map Pin SA.Color
     , hasOutput :: Boolean
+    , nodeDataMap :: Map NodeId NodeData
     }
 
 type Actions a
@@ -66,12 +69,14 @@ constant =
     , strokeDashArray [ pi * nodeRadius / 20.0 ]
     ]
 
-node :: forall h a. Input h a -> Actions a -> HTML h a
-node { nodeData: NodeData { position }
+renderNode :: forall h a. Input h a -> Actions a -> HTML h a
+renderNode { nodeData: NodeData { position }
 , functionData
 , labels
 , colorMap
 , hasOutput
+, node
+, nodeDataMap
 } { select
 , selectOutput
 , selectInput
@@ -82,38 +87,39 @@ node { nodeData: NodeData { position }
     ]
     $ [ overlays labels
       , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
-      , output
+      ]
+    <> arcs
+    <> [ output
           hasOutput
           selectOutput
           $ fromMaybe transparent
           $ Map.lookup OutputPin colorMap
       ]
-    <> arcs
   where
-  (Tuple inputNames inputArcs) = arcs functionData
-
   arcs =
-    if List.null inputArcs then
+    if List.null $ view _nodeInputs node then
       [ constant ]
     else
-      ( \arc@(Arc _ _ name) ->
-          let
-            maybeIndex = List.findIndex (name == _) inputNames
-          in
-            input
-              { arc: arc
-              , spacing:
-                if List.length inputArcs == 1 then
-                  0.0
-                else
-                  arcSpacing
-              , radius: nodeRadius
-              , color:
-                fromMaybe transparent do
-                  index <- maybeIndex
-                  Map.lookup (InputPin index) colorMap
-              }
-              $ maybeIndex
-              >>= selectInput
-      )
-        <$> List.toUnfoldable inputArcs
+      let
+        inputArcs = getArcs nodeDataMap node
+      in
+        inputArcs
+          # List.mapWithIndex
+              ( \layer inputsLayer ->
+                  ( \arc@(Arc _ _ index) ->
+                      input
+                        { arc
+                        , spacing:
+                          if List.length inputsLayer == 1 then
+                            0.0
+                          else
+                            arcSpacing
+                        , radius: nodeRadius + (toNumber layer) * 20.0
+                        , color: fromMaybe transparent $ Map.lookup (InputPin index) colorMap
+                        }
+                        $ selectInput index
+                  )
+                    <$> inputsLayer
+              )
+          # join
+          # List.toUnfoldable

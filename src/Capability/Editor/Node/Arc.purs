@@ -21,7 +21,8 @@ import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..), fst)
 import Lunarbox.Data.Duplet (Duplet(..))
 import Lunarbox.Data.List (chunk)
-import Math (Radians, tau, (%))
+import Lunarbox.Data.Math (normalizeAngle)
+import Math (Radians, tau)
 
 -- Data structure representing an arc on a circle
 -- The arc also holds an inner value of any type
@@ -44,7 +45,7 @@ length (Arc start end _) = let delta = end - start in if end > start then delta 
 
 -- Normalize angles bigger than 2 pi
 normalize :: forall a. Arc a -> Arc a
-normalize (Arc start end inner) = Arc (start % tau) (end % tau) inner
+normalize (Arc start end inner) = Arc (normalizeAngle start) (normalizeAngle end) inner
 
 -- Rotate an arc by a number of radians
 rotate :: forall a. Radians -> Arc a -> Arc a

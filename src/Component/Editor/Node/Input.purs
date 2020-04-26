@@ -13,14 +13,14 @@ import Svg.Attributes (Color, D(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type Input
+type Input a
   = { radius :: Number
     , spacing :: Number
-    , arc :: Arc String
+    , arc :: Arc a
     , color :: Color
     }
 
-input :: forall h a. Input -> Maybe a -> HTML h a
+input :: forall h a i. Input i -> Maybe a -> HTML h a
 input { radius, spacing, arc: Arc start end _, color } selectInput =
   SE.path
     [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
