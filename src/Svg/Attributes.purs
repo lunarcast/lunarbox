@@ -3,9 +3,9 @@ module Lunarbox.Svg.Attributes
   , arc
   , chord
   , transparent
-  , strokeDashArray,
-  strokeLinecap,
-  Linecap(..)
+  , strokeDashArray
+  , strokeLinecap
+  , Linecap(..)
   ) where
 
 import Prelude
@@ -14,7 +14,7 @@ import Data.String (joinWith)
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
 import Halogen.HTML (AttrName(..), IProp)
-import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), length)
+import Lunarbox.Capability.Editor.Node.Arc (Arc(..), length)
 import Lunarbox.Data.Vector (Vec2)
 import Math (Radians, cos, pi, sin)
 import Svg.Attributes (Color(..), Command(..))

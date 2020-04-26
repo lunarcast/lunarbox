@@ -15,7 +15,7 @@ import Data.Vec ((!!))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
-import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), fillWith)
+import Lunarbox.Capability.Editor.Node.Arc (Arc(..), fillWith)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)

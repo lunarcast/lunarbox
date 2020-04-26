@@ -1,4 +1,4 @@
-module Lunarbox.Capability.Editor.Node.NodeInput
+module Lunarbox.Capability.Editor.Node.Arc
   ( Arc(..)
   , solveOverlaps
   , emptySpaces

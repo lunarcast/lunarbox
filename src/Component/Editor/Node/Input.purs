@@ -6,7 +6,7 @@ import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML (HTML)
 import Halogen.HTML.Events (onClick)
-import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..))
+import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Data.Editor.Constants (arcWidth)
 import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeLinecap, strokeWidth, transparent)
 import Svg.Attributes (Color, D(..))

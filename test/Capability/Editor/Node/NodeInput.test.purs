@@ -2,7 +2,7 @@ module Test.Capability.Editor.Node.NodeInput where
 
 import Prelude
 import Data.List (List(..), reverse, (:))
-import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), solveOverlaps)
+import Lunarbox.Capability.Editor.Node.Arc (Arc(..), solveOverlaps)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 
