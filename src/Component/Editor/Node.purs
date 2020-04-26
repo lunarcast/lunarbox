@@ -21,7 +21,7 @@ import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData(..))
+import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.NodeInput (getArcs)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -70,7 +70,7 @@ constant =
     ]
 
 renderNode :: forall h a. Input h a -> Actions a -> HTML h a
-renderNode { nodeData: NodeData { position }
+renderNode { nodeData: nodeData
 , functionData
 , labels
 , colorMap
@@ -96,12 +96,14 @@ renderNode { nodeData: NodeData { position }
           $ Map.lookup OutputPin colorMap
       ]
   where
+  position = view _NodeDataPosition nodeData
+
   arcs =
     if List.null $ view _nodeInputs node then
       [ constant ]
     else
       let
-        inputArcs = getArcs nodeDataMap node
+        inputArcs = getArcs nodeDataMap nodeData node
       in
         inputArcs
           # List.mapWithIndex

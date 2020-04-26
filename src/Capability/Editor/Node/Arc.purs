@@ -108,6 +108,8 @@ closestArcStart arcs target@(Arc targetStart _ _) = fst <$> minimumBy (\(Tuple _
 emptySpaces :: forall a. Ord a => List (Arc a) -> List (Arc Unit)
 emptySpaces Nil = pure $ full unit
 
+emptySpaces ((Arc start end _) : Nil) = pure $ Arc end start unit
+
 emptySpaces arcs =
   catMaybes
     $ ( \arc@(Arc _ end _) ->

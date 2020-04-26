@@ -28,7 +28,7 @@ spec =
       let
         arc = Arc 0.0 100.0 1
 
-        arc' = Arc 50.0 150.0 2
+        arc' = Arc 50.0 75.0 2
 
         layer = arc : arc' : Nil
       solveOverlaps layer `shouldEqual` (pure <$> layer)
