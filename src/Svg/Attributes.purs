@@ -62,7 +62,15 @@ arc radius startAngle endAngle =
 
     largeArcFlag = not $ arcLength startAngle endAngle >= pi
   in
-    [ M (start !! d0) $ start !! d1, A radius radius 0.0 largeArcFlag true (end !! d0) (end !! d1) ]
+    [ M (start !! d0) $ start !! d1
+    , A radius
+        radius
+        0.0
+        largeArcFlag
+        true
+        (end !! d0)
+        (end !! d1)
+    ]
 
 -- Like an arc but goes directly to the target
 chord :: Number -> Radians -> Radians -> Array Command

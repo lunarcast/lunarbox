@@ -15,7 +15,7 @@ import Data.Vec ((!!))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
-import Lunarbox.Capability.Editor.Node.Arc (Arc(..), fillWith)
+import Lunarbox.Capability.Editor.Node.Arc (Arc(..), fillWith, normalize, rotate)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, nodeRadius)
@@ -24,10 +24,14 @@ import Lunarbox.Data.Editor.Node (Node)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
-import Math (pi)
+import Math (Radians, pi)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
+
+-- 90 degrees in radians
+halfPi :: Radians
+halfPi = pi / 2.0
 
 type Input h a
   = { nodeData :: NodeData
@@ -80,43 +84,42 @@ node { nodeData: NodeData { position }
     [ SA.transform [ SA.Translate (position !! d0) (position !! d1) ]
     , onMouseDown $ const select
     ]
-    [ overlays labels
-    , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
-    , output
-        hasOutput
-        selectOutput
-        $ fromMaybe transparent
-        $ Map.lookup OutputPin colorMap
-    , let
-        inputNames = Array.toUnfoldable $ _.name <$> inputs
+    $ [ overlays labels
+      , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
+      , output
+          hasOutput
+          selectOutput
+          $ fromMaybe transparent
+          $ Map.lookup OutputPin colorMap
+      ]
+    <> arcs
+  where
+  inputNames = Array.toUnfoldable $ _.name <$> inputs
 
-        inputArcs = fillWith inputNames Nil
-      in
-        if List.null inputArcs then
-          constant
-        else
-          SE.g
-            [ SA.transform [ SA.Rotate 90.0 0.0 0.0 ]
-            ]
-            $ ( \arc@(Arc _ _ name) ->
-                  let
-                    maybeIndex = List.findIndex (name == _) inputNames
-                  in
-                    input
-                      { arc
-                      , spacing:
-                        if List.length inputArcs == 1 then
-                          0.0
-                        else
-                          arcSpacing
-                      , radius: nodeRadius
-                      , color:
-                        fromMaybe transparent do
-                          index <- maybeIndex
-                          Map.lookup (InputPin index) colorMap
-                      }
-                      $ maybeIndex
-                      >>= selectInput
-              )
-            <$> List.toUnfoldable inputArcs
-    ]
+  inputArcs = rotate halfPi <$> normalize <$> fillWith inputNames Nil
+
+  arcs =
+    if List.null inputArcs then
+      [ constant ]
+    else
+      ( \arc@(Arc _ _ name) ->
+          let
+            maybeIndex = List.findIndex (name == _) inputNames
+          in
+            input
+              { arc
+              , spacing:
+                if List.length inputArcs == 1 then
+                  0.0
+                else
+                  arcSpacing
+              , radius: nodeRadius
+              , color:
+                fromMaybe transparent do
+                  index <- maybeIndex
+                  Map.lookup (InputPin index) colorMap
+              }
+              $ maybeIndex
+              >>= selectInput
+      )
+        <$> List.toUnfoldable inputArcs
