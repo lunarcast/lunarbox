@@ -63,7 +63,7 @@ typeConst = Forall [ input, ignore ] $ TArrow (TVarariable input) $ TArrow (TVar
 const' :: NativeConfig
 const' =
   NativeConfig
-    { name: FunctionName "pipe"
+    { name: FunctionName "const"
     , expression: (NativeExpression typeConst $ binaryFunction const)
     , functionData:
       internal
