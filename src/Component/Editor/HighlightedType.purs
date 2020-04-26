@@ -20,10 +20,16 @@ highlightedType :: forall h a. (Array (HH.HTML h a) -> HH.HTML h a) -> (Color ->
 highlightedType container highlight defaultColor = case _ of
   TArrow from to ->
     container
-      [ highlightedType container highlight defaultColor from
+      [ if isArrow then container [ HH.text "(", result, HH.text ")" ] else result
       , HH.text " -> "
       , highlightedType container highlight defaultColor to
       ]
+    where
+    isArrow = case from of
+      TArrow _ _ -> true
+      _ -> false
+
+    result = highlightedType container highlight defaultColor from
   TVarariable name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
     where
     shade = seededInt (show name') 100 255

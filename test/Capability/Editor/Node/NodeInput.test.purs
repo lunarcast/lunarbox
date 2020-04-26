@@ -2,7 +2,7 @@ module Test.Capability.Editor.Node.NodeInput where
 
 import Prelude
 import Data.List (List(..), reverse, (:))
-import Lunarbox.Capability.Editor.Node.NodeInput (Arc(..), solveOverlaps)
+import Lunarbox.Capability.Editor.Node.Arc (Arc(..), solveOverlaps)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 
@@ -28,7 +28,7 @@ spec =
       let
         arc = Arc 0.0 100.0 1
 
-        arc' = Arc 50.0 150.0 2
+        arc' = Arc 50.0 75.0 2
 
         layer = arc : arc' : Nil
       solveOverlaps layer `shouldEqual` (pure <$> layer)

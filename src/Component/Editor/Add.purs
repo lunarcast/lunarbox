@@ -10,6 +10,7 @@ import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
+import Data.Unfoldable (replicate)
 import Halogen (ClassName(..))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
@@ -17,11 +18,11 @@ import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
-import Lunarbox.Component.Editor.Node (node)
+import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
-import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
+import Lunarbox.Data.Dataflow.Type (Type, inputs, numberOfInputs, output)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
@@ -59,6 +60,7 @@ nodeInput typeMap name functionData =
   , functionData
   , labels: mempty
   , hasOutput: hasOutput node
+  , nodeDataMap: mempty
   , colorMap:
     either (const mempty) identity
       $ generateTypeMap
@@ -67,7 +69,13 @@ nodeInput typeMap name functionData =
           node
   }
   where
-  node = ComplexNode { inputs: mempty, function: name }
+  inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+
+  node =
+    ComplexNode
+      { inputs: replicate inputCount Nothing
+      , function: name
+      }
 
 makeNode :: forall h a. Actions a -> NodeDescriptor -> FunctionName -> Map.Map Location Type -> FunctionData -> HTML h a
 makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
@@ -77,7 +85,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
         , SA.height 75.0
         , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
         ]
-        [ node
+        [ renderNode
             (nodeInput typeMap name functionData)
             { select: Nothing
             , selectOutput: Nothing

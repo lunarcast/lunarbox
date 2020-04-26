@@ -1,35 +1,56 @@
-module Lunarbox.Capability.Editor.Node.NodeInput
+module Lunarbox.Capability.Editor.Node.Arc
   ( Arc(..)
   , solveOverlaps
   , emptySpaces
   , length
   , fillWith
+  , normalize
+  , rotate
+  , full
   ) where
 
 import Prelude
 import Control.MonadZero (guard)
 import Data.Foldable (minimumBy)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Int (ceil, toNumber)
-import Data.List (List(..), catMaybes, nub, (..), zip, (:))
+import Data.List (List(..), catMaybes, nub, zip, (:))
 import Data.List as List
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..), fst)
 import Lunarbox.Data.Duplet (Duplet(..))
+import Lunarbox.Data.Functor (indexed)
 import Lunarbox.Data.List (chunk)
+import Lunarbox.Data.Math (normalizeAngle)
 import Math (Radians, tau)
 
+-- Data structure representing an arc on a circle
+-- The arc also holds an inner value of any type
 data Arc a
   = Arc Radians Radians a
 
+-- Typeclass instances
 derive instance eqArc :: Eq a => Eq (Arc a)
 
 derive instance functorArc :: Functor Arc
 
-instance showArc :: Show a => Show (Arc a) where
-  show (Arc s e v) = "Arc(" <> show v <> ", [" <> show s <> ", " <> show e <> "])"
+derive instance genericArc :: Generic (Arc a) _
 
-length :: forall a. Arc a -> Number
+instance showArc :: Show a => Show (Arc a) where
+  show = genericShow
+
+-- Get the length of an arc in radians
+length :: forall a. Arc a -> Radians
 length (Arc start end _) = let delta = end - start in if end > start then delta else tau + delta
+
+-- Normalize angles bigger than 2 pi
+normalize :: forall a. Arc a -> Arc a
+normalize (Arc start end inner) = Arc (normalizeAngle start) (normalizeAngle end) inner
+
+-- Rotate an arc by a number of radians
+rotate :: forall a. Radians -> Arc a -> Arc a
+rotate amount (Arc start end inner) = normalize $ Arc (start + amount) (end + amount) inner
 
 -- Credit: https://stackoverflow.com/a/11776964/11012369
 intersect :: Number -> Number -> Number -> Boolean
@@ -42,6 +63,10 @@ intersect' (Arc s e _) (Arc s' e' _) =
     || intersect e' s e
     || intersect s s' e'
     || intersect e s' e'
+
+-- Construct a full circle containing an arbitrary value
+full :: forall a. a -> Arc a
+full = Arc 0.0 (tau - 0.00001)
 
 -- Get all overlaps between some arcs
 collectIntersections :: forall a. Eq a => List (Arc a) -> List (Arc a)
@@ -82,7 +107,9 @@ closestArcStart arcs target@(Arc targetStart _ _) = fst <$> minimumBy (\(Tuple _
 -- Given a list of arcs returns the empty space on the circle
 -- This function assumes the arcs do not overlap
 emptySpaces :: forall a. Ord a => List (Arc a) -> List (Arc Unit)
-emptySpaces Nil = pure $ Arc 0.0 tau unit
+emptySpaces Nil = pure $ full unit
+
+emptySpaces ((Arc start end _) : Nil) = pure $ Arc end start unit
 
 emptySpaces arcs =
   catMaybes
@@ -93,27 +120,22 @@ emptySpaces arcs =
 
 -- Given a list of arcs get the empty spaces and fill them with arcs generated from another list of arcs
 fillWith :: forall a. Ord a => List a -> List (Arc a) -> List (Arc a)
-fillWith arcs toFill =
-  let
-    spaces = emptySpaces toFill
+fillWith arcs toFill = filled <> toFill
+  where
+  spaces = normalize <$> emptySpaces toFill
 
-    chunkSize = ceil $ (toNumber $ List.length arcs) / (toNumber $ List.length spaces)
+  chunkSize = ceil $ (toNumber $ List.length arcs) / (toNumber $ List.length spaces)
 
-    range = 0 .. (chunkSize - 1)
-
-    filled =
-      (zip spaces $ chunk chunkSize arcs)
-        >>= ( \(Tuple arc keys) ->
-              let
-                arcLength = length arc / (toNumber $ List.length keys)
-              in
-                zip range keys
-                  <#> \(Tuple index key) ->
-                      let
-                        start = toNumber index * arcLength
-                      in
-                        Arc start (start + arcLength) key
-          )
-  in
-    filled
-      <> toFill
+  filled =
+    (zip spaces $ chunk chunkSize arcs)
+      >>= ( \(Tuple arc@(Arc spaceStart _ _) keys) ->
+            let
+              arcLength = length arc / (toNumber $ List.length keys)
+            in
+              indexed keys
+                <#> \(Tuple index key) ->
+                    let
+                      start = spaceStart + toNumber index * arcLength
+                    in
+                      Arc start (start + arcLength) key
+        )

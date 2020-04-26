@@ -10,7 +10,7 @@ import Data.Bifunctor (bimap)
 import Data.Default (def)
 import Data.Either (Either, either, note)
 import Data.Int (toNumber)
-import Data.Lens (is, preview)
+import Data.Lens (is, preview, view)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
@@ -21,7 +21,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
-import Lunarbox.Component.Editor.Node as NodeC
+import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
@@ -31,7 +31,7 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..))
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
@@ -99,9 +99,12 @@ createNodeComponent { functionName
 , expression
 , functionData
 , typeColors
+, nodeData: nodeDataMap
 } { selectNode, selectInput, selectOutput } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
+
+    position = view _NodeDataPosition nodeData
 
     location = generateLocation $ Location id
   node <- getNode functionName id project
@@ -122,11 +125,12 @@ createNodeComponent { functionName
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node
   pure
-    $ NodeC.node
+    $ renderNode
         { node
         , nodeData
         , functionData: nodeFunctionData
         , colorMap
+        , nodeDataMap
         , labels:
           [ labelText $ show name
           , label $ highlightTypeToSvg (RGB 255 255 255) $ prettify nodeType

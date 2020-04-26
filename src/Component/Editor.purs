@@ -27,8 +27,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
-import Lunarbox.Control.Monad.Effect (print, printString)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -41,7 +40,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, createFunction, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atCurrentNode, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, compile, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, compile, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -106,7 +105,6 @@ component =
     LoadNodes -> do
       modify_ $ compile <<< loadPrelude
     CreateNode name -> do
-      print "here:)"
       Tuple id setId <- createId
       typeMap <- gets $ view _typeMap
       maybeCurrentFunction <- gets $ view _currentFunction
@@ -193,21 +191,15 @@ component =
       for_ maybeCurrentFunction \currentFunction -> do
         modify_ $ set (_isSelected currentFunction id) true
     SelectInput id index -> do
-      s <- gets $ view _partialTo
       let
         setTo = set _partialTo $ Just $ Tuple id index
-      print s
       modify_ $ tryConnecting <<< setTo
     SelectOutput id -> do
       let
         setFrom = set _partialFrom $ Just id
       modify_ $ tryConnecting <<< setFrom
-      s <- gets $ view _typeMap
       e <- gets $ view _expression
-      s' <- gets $ preview $ _atCurrentNode $ NodeId "firstOutput"
-      printString $ printTypeMap s
       printString $ printSource e
-      print s'
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

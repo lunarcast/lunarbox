@@ -4,6 +4,7 @@ module Lunarbox.Data.Editor.Node
   , compileNode
   , hasOutput
   , getInputs
+  , connectedInputs
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
@@ -14,14 +15,17 @@ import Prelude
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Record (prop)
 import Data.List (List(..), foldl, mapWithIndex, (!!))
+import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
+import Lunarbox.Data.Functor (indexed)
 import Lunarbox.Data.Graph as G
 
 type ComplexNodeData
@@ -55,9 +59,15 @@ getInputs = case _ of
   OutputNode input -> pure input
   InputNode -> Nil
 
+-- Get all the pairs (index, id) of connected inputs
+connectedInputs :: Node -> List (Tuple Int NodeId)
+connectedInputs = List.catMaybes <<< map (uncurry $ (<$>) <<< Tuple) <<< indexed <<< getInputs
+
+-- Declare a call on a curried function with any number of arguments
 functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
 functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
 
+-- Compile a node into an expression
 compileNode :: G.Graph NodeId Node -> NodeId -> Expression NodeOrPinLocation -> Expression NodeOrPinLocation
 compileNode nodes id child =
   flip (maybe nothing) (G.lookup id nodes) case _ of

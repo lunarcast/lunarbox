@@ -13,8 +13,9 @@ import Svg.Elements as SE
 type Input h a
   = Array (HTML h a)
 
-overlays :: forall h a. Input h a -> HTML h a
-overlays =
+-- The text overlays on top of a node
+overlays :: forall h a. Number -> Input h a -> HTML h a
+overlays radius =
   SE.g [ SA.class_ "unselectable" ]
     <<< mapWithIndex \index elem ->
         SE.g

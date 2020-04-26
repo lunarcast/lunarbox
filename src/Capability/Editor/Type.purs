@@ -73,14 +73,15 @@ pinLocations :: FunctionData -> Node -> List.List Pin
 pinLocations functionData node = (OutputPin <$ guard (hasOutput node)) <> inputPins functionData
 
 -- Create a location-color pair from a node and data related to it
-generateColorPair :: Pin -> Type -> Either ColoringError (Tuple Pin Color)
-generateColorPair currentLocation pinType = do
+generateColor :: Pin -> Type -> Either ColoringError Color
+generateColor currentLocation pinType = do
   color <- case pinType of
     TVarariable name' -> Right $ RGB shade shade shade
       where
       shade = seededInt (show name') 100 255
+    TArrow from to -> combineColors <$> generateColor currentLocation from <*> generateColor currentLocation to
     other -> note (UnableToColor other) $ typeToColor other
-  pure $ Tuple currentLocation color
+  pure color
 
 -- Createa a typeMap from a node and data about it
 generateTypeMap :: (Pin -> Maybe Type) -> FunctionData -> Node -> Either ColoringError (Map.Map Pin Color)
@@ -89,7 +90,7 @@ generateTypeMap getType functionData node = Map.fromFoldable <$> pairs
   pairs =
     ( sequence
         $ List.catMaybes
-        $ (\pin -> generateColorPair pin <$> getType pin)
+        $ (\pin -> (map $ Tuple pin) <$> generateColor pin <$> getType pin)
         <$> pinLocations functionData node
     )
 
