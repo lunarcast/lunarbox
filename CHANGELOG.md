@@ -1,3 +1,18 @@
+# [1.9.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.8.0...v1.9.0) (2020-04-26)
+
+
+### Bug Fixes
+
+* fixed the fillWith function always returning stuff aligned with the y axis ([ac4916a](https://github.com/Mateiadrielrafael/lunarbox/commit/ac4916a9fe86a851654d2a0a80c260e9a0fcf0a4))
+* now the connected node inputs rotate towards the output ([1cd4655](https://github.com/Mateiadrielrafael/lunarbox/commit/1cd465593ca61bbdca5248b434962a0bfc66502c))
+
+
+### Features
+
+* function arguments coloring ([766745e](https://github.com/Mateiadrielrafael/lunarbox/commit/766745eba63c1b21fab00d59956f5e3ab7ff0c67))
+* multi-layer node inputs ([ac243a4](https://github.com/Mateiadrielrafael/lunarbox/commit/ac243a42a6aef42228852304e868d6e23c44fe59))
+* visual connecting ([f19797a](https://github.com/Mateiadrielrafael/lunarbox/commit/f19797ae903b31a6c44c164406c59c3ac2b04a01))
+
 # [1.8.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.7.0...v1.8.0) (2020-04-23)
 
 
