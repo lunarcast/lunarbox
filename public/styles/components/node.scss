@@ -4,11 +4,13 @@
   border: 10px solid red;
 }
 
-.node-input {
+.node-input,
+.node-connection {
   transition: stroke-width $transition-time;
 }
 
-.node-input:hover {
+.node-input:hover,
+.node-connection:hover {
   stroke-width: 9px;
 }
 
