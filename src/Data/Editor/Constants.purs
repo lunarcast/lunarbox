@@ -6,6 +6,7 @@ module Lunarbox.Data.Editor.Constants
   , connectionsWidth
   , scaleConnectionPreview
   , mouseId
+  , invisibleArcMultiplier
   ) where
 
 import Prelude
@@ -19,6 +20,11 @@ nodeRadius = 50.0
 -- How much spage to display between node inputs
 arcSpacing :: Radians
 arcSpacing = 0.1
+
+-- For each visible node input there's a bigger inivisble one 
+-- to facilitate easier connecting 
+invisibleArcMultiplier :: Number
+invisibleArcMultiplier = 3.0
 
 -- What width should the stroke of node inputs have
 arcWidth :: Number

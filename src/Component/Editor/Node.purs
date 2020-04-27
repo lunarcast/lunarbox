@@ -123,7 +123,7 @@ renderNode { nodeData: nodeData
   where
   movementHandler =
     SE.circle
-      [ SA.r $ nodeRadius - arcWidth
+      [ SA.r $ nodeRadius - arcWidth * 4.0
       , SA.fill $ Just transparent
       ]
 
