@@ -1,3 +1,29 @@
+# [1.10.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.9.0...v1.10.0) (2020-04-27)
+
+
+### Bug Fixes
+
+* fixed bugs in the runtime ([54fc101](https://github.com/Mateiadrielrafael/lunarbox/commit/54fc101ef3950de2b3d5cb2ecc745c862cabe88b))
+* now its a tiny bit easier to connect stuff ([d7913b8](https://github.com/Mateiadrielrafael/lunarbox/commit/d7913b809e1cc1d05ab7ebec2042ff3627cf942d))
+* now new functions start with an output node ([3576566](https://github.com/Mateiadrielrafael/lunarbox/commit/357656626c5a5669cd4d331fede6c4fd444b2602))
+* now yuo can move stuff without creating connections ([756a0d5](https://github.com/Mateiadrielrafael/lunarbox/commit/756a0d54061ef6185bf595713aab9d176305021f))
+* working topological sorting ([3c5baab](https://github.com/Mateiadrielrafael/lunarbox/commit/3c5baabfdde124bdc5615042ced12ee48bdeb375))
+
+
+### Features
+
+* 3 new native functions exposed: identity, const and pipe ([ee9bf09](https://github.com/Mateiadrielrafael/lunarbox/commit/ee9bf0906282a86660f7bc4a3cc1358e5b543cc4))
+* connection preview for everything ([1d5b02e](https://github.com/Mateiadrielrafael/lunarbox/commit/1d5b02e631c4aaf972a93887ee1deffc70d142f8))
+* connection prview for outputs ([bd70211](https://github.com/Mateiadrielrafael/lunarbox/commit/bd70211288d24b20f63141840695b002156391c3))
+* connection removing ([75164b7](https://github.com/Mateiadrielrafael/lunarbox/commit/75164b7c17f52827522dcf8e5ada0f8e7de0868e))
+* executing... kinda ([ec3f979](https://github.com/Mateiadrielrafael/lunarbox/commit/ec3f979793817a96b894985ff59b9800f80c788f))
+* interpreting ([e5bc256](https://github.com/Mateiadrielrafael/lunarbox/commit/e5bc2560b875cea513b295cea0c26aa8ea9322ea))
+* polished connection previews ([9e5cabe](https://github.com/Mateiadrielrafael/lunarbox/commit/9e5cabe17f502b2890f17049fb2bf25902592a6a))
+* scale the connections on hover ([3083044](https://github.com/Mateiadrielrafael/lunarbox/commit/3083044c4e1d9ee8c3de29775bf25d2968d738c9))
+* the Interpreter monad ([677b96a](https://github.com/Mateiadrielrafael/lunarbox/commit/677b96a3d388fc63e7b50d54b5e862c50c11ecc9))
+* the logic of edge removing ([f07c32d](https://github.com/Mateiadrielrafael/lunarbox/commit/f07c32d19f3e567bdb0faba67965d17d0dad6bd3))
+* types for everything runtime related ([b4caf0b](https://github.com/Mateiadrielrafael/lunarbox/commit/b4caf0bf40c307837ba89f4bfc97a88ef09a1458))
+
 # [1.9.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.8.0...v1.9.0) (2020-04-26)
 
 
