@@ -111,16 +111,22 @@ renderNode { nodeData: nodeData
     , allowMoving
     ]
     $ [ overlays maxRadius labels
-      , SE.circle [ SA.r nodeRadius, SA.fill $ Just transparent ]
       ]
     <> arcs
-    <> [ output
+    <> [ movementHandler
+      , output
           hasOutput
           selectOutput
           outputColor
       ]
     <> outputPartialEdge
   where
+  movementHandler =
+    SE.circle
+      [ SA.r $ nodeRadius - arcWidth
+      , SA.fill $ Just transparent
+      ]
+
   allowMoving :: forall r. IProp ( onMouseDown ∷ MouseEvent | r ) _
   allowMoving = onMouseDown $ const select
 
