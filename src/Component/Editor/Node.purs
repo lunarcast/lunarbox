@@ -22,7 +22,7 @@ import Lunarbox.Capability.Editor.Node.Arc as Arc
 import Lunarbox.Component.Editor.Edge (renderEdge)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
-import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, nodeRadius)
+import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, nodeRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.Node (Node, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
@@ -129,7 +129,7 @@ renderNode { nodeData: nodeData
       pure
         $ renderEdge
             { from: zero
-            , to: lastMousePosition - centerPosition
+            , to: scaleConnectionPreview <$> (lastMousePosition - centerPosition)
             , color: outputColor
             }
     _ -> mempty
@@ -173,19 +173,17 @@ renderNode { nodeData: nodeData
                                   , color
                                   }
 
-                        -- partialEdge = case selectionStatus of
-                        --   InputSelected selectionIndex
-                        --     | selectionIndex == index ->
-                        --       pure
-                        --         $ renderEdge
-                        --             { from: inputPosition
-                        --             , to: lastMousePosition - centerPosition
-                        --             , color: inputColor
-                        --             }
-                        --   _ -> mempty
-                        partialEdge = mempty
+                        partialEdge = case selectionStatus of
+                          InputSelected selectionIndex
+                            | selectionIndex == index ->
+                              pure
+                                $ renderEdge
+                                    { from: inputPosition
+                                    , to: scaleConnectionPreview <$> (lastMousePosition - centerPosition)
+                                    , color: inputColor
+                                    }
+                          _ -> mempty
 
-                        -- The actual svg for the input arc
                         inputSvg =
                           input
                             { arc

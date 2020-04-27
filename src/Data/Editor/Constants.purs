@@ -4,8 +4,10 @@ module Lunarbox.Data.Editor.Constants
   , arcWidth
   , inputLayerOffset
   , connectionsWidth
+  , scaleConnectionPreview
   ) where
 
+import Prelude
 import Math (Radians)
 
 -- visual radius for nodes
@@ -27,3 +29,7 @@ inputLayerOffset = 10.0
 -- The stroke width of the wires
 connectionsWidth :: Number
 connectionsWidth = 5.0
+
+-- THis is required so the preview doesn't catch all the events
+scaleConnectionPreview :: Number -> Number
+scaleConnectionPreview = (_ / 1.01)
