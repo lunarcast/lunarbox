@@ -64,6 +64,7 @@ type Actions a
     , mouseUp :: Maybe a
     , selectInput :: NodeId -> Int -> Maybe a
     , selectOutput :: NodeId -> Maybe a
+    , removeConnection :: NodeId -> Tuple NodeId Int -> Maybe a
     }
 
 -- Errors which could arise while creating the node svg
@@ -104,7 +105,7 @@ createNodeComponent { functionName
 , partialConnection
 , lastMousePosition
 , nodeData: nodeDataMap
-} { selectNode, selectInput, selectOutput } (Tuple id nodeData) = do
+} { selectNode, selectInput, selectOutput, removeConnection } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
 
@@ -147,6 +148,7 @@ createNodeComponent { functionName
         { select: selectNode id
         , selectInput: selectInput id
         , selectOutput: selectOutput id
+        , removeConnection: (_ <<< Tuple id) <<< removeConnection
         }
 
 scene :: forall h a. Input -> Actions a -> HH.HTML h a

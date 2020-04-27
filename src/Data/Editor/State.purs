@@ -8,6 +8,7 @@ module Lunarbox.Data.Editor.State
   , initializeFunction
   , setRelativeMousePosition
   , getSceneMousePosition
+  , removeConnection
   , _nodeData
   , _atNodeData
   , _project
@@ -269,8 +270,9 @@ initializeFunction name state =
   in
     compile state''''
 
-removeEdge :: NodeId -> (Tuple NodeId Int) -> State -> State
-removeEdge from (Tuple toId toIndex) state = state''
+-- Remove a conenction from the current function
+removeConnection :: NodeId -> (Tuple NodeId Int) -> State -> State
+removeConnection from (Tuple toId toIndex) state = state''
   where
   state' = set (_atCurrentNode toId <<< _Just <<< _nodeInput toIndex) Nothing state
 

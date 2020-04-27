@@ -5,6 +5,7 @@ module Lunarbox.Component.Editor.Node
   ) where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Int (toNumber)
 import Data.Lens (set, view)
@@ -62,6 +63,7 @@ type Actions a
   = { select :: Maybe a
     , selectInput :: Int -> Maybe a
     , selectOutput :: Maybe a
+    , removeConnection :: NodeId -> Int -> Maybe a
     }
 
 output :: forall r a. Boolean -> Maybe a -> Color -> HTML r a
@@ -105,6 +107,7 @@ renderNode { nodeData: nodeData
 } { select
 , selectOutput
 , selectInput
+, removeConnection
 } =
   SE.g
     [ SA.transform [ SA.Translate (centerPosition !! d0) (centerPosition !! d1) ]
@@ -154,6 +157,9 @@ renderNode { nodeData: nodeData
             , to: scaleConnectionPreview <$> (mousePosition - centerPosition)
             , color: outputColor
             , dotted: true
+            , className: Nothing
+            }
+            { handleClick: Nothing
             }
     _ -> mempty
 
@@ -189,12 +195,17 @@ renderNode { nodeData: nodeData
                             color <- Map.lookup (InputPin index) colorMap
                             let
                               targetPosition = view _NodeDataPosition targetData
+
+                              isMouse = nodeId == mouseId
                             pure
                               $ renderEdge
                                   { from: inputPosition
                                   , to: scaleConnection nodeId $ targetPosition - centerPosition
                                   , color
-                                  , dotted: nodeId == mouseId
+                                  , dotted: isMouse
+                                  , className: Just "node-connection"
+                                  }
+                                  { handleClick: guard (not isMouse) >>= const (removeConnection nodeId index)
                                   }
 
                         inputSvg =

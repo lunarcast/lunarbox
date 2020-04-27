@@ -40,7 +40,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functionData, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functionData, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -59,6 +59,7 @@ data Action
   | SelectOutput NodeId
   | SelectNode NodeId
   | LoadNodes
+  | RemoveConnection NodeId (Tuple NodeId Int)
 
 data Query a
   = Void
@@ -191,6 +192,8 @@ component =
       modify_ $ tryConnecting <<< setFrom
       e <- gets $ view _expression
       printString $ printSource e
+    RemoveConnection from to -> do
+      modify_ $ removeConnection from to
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -291,6 +294,7 @@ component =
             , selectNode: Just <<< SelectNode
             , selectInput: (Just <<< _) <<< SelectInput
             , selectOutput: Just <<< SelectOutput
+            , removeConnection: (Just <<< _) <<< RemoveConnection
             }
 
   render :: State -> HH.HTML _ Action
