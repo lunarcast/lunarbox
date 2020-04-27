@@ -8,13 +8,13 @@ import Data.Newtype (class Newtype)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 
 -- A map holding the runtime values of different locations
-newtype ValueMap l
-  = ValueMap (Map.Map l RuntimeValue)
+newtype ValueMap v l
+  = ValueMap (Map.Map l (RuntimeValue v))
 
-derive instance eqValueMap :: Eq l => Eq (ValueMap l)
+derive instance eqValueMap :: (Eq l, Eq v) => Eq (ValueMap v l)
 
-derive instance newtypeValueMap :: Newtype (ValueMap l) _
+derive instance newtypeValueMap :: Newtype (ValueMap v l) _
 
-derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap l)
+derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap v l)
 
-derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap l)
+derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap v l)

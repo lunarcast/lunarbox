@@ -12,47 +12,47 @@ import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
-import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (TermEnvironment)
+import Lunarbox.Data.Dataflow.Runtime (TermEnvironment)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Lens (newtypeIso)
 
 -- The Interpreter context is the env all interpreting occurs in.
-newtype InterpreterContext l
+newtype InterpreterContext v l
   = InterpreterContext
   { location :: l
-  , typeEnv :: TermEnvironment
+  , typeEnv :: TermEnvironment v
   }
 
-derive instance newtypeInterpreterContent :: Newtype (InterpreterContext l) _
+derive instance newtypeInterpreterContent :: Newtype (InterpreterContext v l) _
 
-_location :: forall l. Lens' (InterpreterContext l) l
+_location :: forall v l. Lens' (InterpreterContext v l) l
 _location = newtypeIso <<< prop (SProxy :: _ "location")
 
 -- Monad used to Interpret expressions
-newtype Interpreter l a
-  = Interpreter (WriterT (ValueMap l) (Reader (InterpreterContext l)) a)
+newtype Interpreter v l a
+  = Interpreter (WriterT (ValueMap v l) (Reader (InterpreterContext v l)) a)
 
 -- Takes a Interpreter monad and runs it 
-runInterpreter :: forall l a. Ord l => Interpreter l a -> ValueMap l
+runInterpreter :: forall v l a. Ord l => Interpreter v l a -> ValueMap v l
 runInterpreter (Interpreter m) = runReader mempty $ runWriterT m
 
 -- Typeclasses
-derive instance newtypeInterpreter :: Newtype (Interpreter l a) _
+derive instance newtypeInterpreter :: Newtype (Interpreter v l a) _
 
-derive newtype instance functorInterpreter :: Ord l => Functor (Interpreter l)
+derive newtype instance functorInterpreter :: Ord l => Functor (Interpreter v l)
 
-derive newtype instance applyInterpreter :: Ord l => Apply (Interpreter l)
+derive newtype instance applyInterpreter :: Ord l => Apply (Interpreter v l)
 
-derive newtype instance applicativeInterpreter :: Ord l => Applicative (Interpreter l)
+derive newtype instance applicativeInterpreter :: Ord l => Applicative (Interpreter v l)
 
-derive newtype instance bindInterpreter :: Ord l => Bind (Interpreter l)
+derive newtype instance bindInterpreter :: Ord l => Bind (Interpreter v l)
 
-derive newtype instance monadInterpreter :: Ord l => Monad (Interpreter l)
+derive newtype instance monadInterpreter :: Ord l => Monad (Interpreter v l)
 
-derive newtype instance monadAskInterpreter :: Ord l => MonadAsk (InterpreterContext l) (Interpreter l)
+derive newtype instance monadAskInterpreter :: Ord l => MonadAsk (InterpreterContext v l) (Interpreter v l)
 
-derive newtype instance monadReaderInterpreter :: Ord l => MonadReader (InterpreterContext l) (Interpreter l)
+derive newtype instance monadReaderInterpreter :: Ord l => MonadReader (InterpreterContext v l) (Interpreter v l)
 
-derive newtype instance monadTellInterpreter :: Ord l => MonadTell (ValueMap l) (Interpreter l)
+derive newtype instance monadTellInterpreter :: Ord l => MonadTell (ValueMap v l) (Interpreter v l)
 
-derive newtype instance monadWriterInterpreter :: Ord l => MonadWriter (ValueMap l) (Interpreter l)
+derive newtype instance monadWriterInterpreter :: Ord l => MonadWriter (ValueMap v l) (Interpreter v l)
