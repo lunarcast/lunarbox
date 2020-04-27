@@ -14,6 +14,7 @@ import Data.Lens (is, preview, view)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
+import Data.Newtype (unwrap)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
@@ -25,6 +26,7 @@ import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
+import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
@@ -55,6 +57,7 @@ type Input
     , nodeData :: Map NodeId NodeData
     , partialConnection :: PartialConnection
     , lastMousePosition :: Maybe (Vec2 Number)
+    , valueMap :: ValueMap Location
     }
 
 type Actions a
@@ -105,6 +108,7 @@ createNodeComponent { functionName
 , partialConnection
 , lastMousePosition
 , nodeData: nodeDataMap
+, valueMap
 } { selectNode, selectInput, selectOutput, removeConnection } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
@@ -144,6 +148,7 @@ createNodeComponent { functionName
         , hasOutput: not $ is _OutputNode node
         , selectionStatus: getSelectionStatus partialConnection id
         , mousePosition: fromMaybe zero lastMousePosition
+        , value: Map.lookup location $ unwrap valueMap
         }
         { select: selectNode id
         , selectInput: selectInput id

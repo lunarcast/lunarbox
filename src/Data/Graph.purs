@@ -42,6 +42,8 @@ derive instance eqGraph :: (Eq k, Eq v) => Eq (Graph k v)
 
 derive instance ordGraph :: (Ord k, Ord v) => Ord (Graph k v)
 
+derive newtype instance showGraph :: (Show k, Show v) => Show (Graph k v)
+
 instance functorGraph :: Ord k => Functor (Graph k) where
   map f (Graph m) = Graph (map (lmap f) m)
 
@@ -113,10 +115,11 @@ removeEdge from to (Graph g) = Graph $ Map.alter (map $ rmap $ Set.delete to) fr
 
 -- Get all the edges from a graph
 edges :: forall k v u. Unfoldable u => Ord k => Graph k v -> u (Tuple k k)
-edges (Graph map) =
-  Map.toUnfoldable map
-    >>= (\(Tuple from (Tuple _ to)) -> Tuple from <$> Set.toUnfoldable to)
-    # Array.toUnfoldable
+edges (Graph map) = Array.toUnfoldable edgeArray
+  where
+  edgeArray =
+    Map.toUnfoldable map
+      >>= (\(Tuple from (Tuple _ to)) -> Tuple from <$> Set.toUnfoldable to)
 
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k

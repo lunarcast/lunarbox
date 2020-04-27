@@ -3,18 +3,24 @@ module Lunarbox.Data.Dataflow.Runtime.ValueMap
   ) where
 
 import Prelude
+import Data.Default (class Default)
 import Data.Map as Map
 import Data.Newtype (class Newtype)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 
 -- A map holding the runtime values of different locations
-newtype ValueMap v l
-  = ValueMap (Map.Map l (RuntimeValue v))
+newtype ValueMap l
+  = ValueMap (Map.Map l RuntimeValue)
 
-derive instance eqValueMap :: (Eq l, Eq v) => Eq (ValueMap v l)
+derive instance eqValueMap :: Eq l => Eq (ValueMap l)
 
-derive instance newtypeValueMap :: Newtype (ValueMap v l) _
+derive instance newtypeValueMap :: Newtype (ValueMap l) _
 
-derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap v l)
+derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap l)
 
-derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap v l)
+derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap l)
+
+derive newtype instance showValueMap :: Show l => Show (ValueMap l)
+
+instance defaultValueMap :: Default (ValueMap l) where
+  def = ValueMap $ Map.empty

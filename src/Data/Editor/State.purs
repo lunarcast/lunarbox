@@ -9,6 +9,7 @@ module Lunarbox.Data.Editor.State
   , setRelativeMousePosition
   , getSceneMousePosition
   , removeConnection
+  , _valueMap
   , _nodeData
   , _atNodeData
   , _project
@@ -34,6 +35,7 @@ module Lunarbox.Data.Editor.State
   , _currentNodes
   , _atCurrentNode
   , _currentNodeGroup
+  , _nodes
   ) where
 
 import Prelude
@@ -44,6 +46,7 @@ import Data.Either (Either(..))
 import Data.Foldable (foldMap)
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List)
 import Data.List as List
@@ -51,12 +54,15 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, get, liftEffect)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
+import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
@@ -105,9 +111,13 @@ type State
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
     , functionData :: Map FunctionName FunctionData
     , partialConnection :: PartialConnection
+    , valueMap :: ValueMap Location
     }
 
 -- Lenses
+_valueMap :: Lens' State (ValueMap Location)
+_valueMap = prop (SProxy :: _ "valueMap")
+
 _nodeData :: Lens' State (Map (Tuple FunctionName NodeId) NodeData)
 _nodeData = prop (SProxy :: _ "nodeData")
 
@@ -146,6 +156,9 @@ _functions = _project <<< _ProjectFunctions
 
 _nodeGroup :: FunctionName -> Traversal' State NodeGroup
 _nodeGroup name = _project <<< _projectNodeGroup name
+
+_nodes :: FunctionName -> Traversal' State (G.Graph NodeId Node)
+_nodes name = _nodeGroup name <<< _NodeGroupNodes
 
 _atNode :: FunctionName -> NodeId -> Traversal' State (Maybe Node)
 _atNode name id = _project <<< _atProjectNode name id
@@ -205,13 +218,13 @@ _atCurrentNodeData id =
 _currentNodes :: Traversal' State (G.Graph NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
-_atCurrentNode :: NodeId -> Traversal' State (Maybe Node)
-_atCurrentNode id = _currentNodes <<< at id
+_atCurrentNode :: NodeId -> Traversal' State Node
+_atCurrentNode id = _currentNodes <<< ix id
 
 -- Helpers
 -- Compile a project
 compile :: State -> State
-compile state@{ project, expression, typeMap } =
+compile state@{ project, expression, typeMap, valueMap } =
   let
     expression' = compileProject project
 
@@ -223,8 +236,21 @@ compile state@{ project, expression, typeMap } =
         Right map -> Map.delete Nowhere map
         -- TODO: make it so this accounts for errors
         Left _ -> mempty
+
+    context =
+      InterpreterContext
+        { location: Nowhere
+        , termEnv: mempty
+        }
+
+    valueMap' =
+      if (expression == expression') then
+        valueMap
+      else
+        snd $ runInterpreter context
+          $ interpret expression'
   in
-    state { expression = expression', typeMap = typeMap' }
+    state { expression = expression', typeMap = typeMap', valueMap = valueMap' }
 
 -- Tries connecting the pins the user selected
 tryConnecting :: State -> State
@@ -232,13 +258,14 @@ tryConnecting state =
   fromMaybe state do
     from <- view _partialFrom state
     Tuple toId toIndex <- view _partialTo state
-    currentNodeGroup <- view _currentNodeGroup state
+    currentNodeGroup <- preview _currentNodeGroup state
+    currentFunction <- view _currentFunction state
     let
-      state' = over _currentNodes (G.insertEdge from toId) state
+      state' = over (_nodes currentFunction) (G.insertEdge toId from) state
 
       state'' =
         set
-          ( _atCurrentNode toId
+          ( _atNode currentFunction toId
               <<< _Just
               <<< _nodeInput toIndex
           )
@@ -262,11 +289,11 @@ initializeFunction name state =
 
     state' = over _project function state
 
+    state'' = setCurrentFunction (Just name) state'
+
     state''' = set (_atNodeData name id) (Just def) state''
 
     state'''' = set (_atFunctionData name) (Just def) state'''
-
-    state'' = setCurrentFunction (Just name) state'
   in
     compile state''''
 
@@ -274,9 +301,9 @@ initializeFunction name state =
 removeConnection :: NodeId -> (Tuple NodeId Int) -> State -> State
 removeConnection from (Tuple toId toIndex) state = state''
   where
-  state' = set (_atCurrentNode toId <<< _Just <<< _nodeInput toIndex) Nothing state
+  state' = set (_atCurrentNode toId <<< _nodeInput toIndex) Nothing state
 
-  toInputs = view (_atCurrentNode toId <<< _Just <<< _nodeInputs) state'
+  toInputs = view (_atCurrentNode toId <<< _nodeInputs) state'
 
   inputsToSource :: List _
   inputsToSource =

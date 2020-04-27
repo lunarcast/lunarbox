@@ -1,4 +1,8 @@
-module Lunarbox.Component.Editor (component, Action(..), Query) where
+module Lunarbox.Component.Editor
+  ( component
+  , Action(..)
+  , Query
+  ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
@@ -11,6 +15,7 @@ import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
@@ -28,11 +33,10 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Effect (print, printString)
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
@@ -40,7 +44,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functionData, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentNodeGroup, _currentNodes, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, _valueMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -88,9 +92,10 @@ component =
         , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
         , currentFunction: Nothing
         , lastMousePosition: Nothing
-        , expression: nullExpr Nowhere
+        , expression: nothing
         , project: emptyProject $ NodeId "firstOutput"
         , partialConnection: def
+        , valueMap: mempty
         }
     , render
     , eval:
@@ -141,6 +146,8 @@ component =
                 state'''' = over _functions (G.insertEdge name currentFunction) state'''
               void $ put $ compile $ setId state''''
     ChangeTab newTab -> do
+      s <- gets $ view _valueMap
+      print s
       oldTab <- gets $ view _currentTab
       modify_
         if (oldTab == newTab) then
@@ -149,9 +156,6 @@ component =
           set _currentTab newTab
     CreateFunction name -> do
       modify_ $ initializeFunction name
-      s <- gets $ view _functionData
-      print s
-      print name
     SelectFunction name -> modify_ $ setCurrentFunction name
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
@@ -163,8 +167,6 @@ component =
         relativePosition = view _lastMousePosition state'
 
         maybeOffset = (-) <$> relativePosition <*> lastMousePosition
-      -- print relativePosition
-      -- print lastMousePosition
       for_ maybeOffset \offset -> do
         let
           updateState =
@@ -176,7 +178,6 @@ component =
                     node
         put $ updateState state'
     SceneMouseUp -> do
-      print "here"
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
       maybeCurrentFunction <- gets $ view _currentFunction
@@ -192,6 +193,10 @@ component =
       modify_ $ tryConnecting <<< setFrom
       e <- gets $ view _expression
       printString $ printSource e
+      a <- gets $ view _currentNodeGroup
+      b <- gets $ preview _currentNodes
+      print b
+      (print :: Maybe (Array _) -> _) $ G.edges <$> _.nodes <$> unwrap <$> a
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
 
@@ -264,6 +269,7 @@ component =
   , nodeData
   , colorMap
   , partialConnection
+  , valueMap
   } =
     fromMaybe
       emptyEditor do
@@ -281,6 +287,7 @@ component =
             , lastMousePosition
             , functionData
             , partialConnection
+            , valueMap
             , nodeData:
               Map.fromFoldable
                 $ (uncurry \(Tuple _ id) value -> Tuple id value)

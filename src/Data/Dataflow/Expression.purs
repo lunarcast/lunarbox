@@ -18,6 +18,7 @@ module Lunarbox.Data.Dataflow.Expression
   , removeWrappers
   , wrapWith
   , wrappers
+  , nullExpr
   ) where
 
 import Prelude
@@ -30,6 +31,7 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Scheme (Scheme)
 import Lunarbox.Data.String (indent)
 
+-- Names of variables
 newtype VarName
   = VarName String
 
@@ -54,10 +56,10 @@ instance showLiteral :: Show Literal where
   show (LBool b) = show b
   show LNull = "null"
 
-data NativeExpression l
-  = NativeExpression Scheme (RuntimeValue (Expression l))
+data NativeExpression
+  = NativeExpression Scheme RuntimeValue
 
-derive instance eqNativeExpression :: Eq l => Eq (NativeExpression l)
+derive instance eqNativeExpression :: Eq NativeExpression
 
 data Expression l
   = Variable l VarName
@@ -67,9 +69,11 @@ data Expression l
   | Let l Boolean VarName (Expression l) (Expression l)
   | FixPoint l (Expression l)
   | Chain l (List (Expression l))
-  | Native l (NativeExpression l)
+  | Native l NativeExpression
 
 derive instance eqExpression :: Eq l => Eq (Expression l)
+
+derive instance functorExpression :: Functor Expression
 
 -- Takes a list of argument names and a body and creates the body of a function
 functionDeclaration :: forall l. l -> Expression l -> List VarName -> Expression l
@@ -212,3 +216,7 @@ optimize (FixPoint location body) = FixPoint location $ optimize body
 optimize (Chain location expressions) = Chain location $ optimize <$> expressions
 
 optimize expression = expression
+
+-- A null literal at a custom location
+nullExpr :: forall l. l -> Expression l
+nullExpr location = Literal location LNull

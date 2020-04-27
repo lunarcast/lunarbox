@@ -69,6 +69,7 @@ nodeInput typeMap name functionData =
           (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
           functionData
           node
+  , value: Nothing
   }
   where
   inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap

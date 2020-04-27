@@ -11,8 +11,7 @@ import Prelude
 import Data.Default (class Default, def)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression (Expression, nullExpr)
 
 -- This represents a location which may or may not have an extra or a missing layer 
 data ExtendedLocation l l'

@@ -9,7 +9,6 @@ module Lunarbox.Data.Editor.Project
   , _atProjectNode
   , _ProjectFunctions
   , _ProjectMain
-  , _projectFunctionData
   , _projectNodeGroup
   ) where
 
@@ -83,13 +82,10 @@ _atProjectFunction :: FunctionName -> Traversal' Project (Maybe DataflowFunction
 _atProjectFunction name = _ProjectFunctions <<< at name
 
 _projectNodeGroup :: FunctionName -> Traversal' Project NodeGroup
-_projectNodeGroup name = _ProjectFunctions <<< ix name <<< _VisualFunction
+_projectNodeGroup name = _ProjectFunctions <<< at name <<< _Just <<< _VisualFunction
 
 _atProjectNodeGroup :: FunctionName -> Traversal' Project NodeGroup
 _atProjectNodeGroup name = _ProjectFunctions <<< at name <<< _Just <<< _VisualFunction
 
 _atProjectNode :: FunctionName -> NodeId -> Traversal' Project (Maybe Node)
 _atProjectNode name id = _atProjectNodeGroup name <<< _NodeGroupNodes <<< at id
-
-_projectFunctionData :: FunctionName -> Traversal' Project DataflowFunction
-_projectFunctionData name = _ProjectFunctions <<< ix name

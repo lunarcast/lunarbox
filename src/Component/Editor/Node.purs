@@ -25,9 +25,11 @@ import Lunarbox.Capability.Editor.Node.Arc as Arc
 import Lunarbox.Component.Editor.Edge (renderEdge)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
+import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.Node (Node, _nodeInput, _nodeInputs, getInputs)
+import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.NodeInput (getArcs)
@@ -57,6 +59,7 @@ type Input h a
     , nodeDataMap :: Map NodeId NodeData
     , selectionStatus :: SelectionStatus
     , mousePosition :: Vec2 Number
+    , value :: Maybe RuntimeValue
     }
 
 type Actions a
@@ -104,6 +107,7 @@ renderNode { nodeData: nodeData
 , nodeDataMap
 , selectionStatus
 , mousePosition
+, value
 } { select
 , selectOutput
 , selectInput
@@ -115,6 +119,7 @@ renderNode { nodeData: nodeData
     ]
     $ [ overlays maxRadius labels
       ]
+    <> valueSvg
     <> arcs
     <> [ movementHandler
       , output
@@ -164,6 +169,25 @@ renderNode { nodeData: nodeData
     _ -> mempty
 
   maxRadius = nodeRadius + (toNumber $ List.length inputArcs - 1) * inputLayerOffset
+
+  valueSvg =
+    maybe mempty
+      ( \value' ->
+          let
+            color = case node of
+              OutputNode _ -> fromMaybe transparent $ Map.lookup (InputPin 0) colorMap
+              _ -> outputColor
+          in
+            pure
+              $ SE.g
+                  [ SA.transform
+                      [ SA.Translate 0.0 $ maxRadius + inputLayerOffset
+                      ]
+                  ]
+                  [ renderRuntimeValue color value'
+                  ]
+      )
+      value
 
   arcs =
     if List.null $ view _nodeInputs node then
