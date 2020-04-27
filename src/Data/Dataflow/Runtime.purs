@@ -2,6 +2,7 @@ module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
   , TermEnvironment(..)
   , binaryFunction
+  , lookup
   , _Number
   , _String
   , _Function
@@ -10,8 +11,8 @@ module Lunarbox.Data.Dataflow.Runtime
 import Prelude
 import Data.Lens (Prism', prism')
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Newtype (class Newtype, unwrap)
 
 -- Structure used to store the value of different variables
 newtype TermEnvironment c
@@ -20,6 +21,10 @@ newtype TermEnvironment c
 derive instance eqTermEnvironment :: Eq c => Eq (TermEnvironment c)
 
 derive instance newtypeTermEnvironment :: Newtype (TermEnvironment c) _
+
+-- Same as Map.lookup but returns Null in case the value cannot be found
+lookup :: forall c. String -> TermEnvironment c -> RuntimeValue c
+lookup key = fromMaybe Null <<< Map.lookup key <<< unwrap
 
 -- Representations of all possible runtime values
 data RuntimeValue c

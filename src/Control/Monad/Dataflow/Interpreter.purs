@@ -1,8 +1,9 @@
 module Lunarbox.Control.Monad.Dataflow.Interpreter
   ( Interpreter(..)
   , InterpreterContext(..)
-  , _location
   , runInterpreter
+  , _location
+  , _termEnv
   ) where
 
 import Prelude
@@ -20,13 +21,17 @@ import Lunarbox.Data.Lens (newtypeIso)
 newtype InterpreterContext v l
   = InterpreterContext
   { location :: l
-  , typeEnv :: TermEnvironment v
+  , termEnv :: TermEnvironment v
   }
 
 derive instance newtypeInterpreterContent :: Newtype (InterpreterContext v l) _
 
+-- Lenses
 _location :: forall v l. Lens' (InterpreterContext v l) l
 _location = newtypeIso <<< prop (SProxy :: _ "location")
+
+_termEnv :: forall v l. Lens' (InterpreterContext v l) (TermEnvironment v)
+_termEnv = newtypeIso <<< prop (SProxy :: _ "termEnv")
 
 -- Monad used to Interpret expressions
 newtype Interpreter v l a
