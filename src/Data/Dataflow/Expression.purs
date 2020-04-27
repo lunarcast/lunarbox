@@ -39,7 +39,8 @@ derive instance eqVarName :: Eq VarName
 
 derive instance ordVarName :: Ord VarName
 
-derive newtype instance showVarName :: Show VarName
+instance showVarName :: Show VarName where
+  show = unwrap
 
 derive instance newtypeVarName :: Newtype VarName _
 

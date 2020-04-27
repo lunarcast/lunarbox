@@ -168,7 +168,7 @@ renderNode { nodeData: nodeData
             }
     _ -> mempty
 
-  maxRadius = nodeRadius + (toNumber $ List.length inputArcs - 1) * inputLayerOffset
+  maxRadius = nodeRadius + (toNumber $ List.length inputArcs - 1) * inputLayerOffset + arcWidth * 2.0
 
   valueSvg =
     maybe mempty

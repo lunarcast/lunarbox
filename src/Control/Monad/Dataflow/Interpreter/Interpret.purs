@@ -17,7 +17,6 @@ import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExp
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
-import Lunarbox.Data.Lens (newtypeIso)
 
 -- Gets a value from the current environment
 getVariable :: forall l. Ord l => String -> Interpreter l RuntimeValue
@@ -27,7 +26,7 @@ getVariable name = do
 
 -- Perform an action in an environment with an extra variable
 withTerm :: forall l. Ord l => String -> RuntimeValue -> Interpreter l ~> Interpreter l
-withTerm name value = local $ over (_termEnv <<< newtypeIso) $ Map.insert (show name) value
+withTerm name value = local $ over _termEnv $ TermEnvironment.insert name value
 
 -- Interpret an expression into a runtimeValue
 interpret :: forall l. Ord l => Expression l -> Interpreter l RuntimeValue
@@ -53,14 +52,15 @@ interpret expression = do
         Nothing -> pure Null
       Let _ _ name value body -> do
         runtimeValue <- interpret value
-        local (over (_termEnv <<< newtypeIso) $ Map.insert (show name) runtimeValue) $ interpret body
+        withTerm (show name) runtimeValue $ interpret body
       FixPoint _ function -> interpret $ FunctionCall location function $ FixPoint location function
-      Native _ (NativeExpression _ call) -> pure call
-      FunctionCall _ argument function -> do
+      Native _ (NativeExpression _ inner) -> pure inner
+      FunctionCall _ function argument -> do
         runtimeArgument <- interpret argument
-        runtimeFunction <- interpret function
-        case runtimeFunction of
-          Function call -> pure $ call runtimeArgument
-          _ -> pure Null
+        runtimeFunction <-
+          interpret function
+        pure case runtimeFunction of
+          Function call -> call runtimeArgument
+          _ -> Null
   tell $ ValueMap $ Map.singleton location value
   pure value

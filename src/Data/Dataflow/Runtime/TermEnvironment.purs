@@ -1,6 +1,7 @@
 module Lunarbox.Data.Dataflow.Runtime.TermEnvironment
   ( TermEnvironment(..)
   , lookup
+  , insert
   ) where
 
 import Prelude
@@ -24,3 +25,7 @@ derive newtype instance monoidTermEnvironment :: Monoid TermEnvironment
 -- Same as Map.lookup but returns Null in case the value cannot be found
 lookup :: String -> TermEnvironment -> RuntimeValue
 lookup key = fromMaybe Null <<< Map.lookup key <<< unwrap
+
+-- Wrapper around Map.insert
+insert :: String -> RuntimeValue -> TermEnvironment -> TermEnvironment
+insert key value (TermEnvironment env) = TermEnvironment $ Map.insert key value env

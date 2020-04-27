@@ -6,7 +6,6 @@ import Prelude
 import Data.Array (mapWithIndex)
 import Data.Int (toNumber)
 import Halogen.HTML (HTML)
-import Lunarbox.Data.Editor.Constants (nodeRadius)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -20,7 +19,7 @@ overlays radius =
     <<< mapWithIndex \index elem ->
         SE.g
           [ SA.transform
-              [ SA.Translate 0.0 $ -nodeRadius + (toNumber $ (index + 1) * -20)
+              [ SA.Translate 0.0 $ -radius + (toNumber $ (index + 1) * -20)
               ]
           ]
           [ elem ]

@@ -21,7 +21,9 @@ typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn $ TArrow typeRe
 evalIf :: RuntimeValue -> RuntimeValue
 evalIf (Bool true) = binaryFunction const
 
-evalIf _ = binaryFunction $ flip const
+evalIf (Bool false) = binaryFunction $ flip const
+
+evalIf _ = Null
 
 if' :: NativeConfig
 if' =
