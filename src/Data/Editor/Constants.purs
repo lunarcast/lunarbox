@@ -5,9 +5,11 @@ module Lunarbox.Data.Editor.Constants
   , inputLayerOffset
   , connectionsWidth
   , scaleConnectionPreview
+  , mouseId
   ) where
 
 import Prelude
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Math (Radians)
 
 -- visual radius for nodes
@@ -33,3 +35,7 @@ connectionsWidth = 5.0
 -- THis is required so the preview doesn't catch all the events
 scaleConnectionPreview :: Number -> Number
 scaleConnectionPreview = (_ / 1.01)
+
+-- Used for connection previews
+mouseId :: NodeId
+mouseId = NodeId "mouse"

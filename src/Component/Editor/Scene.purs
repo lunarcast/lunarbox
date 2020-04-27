@@ -142,7 +142,7 @@ createNodeComponent { functionName
           ]
         , hasOutput: not $ is _OutputNode node
         , selectionStatus: getSelectionStatus partialConnection id
-        , lastMousePosition: fromMaybe zero lastMousePosition
+        , mousePosition: fromMaybe zero lastMousePosition
         }
         { select: selectNode id
         , selectInput: selectInput id

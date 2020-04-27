@@ -5,13 +5,15 @@ module Lunarbox.Component.Editor.Node
   ) where
 
 import Prelude
+import Data.Default (def)
 import Data.Int (toNumber)
-import Data.Lens (view)
+import Data.Lens (set, view)
 import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
 import Halogen.HTML (HTML, IProp)
@@ -22,9 +24,9 @@ import Lunarbox.Capability.Editor.Node.Arc as Arc
 import Lunarbox.Component.Editor.Edge (renderEdge)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
-import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, nodeRadius, scaleConnectionPreview)
+import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.Node (Node, _nodeInputs, getInputs)
+import Lunarbox.Data.Editor.Node (Node, _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.NodeInput (getArcs)
@@ -53,7 +55,7 @@ type Input h a
     , hasOutput :: Boolean
     , nodeDataMap :: Map NodeId NodeData
     , selectionStatus :: SelectionStatus
-    , lastMousePosition :: Vec2 Number
+    , mousePosition :: Vec2 Number
     }
 
 type Actions a
@@ -84,6 +86,12 @@ constant =
     , strokeDashArray [ pi * nodeRadius / 20.0 ]
     ]
 
+-- Helper to scale down the connectioon previews
+scaleConnection :: NodeId -> Vec2 Number -> Vec2 Number
+scaleConnection id position
+  | id == mouseId = scaleConnectionPreview <$> position
+  | otherwise = position
+
 renderNode :: forall h a. Input h a -> Actions a -> HTML h a
 renderNode { nodeData: nodeData
 , functionData
@@ -93,7 +101,7 @@ renderNode { nodeData: nodeData
 , node
 , nodeDataMap
 , selectionStatus
-, lastMousePosition
+, mousePosition
 } { select
 , selectOutput
 , selectInput
@@ -122,15 +130,24 @@ renderNode { nodeData: nodeData
 
   centerPosition = view _NodeDataPosition nodeData
 
-  inputArcs = getArcs nodeDataMap nodeData node
+  (Tuple nodeDataWithMouse nodeWithMouse) = case selectionStatus of
+    InputSelected index -> Tuple nodeDataMap' node'
+      where
+      node' = set (_nodeInput index) (Just mouseId) node
+
+      nodeDataMap' = Map.insert mouseId (set _NodeDataPosition mousePosition def) nodeDataMap
+    _ -> Tuple nodeDataMap node
+
+  inputArcs = getArcs nodeDataWithMouse nodeData nodeWithMouse
 
   outputPartialEdge = case selectionStatus of
     OutputSelected ->
       pure
         $ renderEdge
             { from: zero
-            , to: scaleConnectionPreview <$> (lastMousePosition - centerPosition)
+            , to: scaleConnectionPreview <$> (mousePosition - centerPosition)
             , color: outputColor
+            , dotted: true
             }
     _ -> mempty
 
@@ -161,28 +178,18 @@ renderNode { nodeData: nodeData
                         -- The edge to render
                         edge =
                           maybe mempty pure do
-                            nodeId <- join $ getInputs node `List.index` index
-                            targetData <- Map.lookup nodeId nodeDataMap
+                            nodeId <- join $ getInputs nodeWithMouse `List.index` index
+                            targetData <- Map.lookup nodeId nodeDataWithMouse
                             color <- Map.lookup (InputPin index) colorMap
                             let
                               targetPosition = view _NodeDataPosition targetData
                             pure
                               $ renderEdge
                                   { from: inputPosition
-                                  , to: targetPosition - centerPosition
+                                  , to: scaleConnection nodeId $ targetPosition - centerPosition
                                   , color
+                                  , dotted: nodeId == mouseId
                                   }
-
-                        partialEdge = case selectionStatus of
-                          InputSelected selectionIndex
-                            | selectionIndex == index ->
-                              pure
-                                $ renderEdge
-                                    { from: inputPosition
-                                    , to: scaleConnectionPreview <$> (lastMousePosition - centerPosition)
-                                    , color: inputColor
-                                    }
-                          _ -> mempty
 
                         inputSvg =
                           input
@@ -197,7 +204,7 @@ renderNode { nodeData: nodeData
                             }
                             $ selectInput index
                       in
-                        inputSvg : edge <> partialEdge
+                        inputSvg : edge
             )
         # join
         # List.toUnfoldable

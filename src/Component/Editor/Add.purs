@@ -62,7 +62,7 @@ nodeInput typeMap name functionData =
   , hasOutput: hasOutput node
   , nodeDataMap: mempty
   , selectionStatus: NothingSelected
-  , lastMousePosition: zero
+  , mousePosition: zero
   , colorMap:
     either (const mempty) identity
       $ generateTypeMap

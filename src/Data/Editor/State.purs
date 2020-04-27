@@ -41,7 +41,6 @@ import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
-import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.Map (Map)
 import Data.Map as Map
@@ -59,14 +58,13 @@ import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node, _nodeInput)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.Lens (listToArrayIso)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes (Color)
 import Web.HTML.HTMLElement (DOMRect)
@@ -237,9 +235,7 @@ tryConnecting state =
         set
           ( _atCurrentNode toId
               <<< _Just
-              <<< _nodeInputs
-              <<< listToArrayIso
-              <<< ix toIndex
+              <<< _nodeInput toIndex
           )
           (Just from)
           state'
