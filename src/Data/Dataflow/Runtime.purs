@@ -10,12 +10,21 @@ import Prelude
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 
+-- Representations of all possible runtime values
 data RuntimeValue
   = Number Number
   | String String
   | Bool Boolean
   | Null
   | Function (RuntimeValue -> RuntimeValue)
+
+instance showRuntimeValue :: Show RuntimeValue where
+  show = case _ of
+    Null -> "null"
+    Bool value -> show value
+    Number value -> show value
+    String value -> show value
+    Function value -> "Function"
 
 instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Number n) (Number n') = n == n'

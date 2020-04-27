@@ -1,6 +1,6 @@
 module Lunarbox.Component.Editor.Scene
-  ( scene
-  , Input
+  ( Input
+  , scene
   ) where
 
 import Prelude
@@ -14,6 +14,7 @@ import Data.Lens (is, preview, view)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
+import Data.Newtype (unwrap)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
@@ -25,6 +26,7 @@ import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
+import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
@@ -33,7 +35,8 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..))
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
+import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
@@ -49,10 +52,12 @@ type Input
     , nodeGroup :: NodeGroup
     , typeMap :: Map Location Type
     , expression :: Expression Location
-    , lastMousePosition :: Maybe (Vec2 Number)
     , typeColors :: Map Location Color
     , functionData :: Map FunctionName FunctionData
     , nodeData :: Map NodeId NodeData
+    , partialConnection :: PartialConnection
+    , lastMousePosition :: Maybe (Vec2 Number)
+    , valueMap :: ValueMap Location
     }
 
 type Actions a
@@ -62,6 +67,7 @@ type Actions a
     , mouseUp :: Maybe a
     , selectInput :: NodeId -> Int -> Maybe a
     , selectOutput :: NodeId -> Maybe a
+    , removeConnection :: NodeId -> Tuple NodeId Int -> Maybe a
     }
 
 -- Errors which could arise while creating the node svg
@@ -99,8 +105,11 @@ createNodeComponent { functionName
 , expression
 , functionData
 , typeColors
+, partialConnection
+, lastMousePosition
 , nodeData: nodeDataMap
-} { selectNode, selectInput, selectOutput } (Tuple id nodeData) = do
+, valueMap
+} { selectNode, selectInput, selectOutput, removeConnection } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
 
@@ -137,21 +146,18 @@ createNodeComponent { functionName
           , labelText $ sumarizeExpression nodeExpression
           ]
         , hasOutput: not $ is _OutputNode node
+        , selectionStatus: getSelectionStatus partialConnection id
+        , mousePosition: fromMaybe zero lastMousePosition
+        , value: Map.lookup location $ unwrap valueMap
         }
         { select: selectNode id
         , selectInput: selectInput id
         , selectOutput: selectOutput id
+        , removeConnection: (_ <<< Tuple id) <<< removeConnection
         }
 
 scene :: forall h a. Input -> Actions a -> HH.HTML h a
-scene state@{ project
-, expression
-, typeMap
-, typeColors
-, functionName
-, nodeData
-, functionData
-, nodeGroup: (NodeGroup { nodes })
+scene state@{ nodeData
 } actions@{ mouseMove, mouseDown, mouseUp, selectNode } = either (\err -> erroredEditor $ show err) success nodeHtml
   where
   sortedNodes :: Array (Tuple NodeId NodeData)
@@ -165,6 +171,7 @@ scene state@{ project
     SE.svg
       [ SA.width 100000.0
       , SA.height 100000.0
+      , SA.id "scene"
       , onMouseMove $ \e -> mouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseDown $ \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const mouseUp

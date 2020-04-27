@@ -10,7 +10,7 @@ module Lunarbox.Data.Editor.NodeGroup
 import Prelude
 import Data.Lens (Lens')
 import Data.Lens.Record (prop)
-import Data.List (List, foldl, (\\), (:), reverse)
+import Data.List (List, foldr, (:), (\\))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Expression (Expression, VarName(..), functionDeclaration)
@@ -35,16 +35,18 @@ orderNodes (NodeGroup function) = topologicalSort function.nodes
 
 derive instance newtypeNodeGroup :: Newtype NodeGroup _
 
+derive newtype instance showNodeGroup :: Show NodeGroup
+
 compileNodeGroup :: NodeGroup -> Expression NodeOrPinLocation
 compileNodeGroup group@(NodeGroup { nodes, output, inputs }) =
   let
-    ordered = reverse $ orderNodes group
+    ordered = orderNodes group
 
-    bodyNodes = output : (ordered \\ (output : inputs))
+    bodyNodes = (ordered \\ (output : inputs)) <> pure output
 
     return =
-      foldl
-        (flip $ compileNode nodes)
+      foldr
+        (compileNode nodes)
         nothing
         bodyNodes
   in

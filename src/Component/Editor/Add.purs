@@ -18,7 +18,7 @@ import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
-import Lunarbox.Component.Editor.Node (renderNode)
+import Lunarbox.Component.Editor.Node (SelectionStatus(..), renderNode)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
@@ -61,12 +61,15 @@ nodeInput typeMap name functionData =
   , labels: mempty
   , hasOutput: hasOutput node
   , nodeDataMap: mempty
+  , selectionStatus: NothingSelected
+  , mousePosition: zero
   , colorMap:
     either (const mempty) identity
       $ generateTypeMap
           (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
           functionData
           node
+  , value: Nothing
   }
   where
   inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
@@ -90,6 +93,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
             { select: Nothing
             , selectOutput: Nothing
             , selectInput: const Nothing
+            , removeConnection: const $ const Nothing
             }
         ]
     , container "node-data"

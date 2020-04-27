@@ -8,7 +8,6 @@ import Data.Lens.At (at)
 import Data.List (catMaybes, foldr)
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Graph (Graph, topologicalSort)
@@ -24,8 +23,6 @@ compileGraph toExpression graph main =
     sorted =
       topologicalSort
         graph
-
-    emptyExpression = nullExpr Nowhere
   in
     foldr
       ( \(Tuple key value) body ->

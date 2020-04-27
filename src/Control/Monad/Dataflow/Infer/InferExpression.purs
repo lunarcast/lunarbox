@@ -101,13 +101,6 @@ infer expression =
         t <- infer value
         inner <- if shouldGeneralize then generalize t else pure $ Forall [] t
         createClosure name inner (infer body)
-      If _ condition onTrue onFalse -> do
-        conditionType <- infer condition
-        trueType <- infer onTrue
-        falseType <- infer onFalse
-        createConstraint conditionType typeBool
-        createConstraint trueType falseType
-        pure trueType
       FixPoint _ body -> do
         t <- infer body
         tv <- fresh

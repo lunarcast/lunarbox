@@ -11,6 +11,7 @@ module Lunarbox.Data.Graph
   , insertEdge
   , topologicalSort
   , edges
+  , removeEdge
   , _Graph
   ) where
 
@@ -24,7 +25,7 @@ import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List (List)
 import Data.Map as Map
-import Data.Maybe (Maybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, over, unwrap)
 import Data.Set (Set)
 import Data.Set as Set
@@ -40,6 +41,8 @@ derive instance newtypeGraph :: Newtype (Graph k v) _
 derive instance eqGraph :: (Eq k, Eq v) => Eq (Graph k v)
 
 derive instance ordGraph :: (Ord k, Ord v) => Ord (Graph k v)
+
+derive newtype instance showGraph :: (Show k, Show v) => Show (Graph k v)
 
 instance functorGraph :: Ord k => Functor (Graph k) where
   map f (Graph m) = Graph (map (lmap f) m)
@@ -85,7 +88,7 @@ singleton :: forall k v. Ord k => k -> v -> Graph k v
 singleton k v = Graph $ Map.singleton k $ Tuple v Set.empty
 
 insert :: forall k v. Ord k => k -> v -> Graph k v -> Graph k v
-insert k v (Graph m) = Graph $ Map.insert k (Tuple v Set.empty) m
+insert key value (Graph m) = Graph $ Map.alter (Just <<< (maybe (Tuple value Set.empty) $ lmap $ const value)) key m
 
 lookup :: forall k v. Ord k => k -> Graph k v -> Maybe v
 lookup k = map fst <<< Map.lookup k <<< unwrap
@@ -104,14 +107,19 @@ toUnfoldable (Graph m) = Map.toUnfoldable $ fst <$> m
 
 --  Insert an edge from the start key to the end key.
 insertEdge :: forall k v. Ord k => k -> k -> Graph k v -> Graph k v
-insertEdge from to (Graph g) = Graph $ Map.alter (map (rmap (Set.insert to))) from g
+insertEdge from to (Graph g) = Graph $ Map.alter (map $ rmap $ Set.insert to) from g
+
+-- same as insertEdge but removes the edge instead
+removeEdge :: forall k v. Ord k => k -> k -> Graph k v -> Graph k v
+removeEdge from to (Graph g) = Graph $ Map.alter (map $ rmap $ Set.delete to) from g
 
 -- Get all the edges from a graph
 edges :: forall k v u. Unfoldable u => Ord k => Graph k v -> u (Tuple k k)
-edges (Graph map) =
-  Map.toUnfoldable map
-    >>= (\(Tuple from (Tuple _ to)) -> Tuple from <$> Set.toUnfoldable to)
-    # Array.toUnfoldable
+edges (Graph map) = Array.toUnfoldable edgeArray
+  where
+  edgeArray =
+    Map.toUnfoldable map
+      >>= (\(Tuple from (Tuple _ to)) -> Tuple from <$> Set.toUnfoldable to)
 
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k

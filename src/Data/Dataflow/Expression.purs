@@ -18,6 +18,7 @@ module Lunarbox.Data.Dataflow.Expression
   , removeWrappers
   , wrapWith
   , wrappers
+  , nullExpr
   ) where
 
 import Prelude
@@ -30,6 +31,7 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Scheme (Scheme)
 import Lunarbox.Data.String (indent)
 
+-- Names of variables
 newtype VarName
   = VarName String
 
@@ -37,7 +39,8 @@ derive instance eqVarName :: Eq VarName
 
 derive instance ordVarName :: Ord VarName
 
-derive newtype instance showVarName :: Show VarName
+instance showVarName :: Show VarName where
+  show = unwrap
 
 derive instance newtypeVarName :: Newtype VarName _
 
@@ -65,10 +68,13 @@ data Expression l
   | Lambda l VarName (Expression l)
   | Literal l Literal
   | Let l Boolean VarName (Expression l) (Expression l)
-  | If l (Expression l) (Expression l) (Expression l)
   | FixPoint l (Expression l)
   | Chain l (List (Expression l))
   | Native l NativeExpression
+
+derive instance eqExpression :: Eq l => Eq (Expression l)
+
+derive instance functorExpression :: Functor Expression
 
 -- Takes a list of argument names and a body and creates the body of a function
 functionDeclaration :: forall l. l -> Expression l -> List VarName -> Expression l
@@ -82,7 +88,6 @@ getLocation = case _ of
   Lambda l _ _ -> l
   Literal l _ -> l
   Let l _ _ _ _ -> l
-  If l _ _ _ -> l
   FixPoint l _ -> l
   Native l _ -> l
   Chain l _ -> l
@@ -95,7 +100,6 @@ toMap expression =
         FunctionCall _ calee input -> toMap calee <> toMap input
         Lambda _ _ body -> toMap body
         Let _ _ _ value body -> toMap value <> toMap body
-        If _ condition then' else' -> toMap condition <> toMap then' <> toMap else'
         Chain _ expressions -> foldr (\expression' -> (<>) $ toMap expression') mempty expressions
         FixPoint _ body -> toMap body
         _ -> mempty
@@ -122,10 +126,6 @@ inputs :: forall l. Expression l -> Int
 inputs = inputs' 0
 
 -- Typecalss instances
-derive instance expressinEq :: Eq l => Eq (Expression l)
-
-derive instance functorExpression :: Functor Expression
-
 instance showExpression :: Show l => Show (Expression l) where
   show expr = "(" <> show (getLocation expr) <> ": " <> printRawExpression show expr <> ")"
 
@@ -170,13 +170,6 @@ printRawExpression print expression = case expression of
   Literal _ literal -> show literal
   Let _ _ _ _ _ -> printLet true (printRawExpression print) expression
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
-  If _ cond then' else' ->
-    "if\n"
-      <> indent 2 (print cond)
-      <> "\nthen\n"
-      <> indent 2 (print then')
-      <> "\nelse\n"
-      <> indent 2 (print else')
   Native _ (NativeExpression t _) -> "native :: " <> show t
   Chain l (e : Nil) -> printRawExpression print e
   Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
@@ -219,10 +212,12 @@ optimize (FunctionCall location calee argument) = FunctionCall location (optimiz
 
 optimize (Lambda location argument body) = Lambda location argument $ optimize body
 
-optimize (If location condition then' else') = If location (optimize condition) (optimize then') $ optimize else'
-
 optimize (FixPoint location body) = FixPoint location $ optimize body
 
 optimize (Chain location expressions) = Chain location $ optimize <$> expressions
 
 optimize expression = expression
+
+-- A null literal at a custom location
+nullExpr :: forall l. l -> Expression l
+nullExpr location = Literal location LNull

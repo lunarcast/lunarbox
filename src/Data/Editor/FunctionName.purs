@@ -4,7 +4,6 @@ import Prelude
 import Data.Default (class Default)
 import Data.Lens (Lens')
 import Data.Newtype (class Newtype, unwrap)
-import Lunarbox.Data.Dataflow.Class.Expressible (class Expressible, toExpression)
 import Lunarbox.Data.Lens (newtypeIso)
 
 newtype FunctionName
@@ -21,9 +20,6 @@ instance defaultFunctionName :: Default FunctionName where
 
 instance showFunctionName :: Show FunctionName where
   show = unwrap
-
-instance expressibleNodeId :: Expressible FunctionName Unit where
-  toExpression = toExpression <<< unwrap
 
 _FunctionName :: Lens' FunctionName String
 _FunctionName = newtypeIso

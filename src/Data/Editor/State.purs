@@ -4,6 +4,12 @@ module Lunarbox.Data.Editor.State
   , tabIcon
   , tryConnecting
   , compile
+  , setCurrentFunction
+  , initializeFunction
+  , setRelativeMousePosition
+  , getSceneMousePosition
+  , removeConnection
+  , _valueMap
   , _nodeData
   , _atNodeData
   , _project
@@ -29,37 +35,50 @@ module Lunarbox.Data.Editor.State
   , _currentNodes
   , _atCurrentNode
   , _currentNodeGroup
+  , _nodes
   ) where
 
 import Prelude
+import Control.MonadZero (guard)
+import Data.Default (def)
+import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
+import Data.Foldable (foldMap)
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
+import Data.List (List)
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
+import Data.Vec (vec2)
+import Effect.Class (class MonadEffect)
+import Halogen (HalogenM, get, liftEffect)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
+import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node, _nodeInput, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject)
+import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.Lens (listToArrayIso)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes (Color)
+import Web.HTML.HTMLElement (DOMRect)
 
 data Tab
   = Settings
@@ -92,9 +111,13 @@ type State
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
     , functionData :: Map FunctionName FunctionData
     , partialConnection :: PartialConnection
+    , valueMap :: ValueMap Location
     }
 
 -- Lenses
+_valueMap :: Lens' State (ValueMap Location)
+_valueMap = prop (SProxy :: _ "valueMap")
+
 _nodeData :: Lens' State (Map (Tuple FunctionName NodeId) NodeData)
 _nodeData = prop (SProxy :: _ "nodeData")
 
@@ -133,6 +156,9 @@ _functions = _project <<< _ProjectFunctions
 
 _nodeGroup :: FunctionName -> Traversal' State NodeGroup
 _nodeGroup name = _project <<< _projectNodeGroup name
+
+_nodes :: FunctionName -> Traversal' State (G.Graph NodeId Node)
+_nodes name = _nodeGroup name <<< _NodeGroupNodes
 
 _atNode :: FunctionName -> NodeId -> Traversal' State (Maybe Node)
 _atNode name id = _project <<< _atProjectNode name id
@@ -176,16 +202,29 @@ _currentNodeGroup =
       )
   )
 
+_atCurrentNodeData :: NodeId -> Traversal' State (Maybe NodeData)
+_atCurrentNodeData id =
+  lens
+    ( \state -> do
+        currentFunction <- view _currentFunction state
+        view (_atNodeData currentFunction id) state
+    )
+    ( \state value ->
+        fromMaybe state do
+          currentFunction <- view _currentFunction state
+          pure $ set (_atNodeData currentFunction id) value state
+    )
+
 _currentNodes :: Traversal' State (G.Graph NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
-_atCurrentNode :: NodeId -> Traversal' State (Maybe Node)
-_atCurrentNode id = _currentNodes <<< at id
+_atCurrentNode :: NodeId -> Traversal' State Node
+_atCurrentNode id = _currentNodes <<< ix id
 
 -- Helpers
 -- Compile a project
 compile :: State -> State
-compile state@{ project, expression, typeMap } =
+compile state@{ project, expression, typeMap, valueMap } =
   let
     expression' = compileProject project
 
@@ -197,8 +236,21 @@ compile state@{ project, expression, typeMap } =
         Right map -> Map.delete Nowhere map
         -- TODO: make it so this accounts for errors
         Left _ -> mempty
+
+    context =
+      InterpreterContext
+        { location: Nowhere
+        , termEnv: mempty
+        }
+
+    valueMap' =
+      if (expression == expression') then
+        valueMap
+      else
+        snd $ runInterpreter context
+          $ interpret expression'
   in
-    state { expression = expression', typeMap = typeMap' }
+    state { expression = expression', typeMap = typeMap', valueMap = valueMap' }
 
 -- Tries connecting the pins the user selected
 tryConnecting :: State -> State
@@ -206,20 +258,78 @@ tryConnecting state =
   fromMaybe state do
     from <- view _partialFrom state
     Tuple toId toIndex <- view _partialTo state
-    currentNodeGroup <- view _currentNodeGroup state
+    currentNodeGroup <- preview _currentNodeGroup state
+    currentFunction <- view _currentFunction state
     let
       state' = over _currentNodes (G.insertEdge from toId) state
 
       state'' =
         set
           ( _atCurrentNode toId
-              <<< _Just
-              <<< _nodeInputs
-              <<< listToArrayIso
-              <<< ix toIndex
+              <<< _nodeInput toIndex
           )
           (Just from)
           state'
 
       state''' = set _partialTo Nothing $ set _partialFrom Nothing state''
     pure $ compile state'''
+
+-- Set the function the user is editing at the moment
+setCurrentFunction :: Maybe FunctionName -> State -> State
+setCurrentFunction = set _currentFunction
+
+-- Creates a function, adds an output node and set it as the current edited function
+initializeFunction :: FunctionName -> State -> State
+initializeFunction name state =
+  let
+    id = NodeId $ show name <> "-output"
+
+    function = createFunction name id
+
+    state' = over _project function state
+
+    state'' = setCurrentFunction (Just name) state'
+
+    state''' = set (_atNodeData name id) (Just def) state''
+
+    state'''' = set (_atFunctionData name) (Just def) state'''
+  in
+    compile state''''
+
+-- Remove a conenction from the current function
+removeConnection :: NodeId -> (Tuple NodeId Int) -> State -> State
+removeConnection from (Tuple toId toIndex) state = state''
+  where
+  state' = set (_atCurrentNode toId <<< _nodeInput toIndex) Nothing state
+
+  toInputs = view (_atCurrentNode toId <<< _nodeInputs) state'
+
+  inputsToSource :: List _
+  inputsToSource =
+    foldMap
+      ( \maybeInput ->
+          maybe mempty pure
+            $ do
+                input <- maybeInput
+                guard $ input == from
+                pure input
+      )
+      toInputs
+
+  state'' =
+    -- We only remove the connections if there are no dependencies left
+    if List.null inputsToSource then
+      over _currentNodes (G.removeEdge from toId) state'
+    else
+      state'
+
+-- Helper function to set the mouse position relative to the svg element
+setRelativeMousePosition :: DOMRect -> Vec2 Number -> State -> State
+setRelativeMousePosition { top, left } position = set _lastMousePosition $ Just $ position - vec2 left top
+
+-- Helper to update the mouse position of the svg scene
+getSceneMousePosition :: forall q i o m. MonadEffect m => Vec2 Number -> HalogenM State q i o m State
+getSceneMousePosition position = do
+  state <- get
+  bounds <- liftEffect getSceneBoundingBox
+  pure $ setRelativeMousePosition bounds position state

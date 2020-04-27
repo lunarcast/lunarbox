@@ -5,6 +5,7 @@ module Lunarbox.Data.Editor.Node
   , hasOutput
   , getInputs
   , connectedInputs
+  , _nodeInput
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
@@ -13,20 +14,21 @@ module Lunarbox.Data.Editor.Node
 
 import Prelude
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
+import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.List (List(..), foldl, mapWithIndex, (!!))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), nullExpr, wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
 import Lunarbox.Data.Functor (indexed)
 import Lunarbox.Data.Graph as G
+import Lunarbox.Data.Lens (listToArrayIso)
 
 type ComplexNodeData
   = { inputs :: List (Maybe NodeId)
@@ -121,3 +123,7 @@ _nodeInputs =
     InputNode -> const node
     OutputNode inner -> OutputNode <<< join <<< (_ !! 0)
     ComplexNode _ -> flip (set _ComplexNodeInputs) node
+
+-- Lens for an individual node id
+_nodeInput :: Int -> Traversal' Node (Maybe NodeId)
+_nodeInput index = _nodeInputs <<< listToArrayIso <<< ix index

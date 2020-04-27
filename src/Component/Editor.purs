@@ -1,4 +1,8 @@
-module Lunarbox.Component.Editor (component, Action(..), Query) where
+module Lunarbox.Component.Editor
+  ( component
+  , Action(..)
+  , Query
+  ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
@@ -6,7 +10,7 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
-import Data.Foldable (for_, sequence_)
+import Data.Foldable (for_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
@@ -28,19 +32,18 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Dataflow.Class.Expressible (nullExpr)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.Project (_projectNodeGroup, createFunction, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _project, _typeMap, compile, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -59,6 +62,7 @@ data Action
   | SelectOutput NodeId
   | SelectNode NodeId
   | LoadNodes
+  | RemoveConnection NodeId (Tuple NodeId Int)
 
 data Query a
   = Void
@@ -87,9 +91,10 @@ component =
         , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
         , currentFunction: Nothing
         , lastMousePosition: Nothing
-        , expression: nullExpr Nowhere
+        , expression: nothing
         , project: emptyProject $ NodeId "firstOutput"
         , partialConnection: def
+        , valueMap: mempty
         }
     , render
     , eval:
@@ -147,35 +152,20 @@ component =
         else
           set _currentTab newTab
     CreateFunction name -> do
-      Tuple id setId <- createId
-      let
-        setFunction = over _project $ createFunction name id
-      modify_ $ setId <<< setFunction
+      modify_ $ initializeFunction name
+    SelectFunction name -> modify_ $ setCurrentFunction name
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SelectFunction name -> do
-      -- we need the current function to lookup the function in the function graph
-      oldName <- gets $ view _currentFunction
-      functions <- gets $ view _functions
-      -- this is here to update the function the Scene component renders
-      when (name /= oldName)
-        $ sequence_ do
-            currentFunction <- name
-            function <-
-              G.lookup currentFunction functions
-            pure do
-              -- And finally, save the selected function in the state
-              modify_ $ set _currentFunction name <<< compile
-    SceneMouseDown position -> do
-      modify_ $ set _lastMousePosition $ Just position
+    SceneMouseDown position -> getSceneMousePosition position >>= put
     SceneMouseMove position -> do
       state@{ lastMousePosition } <- get
+      state' <- getSceneMousePosition position
       let
-        state' = set _lastMousePosition (Just position) state
-      for_ lastMousePosition \oldPosition -> do
-        let
-          offset = position - oldPosition
+        relativePosition = view _lastMousePosition state'
 
+        maybeOffset = (-) <$> relativePosition <*> lastMousePosition
+      for_ maybeOffset \offset -> do
+        let
           updateState =
             over _nodeData
               $ map \node@(NodeData { selected }) ->
@@ -200,6 +190,8 @@ component =
       modify_ $ tryConnecting <<< setFrom
       e <- gets $ view _expression
       printString $ printSource e
+    RemoveConnection from to -> do
+      modify_ $ removeConnection from to
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -269,6 +261,8 @@ component =
   , functionData
   , nodeData
   , colorMap
+  , partialConnection
+  , valueMap
   } =
     fromMaybe
       emptyEditor do
@@ -285,6 +279,8 @@ component =
             , typeMap
             , lastMousePosition
             , functionData
+            , partialConnection
+            , valueMap
             , nodeData:
               Map.fromFoldable
                 $ (uncurry \(Tuple _ id) value -> Tuple id value)
@@ -298,6 +294,7 @@ component =
             , selectNode: Just <<< SelectNode
             , selectInput: (Just <<< _) <<< SelectInput
             , selectOutput: Just <<< SelectOutput
+            , removeConnection: (Just <<< _) <<< RemoveConnection
             }
 
   render :: State -> HH.HTML _ Action
