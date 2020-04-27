@@ -25,7 +25,7 @@ import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List (List)
 import Data.Map as Map
-import Data.Maybe (Maybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, over, unwrap)
 import Data.Set (Set)
 import Data.Set as Set
@@ -88,7 +88,7 @@ singleton :: forall k v. Ord k => k -> v -> Graph k v
 singleton k v = Graph $ Map.singleton k $ Tuple v Set.empty
 
 insert :: forall k v. Ord k => k -> v -> Graph k v -> Graph k v
-insert k v (Graph m) = Graph $ Map.insert k (Tuple v Set.empty) m
+insert key value (Graph m) = Graph $ Map.alter (Just <<< (maybe (Tuple value Set.empty) $ lmap $ const value)) key m
 
 lookup :: forall k v. Ord k => k -> Graph k v -> Maybe v
 lookup k = map fst <<< Map.lookup k <<< unwrap

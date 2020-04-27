@@ -15,7 +15,6 @@ module Lunarbox.Data.Editor.Project
 import Prelude
 import Data.Lens (Lens', Traversal', _Just, set, view)
 import Data.Lens.At (at)
-import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)

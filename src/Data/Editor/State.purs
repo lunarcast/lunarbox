@@ -261,12 +261,11 @@ tryConnecting state =
     currentNodeGroup <- preview _currentNodeGroup state
     currentFunction <- view _currentFunction state
     let
-      state' = over (_nodes currentFunction) (G.insertEdge toId from) state
+      state' = over _currentNodes (G.insertEdge from toId) state
 
       state'' =
         set
-          ( _atNode currentFunction toId
-              <<< _Just
+          ( _atCurrentNode toId
               <<< _nodeInput toIndex
           )
           (Just from)

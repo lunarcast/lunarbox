@@ -15,7 +15,6 @@ import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
@@ -32,7 +31,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (print, printString)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
@@ -44,7 +43,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentNodeGroup, _currentNodes, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, _valueMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -146,8 +145,6 @@ component =
                 state'''' = over _functions (G.insertEdge name currentFunction) state'''
               void $ put $ compile $ setId state''''
     ChangeTab newTab -> do
-      s <- gets $ view _valueMap
-      print s
       oldTab <- gets $ view _currentTab
       modify_
         if (oldTab == newTab) then
@@ -193,10 +190,6 @@ component =
       modify_ $ tryConnecting <<< setFrom
       e <- gets $ view _expression
       printString $ printSource e
-      a <- gets $ view _currentNodeGroup
-      b <- gets $ preview _currentNodes
-      print b
-      (print :: Maybe (Array _) -> _) $ G.edges <$> _.nodes <$> unwrap <$> a
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
 
