@@ -11,6 +11,7 @@ module Lunarbox.Data.Graph
   , insertEdge
   , topologicalSort
   , edges
+  , removeEdge
   , _Graph
   ) where
 
@@ -104,7 +105,11 @@ toUnfoldable (Graph m) = Map.toUnfoldable $ fst <$> m
 
 --  Insert an edge from the start key to the end key.
 insertEdge :: forall k v. Ord k => k -> k -> Graph k v -> Graph k v
-insertEdge from to (Graph g) = Graph $ Map.alter (map (rmap (Set.insert to))) from g
+insertEdge from to (Graph g) = Graph $ Map.alter (map $ rmap $ Set.insert to) from g
+
+-- same as insertEdge but removes the edge instead
+removeEdge :: forall k v. Ord k => k -> k -> Graph k v -> Graph k v
+removeEdge from to (Graph g) = Graph $ Map.alter (map $ rmap $ Set.delete to) from g
 
 -- Get all the edges from a graph
 edges :: forall k v u. Unfoldable u => Ord k => Graph k v -> u (Tuple k k)

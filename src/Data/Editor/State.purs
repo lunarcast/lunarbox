@@ -36,15 +36,19 @@ module Lunarbox.Data.Editor.State
   ) where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
+import Data.Foldable (foldMap)
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Record (prop)
+import Data.List (List)
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
@@ -58,7 +62,7 @@ import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node, _nodeInput)
+import Lunarbox.Data.Editor.Node (Node, _nodeInput, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
@@ -264,6 +268,32 @@ initializeFunction name state =
     state'' = setCurrentFunction (Just name) state'
   in
     compile state''''
+
+removeEdge :: NodeId -> (Tuple NodeId Int) -> State -> State
+removeEdge from (Tuple toId toIndex) state = state''
+  where
+  state' = set (_atCurrentNode toId <<< _Just <<< _nodeInput toIndex) Nothing state
+
+  toInputs = view (_atCurrentNode toId <<< _Just <<< _nodeInputs) state'
+
+  inputsToSource :: List _
+  inputsToSource =
+    foldMap
+      ( \maybeInput ->
+          maybe mempty pure
+            $ do
+                input <- maybeInput
+                guard $ input == from
+                pure input
+      )
+      toInputs
+
+  state'' =
+    -- We only remove the connections if there are no dependencies left
+    if List.null inputsToSource then
+      over _currentNodes (G.removeEdge from toId) state'
+    else
+      state'
 
 -- Helper function to set the mouse position relative to the svg element
 setRelativeMousePosition :: DOMRect -> Vec2 Number -> State -> State
