@@ -128,6 +128,8 @@ component =
     HandleKey sid event
       | KE.key event == "Delete" || KE.key event == "Backspace" -> do
         modify_ deleteSelection
+      | KE.ctrlKey event && KE.key event == "b" -> do
+        modify_ $ over _panelIsOpen not
       | otherwise -> pure unit
     LoadNodes -> do
       modify_ $ compile <<< loadPrelude
