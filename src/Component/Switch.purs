@@ -16,10 +16,10 @@ import Lunarbox.Component.Utils (className)
 
 -- Sizes of the switch. Usefull for using inside a foreidObject
 switchHeight :: Number
-switchHeight = 38.0
+switchHeight = 28.0
 
 switchWidth :: Number
-switchWidth = 60.0
+switchWidth = 54.0
 
 type Input
   = { checked :: Boolean

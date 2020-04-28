@@ -1,13 +1,16 @@
 @import "../theme.scss";
 
-$slider-height: 38px;
-$slider-width: 60px;
+$border-width: 2px;
+$spacing: 4px;
+$switch-height: 28px;
+$switch-width: 54px;
+$handler-size: $switch-height - 2 * ($spacing + $border-width);
 
 .switch {
   position: relative;
   display: inline-block;
-  width: $slider-width;
-  height: $slider-height;
+  width: $switch-width;
+  height: $switch-height;
 
   input {
     opacity: 0;
@@ -23,37 +26,38 @@ $slider-width: 60px;
   left: 0;
   right: 0;
   bottom: 0;
-  border: 2px solid $on-primary;
-  transition: 0.4s;
+  border: $border-width solid $on-primary;
+  transition: $transition-time;
 
   &:before {
     position: absolute;
     content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    // top: 2px;
-    bottom: 4px;
+    height: $handler-size;
+    width: $handler-size;
+    left: $spacing;
+    bottom: $spacing;
     background-color: $on-primary;
-    transition: 0.4s;
+    transition: $transition-time;
   }
 }
 
 input:checked + .switch-slider {
-  border: 2px solid $secondary;
+  border-color: $secondary;
 }
 
 input:focus + .switch-slider {
   box-shadow: 0 0 1px $secondary;
+}
 
-  &:before {
-    transform: translateX(26px);
-  }
+input:checked + .switch-slider:before {
+  transform: translateX(26px);
+
+  background-color: $secondary;
 }
 
 /* Rounded sliders */
 .switch-slider.round {
-  border-radius: $slider-height;
+  border-radius: $switch-height;
 
   &:before {
     border-radius: 50%;

@@ -12,6 +12,7 @@ module Lunarbox.Data.Editor.State
   , deleteNode
   , deleteSelection
   , setRuntimeValue
+  , evaluate
   , _valueMap
   , _nodeData
   , _atNodeData
@@ -63,7 +64,6 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), snd)
 import Data.Vec (vec2)
-import Debug.Trace (spy)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, get, liftEffect)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
@@ -258,21 +258,25 @@ compile state@{ project, expression, typeMap, valueMap } =
         Right map -> Map.delete Nowhere map
         -- TODO: make it so this accounts for errors
         Left _ -> mempty
-
-    overwrites = view _runtimeOverwrites state
-
-    context =
-      InterpreterContext
-        { location: Nowhere
-        , termEnv: mempty
-        , overwrites
-        }
-
-    valueMap' =
-      snd $ runInterpreter context
-        $ interpret expression'
   in
-    state { expression = expression', typeMap = typeMap', valueMap = valueMap' }
+    evaluate $ state { expression = expression', typeMap = typeMap' }
+
+-- Evaluate the current expression and write into the value map
+evaluate :: forall h a. State h a -> State h a
+evaluate state = set _valueMap valueMap state
+  where
+  context =
+    InterpreterContext
+      { location: Nowhere
+      , termEnv: mempty
+      , overwrites: view _runtimeOverwrites state
+      }
+
+  expression = view _expression state
+
+  valueMap =
+    snd $ runInterpreter context
+      $ interpret expression
 
 -- Tries connecting the pins the user selected
 tryConnecting :: forall h a. State h a -> State h a
@@ -415,7 +419,7 @@ deleteSelection state =
 -- Sets the runtime value at a location to any runtime value
 setRuntimeValue :: forall h a. FunctionName -> NodeId -> RuntimeValue -> State h a -> State h a
 setRuntimeValue functionName nodeId value =
-  compile
+  evaluate
     <<< set
         (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
         (Just value)
