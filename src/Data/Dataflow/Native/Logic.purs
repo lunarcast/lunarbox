@@ -43,7 +43,7 @@ binaryLogicFunctionType = TArrow typeBool $ TArrow typeBool typeBool
 not' :: forall h a. NativeConfig h a
 not' =
   NativeConfig
-    { name: FunctionName "name"
+    { name: FunctionName "not"
     , expression: NativeExpression (Forall [] $ TArrow typeBool typeBool) $ Function evalNot
     , functionData: internal [ { name: "input" } ]
     , component: Nothing
@@ -52,7 +52,7 @@ not' =
 and :: forall h a. NativeConfig h a
 and =
   NativeConfig
-    { name: FunctionName "add"
+    { name: FunctionName "and"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction (&&)
     , functionData: internal binaryLogicFunctionArgs
     , component: Nothing
@@ -67,14 +67,16 @@ or =
     , component: Nothing
     }
 
-evalXor :: RuntimeValue
-evalXor = binaryLogicFunction \a b -> a || b && (not $ a && b)
+evalXor :: Boolean -> Boolean -> Boolean
+evalXor a b
+  | a == b = false
+  | otherwise = true
 
 xor :: forall h a. NativeConfig h a
 xor =
   NativeConfig
     { name: FunctionName "xor"
-    , expression: NativeExpression (Forall [] binaryLogicFunctionType) evalXor
+    , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction evalXor
     , functionData: internal binaryLogicFunctionArgs
     , component: Nothing
     }
