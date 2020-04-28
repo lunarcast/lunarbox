@@ -98,7 +98,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
         ]
     , container "node-data"
         [ container "node-text"
-            [ container "node-name"
+            [ HH.div [ HP.id_ "node-name", className "no-overflow" ]
                 [ HH.text $ show name
                 ]
             , container "node-type"
