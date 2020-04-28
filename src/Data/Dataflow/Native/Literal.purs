@@ -3,7 +3,9 @@ module Lunarbox.Data.Dataflow.Native.Literal (true', false', boolean) where
 import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML as HH
+import Halogen.HTML.Events (onClick)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
+import Lunarbox.Data.Dataflow.Native.Logic (evalNot)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
@@ -11,6 +13,8 @@ import Lunarbox.Data.Dataflow.Type (typeBool)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
+import Svg.Attributes as SA
+import Svg.Elements as SE
 
 true' :: forall h a. NativeConfig h a
 true' =
@@ -32,7 +36,12 @@ false' =
 
 booleaUi ::
   forall h a. FunctionUi h a
-booleaUi { value } { setValue } = HH.text $ show value
+booleaUi { value } { setValue } =
+  SE.foreignObject [ SA.height $ 30.0, SA.width $ 100.0 ]
+    [ HH.button [ onClick $ const $ setValue $ evalNot value ]
+        [ HH.text "toggle"
+        ]
+    ]
 
 boolean :: forall h a. NativeConfig h a
 boolean =

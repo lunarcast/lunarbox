@@ -1,5 +1,6 @@
 module Lunarbox.Component.Editor.RuntimeValue
   ( renderRuntimeValue
+  , centeredText
   ) where
 
 import Prelude

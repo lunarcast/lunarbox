@@ -11,6 +11,7 @@ module Lunarbox.Data.Editor.State
   , removeConnection
   , deleteNode
   , deleteSelection
+  , setRuntimeValue
   , _valueMap
   , _nodeData
   , _atNodeData
@@ -38,6 +39,8 @@ module Lunarbox.Data.Editor.State
   , _atCurrentNode
   , _currentNodeGroup
   , _nodes
+  , _functionUis
+  , _ui
   ) where
 
 import Prelude
@@ -65,6 +68,7 @@ import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runI
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
@@ -80,6 +84,7 @@ import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
+import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes (Color)
 import Web.HTML.HTMLElement (DOMRect)
@@ -225,6 +230,12 @@ _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
 _atCurrentNode :: forall h a. NodeId -> Traversal' (State h a) Node
 _atCurrentNode id = _currentNodes <<< ix id
+
+_functionUis :: forall h a. Lens' (State h a) (Map FunctionName (FunctionUi h a))
+_functionUis = prop (SProxy :: _ "functionUis")
+
+_ui :: forall h a. FunctionName -> Traversal' (State h a) (Maybe (FunctionUi h a))
+_ui functionName = _functionUis <<< at functionName
 
 -- Helpers
 -- Compile a project
@@ -394,3 +405,11 @@ deleteSelection state =
           )
           $ G.keys nodes
     pure $ compile $ foldr (deleteNode currentFunction) state selectedNodes
+
+-- Sets the runtime value at a location to any runtime value
+setRuntimeValue :: forall h a. FunctionName -> NodeId -> RuntimeValue -> State h a -> State h a
+setRuntimeValue functionName nodeId value state =
+  set
+    (_valueMap <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
+    (Just value)
+    state

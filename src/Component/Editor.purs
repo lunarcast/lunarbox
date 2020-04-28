@@ -35,6 +35,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -44,7 +45,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -72,6 +73,7 @@ data Action
   | SelectNode NodeId
   | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
+  | SetRuntimeValue FunctionName NodeId RuntimeValue
 
 data Query a
   = Void
@@ -217,6 +219,8 @@ component =
       printString $ printSource e
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
+    SetRuntimeValue functionName nodeId runtimeValue -> do
+      modify_ $ setRuntimeValue functionName nodeId runtimeValue
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -286,6 +290,7 @@ component =
   , colorMap
   , partialConnection
   , valueMap
+  , functionUis
   } =
     fromMaybe
       emptyEditor do
@@ -304,6 +309,7 @@ component =
             , functionData
             , partialConnection
             , valueMap
+            , functionUis
             , nodeData:
               Map.fromFoldable
                 $ (uncurry \(Tuple _ id) value -> Tuple id value)
@@ -318,6 +324,7 @@ component =
             , selectInput: (Just <<< _) <<< SelectInput
             , selectOutput: Just <<< SelectOutput
             , removeConnection: (Just <<< _) <<< RemoveConnection
+            , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
             }
 
   render :: State _ Action -> HH.HTML _ Action

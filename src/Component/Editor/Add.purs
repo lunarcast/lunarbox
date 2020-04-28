@@ -70,6 +70,7 @@ nodeInput typeMap name functionData =
           functionData
           node
   , value: Nothing
+  , ui: Nothing
   }
   where
   inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
@@ -93,6 +94,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
             { select: Nothing
             , selectOutput: Nothing
             , selectInput: const Nothing
+            , setValue: const Nothing
             , removeConnection: const $ const Nothing
             }
         ]

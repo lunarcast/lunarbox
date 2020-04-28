@@ -9,7 +9,7 @@ import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
-import Lunarbox.Data.Editor.State (State, _atFunctionData, _function)
+import Lunarbox.Data.Editor.State (State, _atFunctionData, _function, _ui)
 
 newtype NativeConfig h a
   = NativeConfig
@@ -20,12 +20,14 @@ newtype NativeConfig h a
   }
 
 loadNativeConfig :: forall h a. NativeConfig h a -> State h a -> State h a
-loadNativeConfig (NativeConfig { functionData, expression, name }) = loadFunction <<< loadFunctionData
+loadNativeConfig (NativeConfig { functionData, expression, name, component }) = loadFunction <<< loadFunctionData <<< loadFunctionUi
   where
   loadFunction =
     set (_function name)
       $ Just
       $ (NativeFunction expression)
+
+  loadFunctionUi = set (_ui name) component
 
   loadFunctionData =
     set (_atFunctionData name)
