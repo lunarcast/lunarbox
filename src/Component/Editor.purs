@@ -24,7 +24,6 @@ import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkCompone
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
-import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
@@ -225,22 +224,20 @@ component =
         [ container "title" [ HH.text "Project settings" ]
         ]
     Tree ->
-      container "panel-container"
-        [ container "title" [ HH.text "Explorer" ]
-        , container "tree"
-            [ container "actions"
-                [ HH.hr [ HP.id_ "line" ]
-                , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
-                ]
-            , HH.slot (SProxy :: _ "tree") unit TreeC.component
-                { functions:
-                  (maybe mempty pure currentFunction)
-                    <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
-                      )
-                , selected: currentFunction
-                }
-                handleTreeOutput
+      container
+        "tree"
+        [ container "tree-top"
+            [ container "title" [ HH.text "Explorer" ]
+            , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
             ]
+        , HH.slot (SProxy :: _ "tree") unit TreeC.component
+            { functions:
+              (maybe mempty pure currentFunction)
+                <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
+                  )
+            , selected: currentFunction
+            }
+            handleTreeOutput
         ]
     Add ->
       container "panel-container"
