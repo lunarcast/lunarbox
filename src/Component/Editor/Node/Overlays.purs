@@ -5,16 +5,16 @@ module Lunarbox.Component.Editor.Node.Overlays
 import Prelude
 import Data.Array (mapWithIndex)
 import Data.Int (toNumber)
-import Halogen.HTML (HTML)
+import Halogen.HTML (ComponentHTML, lazy2)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-type Input h a
-  = Array (HTML h a)
+type Input a s m
+  = Array (ComponentHTML a s m)
 
 -- The text overlays on top of a node
-overlays :: forall h a. Number -> Input h a -> HTML h a
-overlays radius =
+overlays' :: forall s a m. Number -> Input a s m -> ComponentHTML a s m
+overlays' radius =
   SE.g [ SA.class_ "unselectable" ]
     <<< mapWithIndex \index elem ->
         SE.g
@@ -23,3 +23,7 @@ overlays radius =
               ]
           ]
           [ elem ]
+
+-- Lazy version of overlays'
+overlays :: forall s a m. Number -> Input a s m -> ComponentHTML a s m
+overlays = lazy2 overlays'

@@ -81,6 +81,19 @@ type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
     )
 
+-- Actions to run the scene component with
+sceneActions :: Scene.Actions Action
+sceneActions =
+  { mouseDown: Just <<< SceneMouseDown
+  , mouseMove: Just <<< SceneMouseMove
+  , mouseUp: Just SceneMouseUp
+  , selectNode: Just <<< SelectNode
+  , selectInput: (Just <<< _) <<< SelectInput
+  , selectOutput: Just <<< SelectOutput
+  , removeConnection: (Just <<< _) <<< RemoveConnection
+  , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
+  }
+
 -- This is a helper monad which just generates an id
 createId :: forall m h. HalogenM (State h Action) Action ChildSlots Void m (Tuple NodeId (State h Action -> State h Action))
 createId = do
@@ -190,17 +203,16 @@ component =
       let
         relativePosition = view _lastMousePosition state'
 
-        maybeOffset = (-) <$> relativePosition <*> lastMousePosition
-      for_ maybeOffset \offset -> do
-        let
-          updateState =
-            over _nodeData
-              $ map \node@(NodeData { selected }) ->
-                  if selected then
-                    over _NodeDataPosition (_ + offset) node
-                  else
-                    node
-        put $ updateState state'
+        offset = fromMaybe zero $ (-) <$> relativePosition <*> lastMousePosition
+
+        moveNodes =
+          over _nodeData
+            $ map \node@(NodeData { selected }) ->
+                if selected then
+                  over _NodeDataPosition (_ + offset) node
+                else
+                  node
+      put $ moveNodes state'
     SceneMouseUp -> do
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
@@ -299,7 +311,6 @@ component =
         $ lazy2 Scene.scene
             { project
             , functionName: currentFunction
-            , nodeGroup: group
             , typeColors: colorMap
             , expression
             , typeMap
@@ -315,15 +326,7 @@ component =
                       $ Map.toUnfoldable nodeData
                   )
             }
-            { mouseDown: Just <<< SceneMouseDown
-            , mouseMove: Just <<< SceneMouseMove
-            , mouseUp: Just SceneMouseUp
-            , selectNode: Just <<< SelectNode
-            , selectInput: (Just <<< _) <<< SelectInput
-            , selectOutput: Just <<< SelectOutput
-            , removeConnection: (Just <<< _) <<< RemoveConnection
-            , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
-            }
+            sceneActions
 
   render :: State _ Action -> HH.HTML _ Action
   render state@{ currentTab, panelIsOpen } =

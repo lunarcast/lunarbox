@@ -1,5 +1,6 @@
 module Lunarbox.Component.Editor.Scene
   ( Input
+  , Actions
   , scene
   ) where
 
@@ -38,7 +39,6 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
@@ -53,7 +53,6 @@ import Web.UIEvent.MouseEvent as ME
 type Input h a
   = { project :: Project
     , functionName :: FunctionName
-    , nodeGroup :: NodeGroup
     , typeMap :: Map Location Type
     , expression :: Expression Location
     , typeColors :: Map Location Color
