@@ -10,8 +10,10 @@ import Lunarbox.Data.Dataflow.Native.Math (add)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig, loadNativeConfigs)
 import Lunarbox.Data.Editor.State (State)
 
-configs :: Array NativeConfig
+-- Array with all the built in nodes
+configs :: forall h a. Array (NativeConfig h a)
 configs = [ add, if', pipe, identity', const', true', false' ]
 
-loadPrelude :: State -> State
+-- Load all the built in nodes
+loadPrelude :: forall h a. State h a -> State h a
 loadPrelude = loadNativeConfigs configs

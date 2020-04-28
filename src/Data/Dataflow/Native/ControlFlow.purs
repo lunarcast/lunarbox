@@ -2,6 +2,7 @@ module Lunarbox.Data.Dataflow.Native.ControlFlow
   ( if'
   ) where
 
+import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
@@ -25,10 +26,11 @@ evalIf (Bool false) = binaryFunction $ flip const
 
 evalIf _ = Null
 
-if' :: NativeConfig
+if' :: forall h a. NativeConfig h a
 if' =
   NativeConfig
     { name: FunctionName "if"
     , expression: (NativeExpression typeIf $ Function evalIf)
     , functionData: internal [ { name: "condition" }, { name: "then" }, { name: "else" } ]
+    , component: Nothing
     }

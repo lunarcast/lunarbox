@@ -81,7 +81,7 @@ type ChildSlots
     )
 
 -- This is a helper monad which just generates an id
-createId :: forall m. HalogenM State Action ChildSlots Void m (Tuple NodeId (State -> State))
+createId :: forall m h. HalogenM (State h Action) Action ChildSlots Void m (Tuple NodeId (State h Action -> State h Action))
 createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
@@ -104,6 +104,7 @@ component =
         , project: emptyProject $ NodeId "firstOutput"
         , partialConnection: def
         , valueMap: mempty
+        , functionUis: mempty
         }
     , render
     , eval:
@@ -114,7 +115,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
+  handleAction :: forall h. Action -> HalogenM (State h Action) Action ChildSlots Void m Unit
   handleAction = case _ of
     Init -> do
       handleAction LoadNodes
@@ -242,7 +243,7 @@ component =
     where
     icon = sidebarIcon currentTab
 
-  panel :: State -> HH.HTML _ Action
+  panel :: State _ Action -> HH.HTML _ Action
   panel { currentTab, project, currentFunction, functionData, typeMap } = case currentTab of
     Settings ->
       container "panel-container"
@@ -274,7 +275,7 @@ component =
         ]
     _ -> HH.text "not implemented"
 
-  scene :: forall h. State -> HH.HTML h Action
+  scene :: forall h. State h Action -> HH.HTML h Action
   scene { project
   , currentFunction: maybeCurrentFunction
   , expression
@@ -319,7 +320,7 @@ component =
             , removeConnection: (Just <<< _) <<< RemoveConnection
             }
 
-  render :: State -> HH.HTML _ Action
+  render :: State _ Action -> HH.HTML _ Action
   render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"

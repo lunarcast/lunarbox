@@ -1,5 +1,6 @@
 module Lunarbox.Data.Dataflow.Native.Function (pipe, identity', const') where
 
+import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
@@ -25,7 +26,7 @@ evalPipe input (Function function) = function input
 
 evalPipe _ _ = Null
 
-pipe :: NativeConfig
+pipe :: forall h a. NativeConfig h a
 pipe =
   NativeConfig
     { name: FunctionName "pipe"
@@ -35,6 +36,7 @@ pipe =
         [ { name: "input" }
         , { name: "function" }
         ]
+    , component: Nothing
     }
 
 typeIdentity :: Scheme
@@ -42,7 +44,7 @@ typeIdentity = Forall [ input ] $ TArrow (TVarariable input) (TVarariable input)
   where
   input = TVarName "i"
 
-identity' :: NativeConfig
+identity' :: forall h a. NativeConfig h a
 identity' =
   NativeConfig
     { name: FunctionName "identity"
@@ -51,6 +53,7 @@ identity' =
       internal
         [ { name: "input" }
         ]
+    , component: Nothing
     }
 
 typeConst :: Scheme
@@ -60,7 +63,7 @@ typeConst = Forall [ input, ignore ] $ TArrow (TVarariable input) $ TArrow (TVar
 
   ignore = TVarName "ignore"
 
-const' :: NativeConfig
+const' :: forall h a. NativeConfig h a
 const' =
   NativeConfig
     { name: FunctionName "const"
@@ -70,4 +73,5 @@ const' =
         [ { name: "constant value" }
         , { name: "ignored value" }
         ]
+    , component: Nothing
     }
