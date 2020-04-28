@@ -19,21 +19,22 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
-import Effect.Class (class MonadEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
+import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect, liftEffect)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe', tell)
+import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
-import Halogen.HTML.Properties as HP
+import Halogen.Query.EventSource as ES
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -43,14 +44,22 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Lunarbox.Svg.Attributes (transparent)
+import Web.HTML (window) as Web
+import Web.HTML.HTMLDocument as HTMLDocument
+import Web.HTML.Window (document) as Web
+import Web.UIEvent.KeyboardEvent (KeyboardEvent)
+import Web.UIEvent.KeyboardEvent as KE
+import Web.UIEvent.KeyboardEvent.EventTypes as KET
 
 data Action
-  = ChangeTab Tab
+  = Init
+  | HandleKey SubscriptionId KeyboardEvent
+  | ChangeTab Tab
   | CreateFunction FunctionName
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
@@ -63,6 +72,7 @@ data Action
   | SelectNode NodeId
   | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
+  | SetRuntimeValue FunctionName NodeId RuntimeValue
 
 data Query a
   = Void
@@ -71,13 +81,26 @@ type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
     )
 
+-- Actions to run the scene component with
+sceneActions :: Scene.Actions Action
+sceneActions =
+  { mouseDown: Just <<< SceneMouseDown
+  , mouseMove: Just <<< SceneMouseMove
+  , mouseUp: Just SceneMouseUp
+  , selectNode: Just <<< SelectNode
+  , selectInput: (Just <<< _) <<< SelectInput
+  , selectOutput: Just <<< SelectOutput
+  , removeConnection: (Just <<< _) <<< RemoveConnection
+  , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
+  }
+
 -- This is a helper monad which just generates an id
-createId :: forall m. HalogenM State Action ChildSlots Void m (Tuple NodeId (State -> State))
+createId :: forall m h. HalogenM (State h Action) Action ChildSlots Void m (Tuple NodeId (State h Action -> State h Action))
 createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
+component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState:
@@ -95,18 +118,35 @@ component =
         , project: emptyProject $ NodeId "firstOutput"
         , partialConnection: def
         , valueMap: mempty
+        , functionUis: mempty
+        , runtimeOverwrites: mempty
         }
     , render
     , eval:
       mkEval
         $ defaultEval
             { handleAction = handleAction
-            , initialize = Just LoadNodes
+            , initialize = Just Init
             }
     }
   where
-  handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
+  handleAction :: forall h. Action -> HalogenM (State h Action) Action ChildSlots Void m Unit
   handleAction = case _ of
+    Init -> do
+      handleAction LoadNodes
+      document <- liftEffect $ Web.document =<< Web.window
+      -- Register keybindings
+      subscribe' \sid ->
+        ES.eventListenerEventSource
+          KET.keyup
+          (HTMLDocument.toEventTarget document)
+          (map (HandleKey sid) <<< KE.fromEvent)
+    HandleKey sid event
+      | KE.key event == "Delete" || KE.key event == "Backspace" -> do
+        modify_ deleteSelection
+      | KE.ctrlKey event && KE.key event == "b" -> do
+        modify_ $ over _panelIsOpen not
+      | otherwise -> pure unit
     LoadNodes -> do
       modify_ $ compile <<< loadPrelude
     CreateNode name -> do
@@ -163,17 +203,16 @@ component =
       let
         relativePosition = view _lastMousePosition state'
 
-        maybeOffset = (-) <$> relativePosition <*> lastMousePosition
-      for_ maybeOffset \offset -> do
-        let
-          updateState =
-            over _nodeData
-              $ map \node@(NodeData { selected }) ->
-                  if selected then
-                    over _NodeDataPosition (_ + offset) node
-                  else
-                    node
-        put $ updateState state'
+        offset = fromMaybe zero $ (-) <$> relativePosition <*> lastMousePosition
+
+        moveNodes =
+          over _nodeData
+            $ map \node@(NodeData { selected }) ->
+                if selected then
+                  over _NodeDataPosition (_ + offset) node
+                else
+                  node
+      put $ moveNodes state'
     SceneMouseUp -> do
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
@@ -188,10 +227,10 @@ component =
       let
         setFrom = set _partialFrom $ Just id
       modify_ $ tryConnecting <<< setFrom
-      e <- gets $ view _expression
-      printString $ printSource e
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
+    SetRuntimeValue functionName nodeId runtimeValue -> do
+      modify_ $ setRuntimeValue functionName nodeId runtimeValue
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -218,41 +257,39 @@ component =
     where
     icon = sidebarIcon currentTab
 
-  panel :: State -> HH.HTML _ Action
+  panel :: State _ Action -> HH.HTML _ Action
   panel { currentTab, project, currentFunction, functionData, typeMap } = case currentTab of
     Settings ->
       container "panel-container"
         [ container "title" [ HH.text "Project settings" ]
         ]
     Tree ->
-      container "panel-container"
-        [ container "title" [ HH.text "Explorer" ]
-        , container "tree"
-            [ container "actions"
-                [ HH.hr [ HP.id_ "line" ]
-                , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
-                ]
-            , HH.slot (SProxy :: _ "tree") unit TreeC.component
-                { functions:
-                  (maybe mempty pure currentFunction)
-                    <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
-                      )
-                , selected: currentFunction
-                }
-                handleTreeOutput
+      container
+        "tree"
+        [ container "tree-top"
+            [ container "title" [ HH.text "Explorer" ]
+            , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
             ]
+        , HH.slot (SProxy :: _ "tree") unit TreeC.component
+            { functions:
+              (maybe mempty pure currentFunction)
+                <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
+                  )
+            , selected: currentFunction
+            }
+            handleTreeOutput
         ]
     Add ->
       container "panel-container"
         [ container "title" [ HH.text "Add node" ]
-        , AddC.add { project, currentFunction, functionData, typeMap }
+        , lazy2 AddC.add { project, currentFunction, functionData, typeMap }
             { edit: Just <<< SelectFunction <<< Just
             , addNode: Just <<< CreateNode
             }
         ]
     _ -> HH.text "not implemented"
 
-  scene :: forall h. State -> HH.HTML h Action
+  scene :: forall h. State h Action -> HH.ComponentHTML Action ChildSlots m
   scene { project
   , currentFunction: maybeCurrentFunction
   , expression
@@ -263,6 +300,7 @@ component =
   , colorMap
   , partialConnection
   , valueMap
+  , functionUis
   } =
     fromMaybe
       emptyEditor do
@@ -270,10 +308,9 @@ component =
       group <-
         preview (_projectNodeGroup currentFunction) project
       pure
-        $ Scene.scene
+        $ lazy2 Scene.scene
             { project
             , functionName: currentFunction
-            , nodeGroup: group
             , typeColors: colorMap
             , expression
             , typeMap
@@ -281,6 +318,7 @@ component =
             , functionData
             , partialConnection
             , valueMap
+            , functionUis
             , nodeData:
               Map.fromFoldable
                 $ (uncurry \(Tuple _ id) value -> Tuple id value)
@@ -288,16 +326,9 @@ component =
                       $ Map.toUnfoldable nodeData
                   )
             }
-            { mouseDown: Just <<< SceneMouseDown
-            , mouseMove: Just <<< SceneMouseMove
-            , mouseUp: Just SceneMouseUp
-            , selectNode: Just <<< SelectNode
-            , selectInput: (Just <<< _) <<< SelectInput
-            , selectOutput: Just <<< SelectOutput
-            , removeConnection: (Just <<< _) <<< RemoveConnection
-            }
+            sceneActions
 
-  render :: State -> HH.HTML _ Action
+  render :: State _ Action -> HH.HTML _ Action
   render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"

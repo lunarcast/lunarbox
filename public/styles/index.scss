@@ -6,6 +6,7 @@
 
 // Components
 @import "./components/tooltip.scss";
+@import "./components/switch.scss";
 
 // Libraries
 @import "normalize.css";
@@ -17,8 +18,16 @@
 
 // Prevent default select behavior on images and icons
 img,
-.material-icons, .unselectable {
+.material-icons,
+.unselectable {
   user-select: none;
+}
+
+// Helper for text elements which should show ... after they overflow their container
+.no-overflow {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 // default font on everything

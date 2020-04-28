@@ -45,6 +45,8 @@ data Node
     ComplexNodeData
   | OutputNode (Maybe NodeId)
 
+derive instance eqNode :: Eq Node
+
 instance showNode :: Show Node where
   show InputNode = "InputNode"
   show (OutputNode id) = "Output " <> maybe "???" show id

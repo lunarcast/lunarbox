@@ -17,7 +17,7 @@ import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Tooltip (maybeTooltip)
-import Lunarbox.Component.Utils (StaticHtml, container)
+import Lunarbox.Component.Utils (StaticHtml, className, container)
 import Lunarbox.Config (Config, shouldCancelOnBlur)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
@@ -160,7 +160,12 @@ component =
       , classes $ ClassName <$> ("selected" <$ guard (Just name == selected))
       , HP.id_ "function"
       ]
-      [ icon "code", HH.text $ show name ]
+      [ icon "code"
+      , HH.span
+          [ className "no-overflow"
+          ]
+          [ HH.text $ show name ]
+      ]
 
   render :: forall a. State -> HTML a Action
   render { functions, creating, selected, validationError } = container "functions" (existingFunctions <> newFunctionTextBox)

@@ -1,5 +1,6 @@
 module Lunarbox.Component.Editor.Scene
   ( Input
+  , Actions
   , scene
   ) where
 
@@ -18,6 +19,7 @@ import Data.Newtype (unwrap)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
+import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
@@ -26,16 +28,17 @@ import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
@@ -44,12 +47,12 @@ import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
+import Unsafe.Coerce (unsafeCoerce)
 import Web.UIEvent.MouseEvent as ME
 
-type Input
+type Input h a
   = { project :: Project
     , functionName :: FunctionName
-    , nodeGroup :: NodeGroup
     , typeMap :: Map Location Type
     , expression :: Expression Location
     , typeColors :: Map Location Color
@@ -58,6 +61,7 @@ type Input
     , partialConnection :: PartialConnection
     , lastMousePosition :: Maybe (Vec2 Number)
     , valueMap :: ValueMap Location
+    , functionUis :: Map FunctionName (FunctionUi h a)
     }
 
 type Actions a
@@ -68,6 +72,7 @@ type Actions a
     , selectInput :: NodeId -> Int -> Maybe a
     , selectOutput :: NodeId -> Maybe a
     , removeConnection :: NodeId -> Tuple NodeId Int -> Maybe a
+    , setValue :: FunctionName -> NodeId -> RuntimeValue -> Maybe a
     }
 
 -- Errors which could arise while creating the node svg
@@ -98,7 +103,7 @@ getNodeName = case _ of
 getNode :: FunctionName -> NodeId -> Project -> NodeBuild Node
 getNode name id = note (MissingNode id) <<< join <<< (preview $ _atProjectNode name id)
 
-createNodeComponent :: forall h a. Input -> Actions a -> Tuple NodeId NodeData -> NodeBuild (HH.HTML h a)
+createNodeComponent :: forall h s a m. Input h a -> Actions a -> Tuple NodeId NodeData -> NodeBuild (ComponentHTML a s m)
 createNodeComponent { functionName
 , project
 , typeMap
@@ -109,7 +114,8 @@ createNodeComponent { functionName
 , lastMousePosition
 , nodeData: nodeDataMap
 , valueMap
-} { selectNode, selectInput, selectOutput, removeConnection } (Tuple id nodeData) = do
+, functionUis
+} { selectNode, selectInput, selectOutput, removeConnection, setValue } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
 
@@ -134,7 +140,8 @@ createNodeComponent { functionName
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node
   pure
-    $ renderNode
+    $ HH.lazy2
+        renderNode
         { node
         , nodeData
         , functionData: nodeFunctionData
@@ -149,14 +156,16 @@ createNodeComponent { functionName
         , selectionStatus: getSelectionStatus partialConnection id
         , mousePosition: fromMaybe zero lastMousePosition
         , value: Map.lookup location $ unwrap valueMap
+        , ui: unsafeCoerce $ Map.lookup name functionUis
         }
         { select: selectNode id
         , selectInput: selectInput id
         , selectOutput: selectOutput id
         , removeConnection: (_ <<< Tuple id) <<< removeConnection
+        , setValue: setValue functionName id
         }
 
-scene :: forall h a. Input -> Actions a -> HH.HTML h a
+scene :: forall h a s m. Input h a -> Actions a -> ComponentHTML a s m
 scene state@{ nodeData
 } actions@{ mouseMove, mouseDown, mouseUp, selectNode } = either (\err -> erroredEditor $ show err) success nodeHtml
   where

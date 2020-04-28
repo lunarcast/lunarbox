@@ -67,6 +67,9 @@
 
 #editor > #panel {
   width: 0;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: hidden;
 
   box-sizing: border-box;
   display: block;
@@ -75,7 +78,7 @@
   background: $primary-dark;
   transition: width $transition-time;
 
-  #panel-container > #title {
+  #title {
     padding: 0.5rem;
     font-size: 2rem;
     font-family: fonts.$montserrat;

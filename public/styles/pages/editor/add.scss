@@ -4,11 +4,14 @@
   display: flex;
   flex-direction: column;
   margin: 1rem;
-  height: 75px;
+  height: 83vh;
+
+  overflow-y: auto;
 
   .node {
     display: flex;
     margin-bottom: 1rem;
+    height: 100%;
 
     #node-data {
       display: flex;
@@ -56,9 +59,6 @@
         #node-name {
           font-size: 1.4rem;
 
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          overflow: hidden;
           text-transform: capitalize;
         }
 

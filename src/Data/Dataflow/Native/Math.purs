@@ -2,6 +2,7 @@ module Lunarbox.Data.Dataflow.Native.Math
   ( add
   ) where
 
+import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
@@ -19,10 +20,11 @@ addRuntimeValue (Number n) (Number n') = Number $ n + n'
 
 addRuntimeValue _ _ = Null
 
-add :: NativeConfig
+add :: forall h a. NativeConfig h a
 add =
   NativeConfig
     { name: FunctionName "add"
     , expression: (NativeExpression (Forall [] addT) $ binaryFunction addRuntimeValue)
     , functionData: internal [ { name: "a" }, { name: "b" } ]
+    , component: Nothing
     }

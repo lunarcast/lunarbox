@@ -29,6 +29,7 @@ import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
@@ -60,12 +61,14 @@ type Input h a
     , selectionStatus :: SelectionStatus
     , mousePosition :: Vec2 Number
     , value :: Maybe RuntimeValue
+    , ui :: Maybe (FunctionUi h a)
     }
 
 type Actions a
   = { select :: Maybe a
     , selectInput :: Int -> Maybe a
     , selectOutput :: Maybe a
+    , setValue :: RuntimeValue -> Maybe a
     , removeConnection :: NodeId -> Int -> Maybe a
     }
 
@@ -108,10 +111,12 @@ renderNode { nodeData: nodeData
 , selectionStatus
 , mousePosition
 , value
+, ui
 } { select
 , selectOutput
 , selectInput
 , removeConnection
+, setValue
 } =
   SE.g
     [ SA.transform [ SA.Translate (centerPosition !! d0) (centerPosition !! d1) ]
@@ -120,6 +125,7 @@ renderNode { nodeData: nodeData
     $ [ overlays maxRadius labels
       ]
     <> valueSvg
+    <> uiSvg
     <> arcs
     <> [ movementHandler
       , output
@@ -168,7 +174,20 @@ renderNode { nodeData: nodeData
             }
     _ -> mempty
 
-  maxRadius = nodeRadius + (toNumber $ List.length inputArcs - 1) * inputLayerOffset + arcWidth * 2.0
+  maxRadius = nodeRadius + (toNumber $ List.length inputArcs - 1) * inputLayerOffset
+
+  uiSvg =
+    fromMaybe mempty do
+      generateUi <- ui
+      nodeValue <- value
+      pure
+        $ [ SE.g
+              [ SA.transform
+                  [ SA.Translate 0.0 $ maxRadius + inputLayerOffset * 3.0
+                  ]
+              ]
+              [ generateUi { value: nodeValue } { setValue } ]
+          ]
 
   valueSvg =
     maybe mempty

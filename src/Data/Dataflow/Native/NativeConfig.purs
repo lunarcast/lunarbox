@@ -8,22 +8,26 @@ import Lunarbox.Data.Dataflow.Expression (NativeExpression)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.State (State, _atFunctionData, _function)
+import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
+import Lunarbox.Data.Editor.State (State, _atFunctionData, _function, _ui)
 
-newtype NativeConfig
+newtype NativeConfig h a
   = NativeConfig
   { functionData :: FunctionData
   , expression :: NativeExpression
   , name :: FunctionName
+  , component :: Maybe (FunctionUi h a)
   }
 
-loadNativeConfig :: NativeConfig -> State -> State
-loadNativeConfig (NativeConfig { functionData, expression, name }) = loadFunction <<< loadFunctionData
+loadNativeConfig :: forall h a. NativeConfig h a -> State h a -> State h a
+loadNativeConfig (NativeConfig { functionData, expression, name, component }) = loadFunction <<< loadFunctionData <<< loadFunctionUi
   where
   loadFunction =
     set (_function name)
       $ Just
       $ (NativeFunction expression)
+
+  loadFunctionUi = set (_ui name) component
 
   loadFunctionData =
     set (_atFunctionData name)
@@ -31,5 +35,5 @@ loadNativeConfig (NativeConfig { functionData, expression, name }) = loadFunctio
       $ functionData
 
 -- I'm pretty proud of this one lol
-loadNativeConfigs :: forall f. Foldable f => f (NativeConfig) -> State -> State
+loadNativeConfigs :: forall h a f. Foldable f => f (NativeConfig h a) -> State h a -> State h a
 loadNativeConfigs = flip $ foldr loadNativeConfig

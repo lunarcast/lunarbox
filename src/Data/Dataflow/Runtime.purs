@@ -1,6 +1,7 @@
 module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
   , binaryFunction
+  , toBoolean
   , _Number
   , _String
   , _Function
@@ -29,12 +30,19 @@ instance showRuntimeValue :: Show RuntimeValue where
 instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Number n) (Number n') = n == n'
   eq (String s) (String s') = s == s'
+  eq (Bool v) (Bool v') = v == v'
   eq Null Null = true
   eq _ _ = false
 
 -- helper to ease the creation of binary functions
 binaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue
 binaryFunction f = Function $ Function <<< f
+
+-- Turns any runtime value to a boolean
+toBoolean :: RuntimeValue -> Boolean
+toBoolean value
+  | value == Bool true = true
+  | otherwise = false
 
 -- Lenses
 _Number :: Prism' RuntimeValue Number

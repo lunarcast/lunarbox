@@ -70,6 +70,7 @@ nodeInput typeMap name functionData =
           functionData
           node
   , value: Nothing
+  , ui: Nothing
   }
   where
   inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
@@ -93,12 +94,13 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
             { select: Nothing
             , selectOutput: Nothing
             , selectInput: const Nothing
+            , setValue: const Nothing
             , removeConnection: const $ const Nothing
             }
         ]
     , container "node-data"
         [ container "node-text"
-            [ container "node-name"
+            [ HH.div [ HP.id_ "node-name", className "no-overflow" ]
                 [ HH.text $ show name
                 ]
             , container "node-type"

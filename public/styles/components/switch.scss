@@ -1,0 +1,65 @@
+@import "../theme.scss";
+
+$border-width: 2px;
+$spacing: 4px;
+$switch-height: 28px;
+$switch-width: 54px;
+$handler-size: $switch-height - 2 * ($spacing + $border-width);
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: $switch-width;
+  height: $switch-height;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: $border-width solid $on-primary;
+  transition: $transition-time;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: $handler-size;
+    width: $handler-size;
+    left: $spacing;
+    bottom: $spacing;
+    background-color: $on-primary;
+    transition: $transition-time;
+  }
+}
+
+input:checked + .switch-slider {
+  border-color: $secondary;
+}
+
+input:focus + .switch-slider {
+  box-shadow: 0 0 1px $secondary;
+}
+
+input:checked + .switch-slider:before {
+  transform: translateX(26px);
+
+  background-color: $secondary;
+}
+
+/* Rounded sliders */
+.switch-slider.round {
+  border-radius: $switch-height;
+
+  &:before {
+    border-radius: 50%;
+  }
+}
