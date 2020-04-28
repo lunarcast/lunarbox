@@ -4,6 +4,7 @@ module Lunarbox.Control.Monad.Dataflow.Interpreter
   , runInterpreter
   , _location
   , _termEnv
+  , _overwrites
   ) where
 
 import Prelude
@@ -23,6 +24,7 @@ newtype InterpreterContext l
   = InterpreterContext
   { location :: l
   , termEnv :: TermEnvironment
+  , overwrites :: ValueMap l
   }
 
 derive instance newtypeInterpreterContent :: Newtype (InterpreterContext l) _
@@ -33,6 +35,9 @@ _location = newtypeIso <<< prop (SProxy :: _ "location")
 
 _termEnv :: forall l. Lens' (InterpreterContext l) TermEnvironment
 _termEnv = newtypeIso <<< prop (SProxy :: _ "termEnv")
+
+_overwrites :: forall l. Lens' (InterpreterContext l) (ValueMap l)
+_overwrites = newtypeIso <<< prop (SProxy :: _ "overwrites")
 
 -- Monad used to Interpret expressions
 newtype Interpreter l a

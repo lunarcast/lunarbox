@@ -18,6 +18,7 @@ import Data.Newtype (unwrap)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
+import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
@@ -46,6 +47,7 @@ import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
+import Unsafe.Coerce (unsafeCoerce)
 import Web.UIEvent.MouseEvent as ME
 
 type Input h a
@@ -102,7 +104,7 @@ getNodeName = case _ of
 getNode :: FunctionName -> NodeId -> Project -> NodeBuild Node
 getNode name id = note (MissingNode id) <<< join <<< (preview $ _atProjectNode name id)
 
-createNodeComponent :: forall h a. Input h a -> Actions a -> Tuple NodeId NodeData -> NodeBuild (HH.HTML h a)
+createNodeComponent :: forall h s a m. Input h a -> Actions a -> Tuple NodeId NodeData -> NodeBuild (ComponentHTML a s m)
 createNodeComponent { functionName
 , project
 , typeMap
@@ -139,7 +141,8 @@ createNodeComponent { functionName
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node
   pure
-    $ renderNode
+    $ HH.lazy2
+        renderNode
         { node
         , nodeData
         , functionData: nodeFunctionData
@@ -154,7 +157,7 @@ createNodeComponent { functionName
         , selectionStatus: getSelectionStatus partialConnection id
         , mousePosition: fromMaybe zero lastMousePosition
         , value: Map.lookup location $ unwrap valueMap
-        , ui: Map.lookup name functionUis
+        , ui: unsafeCoerce $ Map.lookup name functionUis
         }
         { select: selectNode id
         , selectInput: selectInput id
@@ -163,7 +166,7 @@ createNodeComponent { functionName
         , setValue: setValue functionName id
         }
 
-scene :: forall h a. Input h a -> Actions a -> HH.HTML h a
+scene :: forall h a s m. Input h a -> Actions a -> ComponentHTML a s m
 scene state@{ nodeData
 } actions@{ mouseMove, mouseDown, mouseUp, selectNode } = either (\err -> erroredEditor $ show err) success nodeHtml
   where

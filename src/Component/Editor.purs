@@ -107,6 +107,7 @@ component =
         , partialConnection: def
         , valueMap: mempty
         , functionUis: mempty
+        , runtimeOverwrites: mempty
         }
     , render
     , eval:
@@ -279,7 +280,7 @@ component =
         ]
     _ -> HH.text "not implemented"
 
-  scene :: forall h. State h Action -> HH.HTML h Action
+  scene :: forall h. State h Action -> HH.ComponentHTML Action ChildSlots m
   scene { project
   , currentFunction: maybeCurrentFunction
   , expression

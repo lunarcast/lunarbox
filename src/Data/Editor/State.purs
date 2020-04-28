@@ -41,6 +41,7 @@ module Lunarbox.Data.Editor.State
   , _nodes
   , _functionUis
   , _ui
+  , _runtimeOverwrites
   ) where
 
 import Prelude
@@ -122,9 +123,13 @@ type State h a
     , partialConnection :: PartialConnection
     , valueMap :: ValueMap Location
     , functionUis :: Map FunctionName (FunctionUi h a)
+    , runtimeOverwrites :: ValueMap Location
     }
 
 -- Lenses
+_runtimeOverwrites :: forall h a. Lens' (State h a) (ValueMap Location)
+_runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
+
 _valueMap :: forall h a. Lens' (State h a) (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
@@ -257,6 +262,7 @@ compile state@{ project, expression, typeMap, valueMap } =
       InterpreterContext
         { location: Nowhere
         , termEnv: mempty
+        , overwrites: view _runtimeOverwrites state
         }
 
     valueMap' =
@@ -408,8 +414,8 @@ deleteSelection state =
 
 -- Sets the runtime value at a location to any runtime value
 setRuntimeValue :: forall h a. FunctionName -> NodeId -> RuntimeValue -> State h a -> State h a
-setRuntimeValue functionName nodeId value state =
-  set
-    (_valueMap <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
-    (Just value)
-    state
+setRuntimeValue functionName nodeId value =
+  compile
+    <<< set
+        (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
+        (Just value)
