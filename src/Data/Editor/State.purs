@@ -261,18 +261,30 @@ tryConnecting state =
     currentNodeGroup <- preview _currentNodeGroup state
     currentFunction <- view _currentFunction state
     let
-      state' = over _currentNodes (G.insertEdge from toId) state
+      previousConnection =
+        join
+          $ preview
+              ( _atCurrentNode toId
+                  <<< _nodeInput toIndex
+              )
+              state
 
-      state'' =
+      state' = case previousConnection of
+        Just id -> over _currentNodes (G.removeEdge id toId) state
+        Nothing -> state
+
+      state'' = over _currentNodes (G.insertEdge from toId) state'
+
+      state''' =
         set
           ( _atCurrentNode toId
               <<< _nodeInput toIndex
           )
           (Just from)
-          state'
+          state''
 
-      state''' = set _partialTo Nothing $ set _partialFrom Nothing state''
-    pure $ compile state'''
+      state'''' = set _partialTo Nothing $ set _partialFrom Nothing state'''
+    pure $ compile state''''
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: Maybe FunctionName -> State -> State
