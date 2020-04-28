@@ -1,3 +1,33 @@
+# [1.11.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.10.0...v1.11.0) (2020-04-28)
+
+
+### Bug Fixes
+
+* a few performance optimizations and fixed some values not changing ([45c1280](https://github.com/Mateiadrielrafael/lunarbox/commit/45c128075ea1223537bf920350039c037222be03))
+* fixed overflow issues with long function names ([67427b3](https://github.com/Mateiadrielrafael/lunarbox/commit/67427b3cfd9ded59cad68ae6ac612f88a4147b3e))
+* fixed overflow scrolling issues for too many functions in the tree view ([ebb0f5c](https://github.com/Mateiadrielrafael/lunarbox/commit/ebb0f5ced7b693f80345a2eed08620aa7a1f0500))
+* fixed overflow scrolling issues on the add page ([7b6306a](https://github.com/Mateiadrielrafael/lunarbox/commit/7b6306af962fb27a1230c479124cfa4a96b708f0))
+* now the switch component is in state with the runtime value overwrites ([01ad12a](https://github.com/Mateiadrielrafael/lunarbox/commit/01ad12aef3452f5c505ea377ab85030bc1992311))
+* the switch component now syncs with the state ([cbf8da7](https://github.com/Mateiadrielrafael/lunarbox/commit/cbf8da73bfff6efcf382d55b088263eab3421253))
+
+
+### Features
+
+* ctrl+b to togglet the panel on the left ([9bb6d22](https://github.com/Mateiadrielrafael/lunarbox/commit/9bb6d22ac16a497d5a01ae75e083d1fff367766e))
+* custom node-specific ui ([d7c008d](https://github.com/Mateiadrielrafael/lunarbox/commit/d7c008daca9a4c33947b690fca4ad742802650f2))
+* doing some cleanup when replacing a connection ([2ad6b28](https://github.com/Mateiadrielrafael/lunarbox/commit/2ad6b285edd028f3f97a6cf7f4740608bbed48fa))
+* logic for node deleting ([c5376a5](https://github.com/Mateiadrielrafael/lunarbox/commit/c5376a52f47a716baa545b73089b598017112298))
+* logic gates ([085a33a](https://github.com/Mateiadrielrafael/lunarbox/commit/085a33ad9b6eca85690f28fb21a40629840ad383))
+* node deleting ([219de5a](https://github.com/Mateiadrielrafael/lunarbox/commit/219de5a041a42fab27787d9265c160db17f9c4c7))
+* some ffi code to allow using mausetrap-ts from purescript ([ef9b848](https://github.com/Mateiadrielrafael/lunarbox/commit/ef9b848140eef0fd59120ba930ce7d5df2736862))
+* types for function uis ([71e3477](https://github.com/Mateiadrielrafael/lunarbox/commit/71e3477307a581054eff96646f97c712570aac4a))
+
+
+### Performance Improvements
+
+* do not requery the dom for the scene every render ([55ec7c4](https://github.com/Mateiadrielrafael/lunarbox/commit/55ec7c4ab353617db98643a42a90ddfd82e70e8b))
+* some more optimizations ([5c33543](https://github.com/Mateiadrielrafael/lunarbox/commit/5c33543f757375cca0b46bb482d65e48603a9c44))
+
 # [1.10.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.9.0...v1.10.0) (2020-04-27)
 
 
