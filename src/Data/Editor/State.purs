@@ -63,6 +63,7 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), snd)
 import Data.Vec (vec2)
+import Debug.Trace (spy)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, get, liftEffect)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
@@ -258,19 +259,18 @@ compile state@{ project, expression, typeMap, valueMap } =
         -- TODO: make it so this accounts for errors
         Left _ -> mempty
 
+    overwrites = view _runtimeOverwrites state
+
     context =
       InterpreterContext
         { location: Nowhere
         , termEnv: mempty
-        , overwrites: view _runtimeOverwrites state
+        , overwrites
         }
 
     valueMap' =
-      if (expression == expression') then
-        valueMap
-      else
-        snd $ runInterpreter context
-          $ interpret expression'
+      snd $ runInterpreter context
+        $ interpret expression'
   in
     state { expression = expression', typeMap = typeMap', valueMap = valueMap' }
 
