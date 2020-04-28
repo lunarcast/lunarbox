@@ -11,6 +11,7 @@
     "test": "spago test"
   },
   "dependencies": {
+    "mousetrap-ts": "^1.0.0",
     "normalize.css": "^8.0.1",
     "seedrandom": "^3.0.5"
   },

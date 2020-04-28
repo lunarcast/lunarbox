@@ -2,7 +2,7 @@
   "compilerOptions": {
     "moduleResolution": "Node",
     "module": "CommonJS",
-    "target": "ES6",
+    "target": "ES2015",
     "downlevelIteration": true,
     "strictNullChecks": true,
     "strictBindCallApply": true,
