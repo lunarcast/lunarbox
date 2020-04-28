@@ -43,6 +43,7 @@ module Lunarbox.Data.Editor.State
   , _functionUis
   , _ui
   , _runtimeOverwrites
+  , _camera
   ) where
 
 import Prelude
@@ -73,6 +74,7 @@ import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Editor.Camera (Camera)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
@@ -125,9 +127,13 @@ type State h a
     , valueMap :: ValueMap Location
     , functionUis :: Map FunctionName (FunctionUi h a)
     , runtimeOverwrites :: ValueMap Location
+    , camera :: Camera
     }
 
 -- Lenses
+_camera :: forall h a. Lens' (State h a) Camera
+_camera = prop (SProxy :: _ "camera")
+
 _runtimeOverwrites :: forall h a. Lens' (State h a) (ValueMap Location)
 _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
