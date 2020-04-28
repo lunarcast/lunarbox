@@ -19,11 +19,13 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
-import Effect.Class (class MonadEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, defaultEval, mkComponent, mkEval, query, tell)
+import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect, liftEffect)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe', tell)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties (classes, id_)
+import Halogen.Query.EventSource as ES
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
@@ -42,14 +44,22 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Lunarbox.Svg.Attributes (transparent)
+import Web.HTML (window) as Web
+import Web.HTML.HTMLDocument as HTMLDocument
+import Web.HTML.Window (document) as Web
+import Web.UIEvent.KeyboardEvent (KeyboardEvent)
+import Web.UIEvent.KeyboardEvent as KE
+import Web.UIEvent.KeyboardEvent.EventTypes as KET
 
 data Action
-  = ChangeTab Tab
+  = Init
+  | HandleKey SubscriptionId KeyboardEvent
+  | ChangeTab Tab
   | CreateFunction FunctionName
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
@@ -62,7 +72,6 @@ data Action
   | SelectNode NodeId
   | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
-  | DeleteSelection
 
 data Query a
   = Void
@@ -77,7 +86,7 @@ createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
+component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState:
@@ -101,12 +110,25 @@ component =
       mkEval
         $ defaultEval
             { handleAction = handleAction
-            , initialize = Just LoadNodes
+            , initialize = Just Init
             }
     }
   where
   handleAction :: Action -> HalogenM State Action ChildSlots Void m Unit
   handleAction = case _ of
+    Init -> do
+      handleAction LoadNodes
+      document <- liftEffect $ Web.document =<< Web.window
+      -- Register keybindings
+      subscribe' \sid ->
+        ES.eventListenerEventSource
+          KET.keyup
+          (HTMLDocument.toEventTarget document)
+          (map (HandleKey sid) <<< KE.fromEvent)
+    HandleKey sid event
+      | KE.key event == "Delete" || KE.key event == "Backspace" -> do
+        modify_ deleteSelection
+      | otherwise -> pure unit
     LoadNodes -> do
       modify_ $ compile <<< loadPrelude
     CreateNode name -> do
@@ -192,8 +214,6 @@ component =
       printString $ printSource e
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
-    DeleteSelection -> do
-      pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

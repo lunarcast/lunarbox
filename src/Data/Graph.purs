@@ -12,6 +12,7 @@ module Lunarbox.Data.Graph
   , topologicalSort
   , edges
   , removeEdge
+  , parents
   , _Graph
   ) where
 

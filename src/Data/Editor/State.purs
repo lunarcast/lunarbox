@@ -9,6 +9,8 @@ module Lunarbox.Data.Editor.State
   , setRelativeMousePosition
   , getSceneMousePosition
   , removeConnection
+  , deleteNode
+  , deleteSelection
   , _valueMap
   , _nodeData
   , _atNodeData
@@ -44,7 +46,7 @@ import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
 import Data.Foldable (foldMap, foldr)
-import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
+import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
@@ -70,7 +72,7 @@ import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node, _nodeInput, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node, _OutputNode, _nodeInput, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
@@ -349,7 +351,30 @@ getSceneMousePosition position = do
 
 -- Deletes a node form a given function
 deleteNode :: FunctionName -> NodeId -> State -> State
-deleteNode functionName id = over (_nodes functionName) $ G.delete id
+deleteNode functionName id state =
+  if isOutput then
+    state
+  else
+    withoutNodeRefs $ removeNodeData $ removeNode state
+  where
+  node = join $ preview (_atNode functionName id) state
+
+  -- We do not allow deleting output nodes
+  isOutput = maybe false (is _OutputNode) node
+
+  nodes = preview (_nodes functionName) state
+
+  withoutNodeRefs =
+    over (_nodes functionName) $ map $ over _nodeInputs
+      $ map \input ->
+          if input == Just id then
+            Nothing
+          else
+            input
+
+  removeNode = over (_nodes functionName) $ G.delete id
+
+  removeNodeData = set (_atNodeData functionName id) Nothing
 
 -- Delete all selected nodes
 deleteSelection :: State -> State
@@ -366,4 +391,4 @@ deleteSelection state =
               pure id
           )
           $ G.keys nodes
-    pure $ foldr (deleteNode currentFunction) state selectedNodes
+    pure $ compile $ foldr (deleteNode currentFunction) state selectedNodes
