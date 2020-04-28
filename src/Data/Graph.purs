@@ -16,7 +16,9 @@ module Lunarbox.Data.Graph
   ) where
 
 import Prelude
+import Data.Array (foldr)
 import Data.Array as Array
+import Data.Array as Foldable
 import Data.Bifunctor (lmap, rmap)
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Graph as CG
@@ -30,7 +32,7 @@ import Data.Newtype (class Newtype, over, unwrap)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (class Traversable, sequenceDefault, traverse)
-import Data.Tuple (Tuple(..), fst, uncurry)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Unfoldable (class Unfoldable)
 
 newtype Graph k v
@@ -94,7 +96,10 @@ lookup :: forall k v. Ord k => k -> Graph k v -> Maybe v
 lookup k = map fst <<< Map.lookup k <<< unwrap
 
 delete :: forall k v. Ord k => k -> Graph k v -> Graph k v
-delete k = over Graph $ Map.delete k
+delete key = parents' <<< (over Graph $ Map.delete key)
+  where
+  parents' :: Graph k v -> Graph k v
+  parents' graph = foldr (flip removeEdge key) graph $ parents key graph
 
 keys :: forall k v. Ord k => Graph k v -> Set k
 keys = Map.keys <<< unwrap
@@ -124,6 +129,10 @@ edges (Graph map) = Array.toUnfoldable edgeArray
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k
 topologicalSort = CG.topologicalSort <<< CG.fromMap <<< unwrap
+
+-- | Returns immediate ancestors of given key.
+parents :: forall k v. Ord k => k -> Graph k v -> Set k
+parents k (Graph graph) = Map.keys <<< Map.filter (Foldable.elem k <<< snd) $ graph
 
 _Graph :: forall k v. Ord k => Traversal' (Graph k v) v
 _Graph = traversed

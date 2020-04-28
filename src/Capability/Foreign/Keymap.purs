@@ -3,10 +3,11 @@ module Lunarbox.Capability.Foreign.Keymap (Keymap, mountKeymap, unmountKeymap) w
 import Prelude
 import Data.Tuple (Tuple)
 import Effect (Effect)
+import Effect.Class (class MonadEffect)
 
-type Keymap
-  = Array (Tuple String (Effect Unit))
+type Keymap m
+  = Array (Tuple String (m Unit))
 
-foreign import mountKeymap :: String -> Keymap -> Effect Unit
+foreign import mountKeymap :: forall m. MonadEffect m => String -> Keymap m -> m Unit
 
 foreign import unmountKeymap :: String -> Effect Unit

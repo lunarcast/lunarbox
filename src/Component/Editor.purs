@@ -62,6 +62,7 @@ data Action
   | SelectNode NodeId
   | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
+  | DeleteSelection
 
 data Query a
   = Void
@@ -191,6 +192,8 @@ component =
       printString $ printSource e
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
+    DeleteSelection -> do
+      pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

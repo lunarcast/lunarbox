@@ -43,7 +43,7 @@ import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
-import Data.Foldable (foldMap)
+import Data.Foldable (foldMap, foldr)
 import Data.Lens (Lens', Traversal', _Just, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
@@ -53,6 +53,7 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), snd)
 import Data.Vec (vec2)
@@ -345,3 +346,24 @@ getSceneMousePosition position = do
   state <- get
   bounds <- liftEffect getSceneBoundingBox
   pure $ setRelativeMousePosition bounds position state
+
+-- Deletes a node form a given function
+deleteNode :: FunctionName -> NodeId -> State -> State
+deleteNode functionName id = over (_nodes functionName) $ G.delete id
+
+-- Delete all selected nodes
+deleteSelection :: State -> State
+deleteSelection state =
+  fromMaybe state do
+    currentFunction <- view _currentFunction state
+    nodes <- preview _currentNodes state
+    let
+      selectedNodes =
+        Set.mapMaybe
+          ( \id -> do
+              selected <- preview (_isSelected currentFunction id) state
+              guard selected
+              pure id
+          )
+          $ G.keys nodes
+    pure $ foldr (deleteNode currentFunction) state selectedNodes
