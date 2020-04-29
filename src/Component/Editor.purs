@@ -78,7 +78,6 @@ data Action
   | SelectOutput NodeId
   | SelectNode NodeId
   | SceneZoom Number
-  | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | AdjustSceneScale
@@ -114,7 +113,7 @@ createId = do
 component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
-    { initialState: const $ initializeFunction (FunctionName "main") emptyState
+    { initialState: const $ initializeFunction (FunctionName "main") $ loadPrelude emptyState
     , render
     , eval:
       mkEval
@@ -130,7 +129,6 @@ component =
       window <- liftEffect Web.window
       document <- liftEffect $ Web.document window
       -- Stuff which we need to run at the start
-      handleAction LoadNodes
       handleAction AdjustSceneScale
       -- Register keybindings
       subscribe' \sid ->
@@ -162,8 +160,6 @@ component =
             Right state'' -> state''
         put state'
       | otherwise -> pure unit
-    LoadNodes -> do
-      modify_ $ compile <<< loadPrelude
     CreateNode name -> do
       Tuple id setId <- createId
       typeMap <- gets $ view _typeMap

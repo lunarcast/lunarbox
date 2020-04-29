@@ -5,10 +5,14 @@ module Lunarbox.Data.Editor.Node.PinLocation
   , outputNode
   ) where
 
+import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
+import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
+import Data.Generic.Rep (class Generic)
 import Lunarbox.Data.Dataflow.Expression (Expression, wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Prelude
 
 -- A pin can either be an output or an input
 data Pin
@@ -18,6 +22,14 @@ data Pin
 derive instance eqPin :: Eq Pin
 
 derive instance ordPin :: Ord Pin
+
+derive instance genericPin :: Generic Pin _
+
+instance encodeJsonPin :: EncodeJson Pin where
+  encodeJson = genericEncodeJson
+
+instance decodeJsonPin :: DecodeJson Pin where
+  decodeJson = genericDecodeJson
 
 instance showPin :: Show Pin where
   show OutputPin = "output"

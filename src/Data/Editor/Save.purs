@@ -10,9 +10,11 @@ import Data.Either (Either)
 import Data.Map (Map)
 import Data.Tuple (Tuple)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
+import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Editor.Camera (Camera)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project (Project)
@@ -25,6 +27,7 @@ type PermanentState r
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
     , functionData :: Map FunctionName FunctionData
     , cameras :: Map FunctionName Camera
+    , runtimeOverwrites :: ValueMap Location
     | r
     )
 

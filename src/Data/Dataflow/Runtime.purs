@@ -8,6 +8,9 @@ module Lunarbox.Data.Dataflow.Runtime
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (~>), (.:))
+import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 
@@ -18,6 +21,31 @@ data RuntimeValue
   | Bool Boolean
   | Null
   | Function (RuntimeValue -> RuntimeValue)
+
+derive instance genericRuntimeValue :: Generic RuntimeValue _
+
+instance encodeJsonRuntimeValue :: EncodeJson RuntimeValue where
+  encodeJson (Number inner) = "type" := "number" ~> "value" := inner ~> jsonEmptyObject
+  encodeJson (String inner) = "type" := "string" ~> "value" := inner ~> jsonEmptyObject
+  encodeJson (Bool inner) = "type" := "boolean" ~> "value" := inner ~> jsonEmptyObject
+  encodeJson _ = "type" := "null" ~> jsonEmptyObject
+
+instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
+  decodeJson json = do
+    obj <- decodeJson json
+    type' <- obj .: "type"
+    case type' of
+      "number" -> do
+        value <- obj .: "value"
+        pure $ Number value
+      "string" -> do
+        value <- obj .: "value"
+        pure $ String value
+      "boolean" -> do
+        value <- obj .: "value"
+        pure $ Bool value
+      "null" -> pure $ Null
+      _ -> Left $ "Cannot parse runtime value of type " <> type'
 
 instance showRuntimeValue :: Show RuntimeValue where
   show = case _ of

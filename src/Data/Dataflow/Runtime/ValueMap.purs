@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Runtime.ValueMap
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default)
 import Data.Map as Map
 import Data.Newtype (class Newtype)
@@ -21,6 +22,10 @@ derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap l)
 derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap l)
 
 derive newtype instance showValueMap :: Show l => Show (ValueMap l)
+
+derive newtype instance encodeJsonValueMap :: (EncodeJson l, Ord l) => EncodeJson (ValueMap l)
+
+derive newtype instance decodeJsonValueMap :: (DecodeJson l, Ord l) => DecodeJson (ValueMap l)
 
 instance defaultValueMap :: Default (ValueMap l) where
   def = ValueMap $ Map.empty

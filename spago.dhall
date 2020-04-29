@@ -7,6 +7,7 @@ You can edit this file as you like.
   [ "aff"
   , "aff-bus"
   , "argonaut"
+  , "argonaut-generic"
   , "arrays"
   , "colehaus-graphs"
   , "console"
