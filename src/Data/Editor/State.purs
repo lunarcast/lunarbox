@@ -1,69 +1,19 @@
-module Lunarbox.Data.Editor.State
-  ( State
-  , Tab(..)
-  , tabIcon
-  , tryConnecting
-  , compile
-  , setCurrentFunction
-  , initializeFunction
-  , setRelativeMousePosition
-  , getSceneMousePosition
-  , removeConnection
-  , deleteNode
-  , deleteSelection
-  , setRuntimeValue
-  , evaluate
-  , setScale
-  , adjustSceneScale
-  , pan
-  , emptyState
-  , _valueMap
-  , _nodeData
-  , _atNodeData
-  , _project
-  , _colorMap
-  , _atColorMap
-  , _lastMousePosition
-  , _expression
-  , _typeMap
-  , _nextId
-  , _function
-  , _functions
-  , _nodeGroup
-  , _atNode
-  , _isSelected
-  , _panelIsOpen
-  , _currentFunction
-  , _currentTab
-  , _functionData
-  , _atFunctionData
-  , _partialConnection
-  , _partialFrom
-  , _partialTo
-  , _currentNodes
-  , _atCurrentNode
-  , _currentNodeGroup
-  , _nodes
-  , _functionUis
-  , _ui
-  , _runtimeOverwrites
-  , _camera
-  , _cameras
-  , _sceneScale
-  , _currentCamera
-  ) where
+module Lunarbox.Data.Editor.State where
 
 import Prelude
+import Control.Monad.State (gets)
+import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
-import Data.Foldable (foldMap, foldr)
+import Data.Foldable (foldMap, foldr, for_)
+import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.List (List)
+import Data.List (List, (..))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
@@ -71,6 +21,7 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), snd)
+import Data.Unfoldable (replicate)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, get, liftEffect, modify_)
@@ -80,24 +31,28 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.Camera (Camera)
+import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
+import Lunarbox.Data.Editor.Camera (Camera, toWorldCoordinates)
 import Lunarbox.Data.Editor.Camera as Camera
+import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node, _OutputNode, _nodeInput, _nodeInputs)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
+import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
+import Lunarbox.Data.Math (polarToCartesian)
 import Lunarbox.Data.Vector (Vec2)
+import Math (pow)
 import Svg.Attributes (Color)
 import Web.HTML.HTMLElement (DOMRect)
 
@@ -137,6 +92,7 @@ type State a s m
     , runtimeOverwrites :: ValueMap Location
     , cameras :: Map FunctionName Camera
     , sceneScale :: Vec2 Number
+    , addedNodes :: Int
     }
 
 -- Starting state which contains nothing
@@ -158,10 +114,55 @@ emptyState =
   , expression: nothing
   , currentFunction: Nothing
   , lastMousePosition: zero
+  , addedNodes: 0
   , project: Project { main: FunctionName "main", functions: G.emptyGraph }
   }
 
 -- Helpers
+-- Generate an id and icncrease the inner counter in the state
+createId :: forall a s m. StateM.State (State a s m) NodeId
+createId = do
+  nextId <- gets $ view _nextId
+  modify_ $ over _nextId (_ + 1)
+  pure $ NodeId $ show nextId
+
+createNode :: forall a s m. FunctionName -> StateM.State (State a s m) Unit
+createNode name = do
+  id <- createId
+  typeMap <- gets $ view _typeMap
+  maybeCurrentFunction <- gets $ view _currentFunction
+  maybeNodeFunction <- gets $ preview $ _function name
+  for_ (join maybeNodeFunction) \function -> do
+    addedNodes <- gets $ (toNumber <<< view _addedNodes)
+    center <- gets sceneCenter
+    let
+      inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+
+      inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
+
+      node =
+        ComplexNode
+          { inputs: replicate inputCount Nothing
+          , function: name
+          }
+
+      angle = nodeOffset * addedNodes
+
+      radius = nodeOffsetInitialRadius * (nodeOffsetGrowthRate `pow` angle)
+
+      offset = polarToCartesian radius angle
+
+      position = offset + center
+
+      nodeData = set _NodeDataPosition position def
+    for_ maybeCurrentFunction
+      $ \currentFunction -> do
+          modify_ $ over _addedNodes (_ + 1)
+          modify_ $ set (_atNode currentFunction id) $ Just node
+          modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
+          modify_ $ over _functions $ G.insertEdge name currentFunction
+          modify_ $ compile
+
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
 compile state@{ project, expression, typeMap, valueMap } =
@@ -344,9 +345,13 @@ setRuntimeValue functionName nodeId value =
         (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
         (Just value)
 
+-- This makes the node start from the middle again
+resetNodeOffset :: forall a s m. State a s m -> State a s m
+resetNodeOffset = set _addedNodes 0
+
 -- Set the scale of the scene
 setScale :: forall a s m. DOMRect -> State a s m -> State a s m
-setScale { height, width } = set _sceneScale $ vec2 width height
+setScale { height, width } = resetNodeOffset <<< (set _sceneScale $ vec2 width height)
 
 -- Adjusts the scale based on the scene I get in ts
 adjustSceneScale :: forall q i o m a s. MonadEffect m => HalogenM (State a s m) q i o m Unit
@@ -358,7 +363,18 @@ adjustSceneScale = do
 pan :: forall a s m. Vec2 Number -> State a s m -> State a s m
 pan = over _currentCamera <<< Camera.pan
 
+-- Get the coordinates of the center of the scene in world coordinates
+sceneCenter :: forall a s m. State a s m -> Vec2 Number
+sceneCenter state = toWorldCoordinates camera $ (_ / 2.0) <$> scale
+  where
+  scale = view _sceneScale state
+
+  camera = view _currentCamera state
+
 -- Lenses
+_addedNodes :: forall a s m. Lens' (State a s m) Int
+_addedNodes = prop (SProxy :: _ "addedNodes")
+
 _cameras :: forall a s m. Lens' (State a s m) (Map FunctionName Camera)
 _cameras = prop (SProxy :: _ "cameras")
 

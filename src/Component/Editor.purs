@@ -6,9 +6,8 @@ module Lunarbox.Component.Editor
 
 import Prelude
 import Control.Monad.Reader (class MonadReader)
-import Control.Monad.State (get, gets, modify_, put)
+import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
-import Data.Array (foldr, (..))
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
@@ -20,7 +19,6 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Data.Unfoldable (replicate)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe, subscribe', tell)
@@ -40,23 +38,17 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Dataflow.Type (numberOfInputs)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
-import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentCamera, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, adjustSceneScale, compile, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
-import Lunarbox.Data.Graph as G
+import Lunarbox.Data.Editor.State (State, Tab(..), _currentCamera, _currentFunction, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Lunarbox.Svg.Attributes (transparent)
 import Web.Event.Event (EventType(..))
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
@@ -133,6 +125,8 @@ component =
       document <- liftEffect $ Web.document window
       -- Stuff which we need to run at the start
       handleAction AdjustSceneScale
+      scale <- gets $ view _sceneScale
+      modify_ $ pan $ (_ / 2.0) <$> scale
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
@@ -165,40 +159,7 @@ component =
         put state'
       | otherwise -> pure unit
     CreateNode name -> do
-      Tuple id setId <- createId
-      typeMap <- gets $ view _typeMap
-      maybeCurrentFunction <- gets $ view _currentFunction
-      maybeNodeFunction <- gets $ preview $ _function name
-      for_ (join maybeNodeFunction) \function -> do
-        state <- get
-        let
-          inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
-
-          inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
-
-          state' =
-            foldr
-              ( \location ->
-                  set (_atColorMap location) $ Just transparent
-              )
-              state
-              inputs
-
-          node :: Node
-          node =
-            ComplexNode
-              { inputs: replicate inputCount Nothing
-              , function: name
-              }
-        for_ maybeCurrentFunction
-          $ \currentFunction -> do
-              let
-                state'' = set (_atNode currentFunction id) (Just node) state'
-
-                state''' = set (_atNodeData currentFunction id) (Just def) state''
-
-                state'''' = over _functions (G.insertEdge name currentFunction) state'''
-              void $ put $ compile $ setId state''''
+      modify_ $ execState $ createNode name
     TogglePanel -> do
       bounds <- liftEffect getSceneBoundingBox
       modify_ $ setScale bounds <<< over _panelIsOpen not
@@ -244,7 +205,7 @@ component =
                     node
       put $ update state'
     SceneMouseUp -> do
-      modify_ $ over _nodeData $ map $ set _NodeDataSelected false
+      modify_ $ resetNodeOffset <<< (over _nodeData $ map $ set _NodeDataSelected false)
     SelectNode id -> do
       maybeCurrentFunction <- gets $ view _currentFunction
       for_ maybeCurrentFunction \currentFunction -> do

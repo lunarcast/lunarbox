@@ -13,11 +13,11 @@ import Prelude
 import Core (attr)
 import Data.String (joinWith)
 import Data.Typelevel.Num (d0, d1)
-import Data.Vec (vec2, (!!))
+import Data.Vec ((!!))
 import Halogen.HTML (AttrName(..), IProp)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..), length)
-import Lunarbox.Data.Vector (Vec2)
-import Math (Radians, cos, pi, sin)
+import Lunarbox.Data.Math (polarToCartesian)
+import Math (Radians, pi)
 import Svg.Attributes (Color(..), Command(..))
 import Svg.Attributes as SA
 import Unsafe.Coerce (unsafeCoerce)
@@ -49,9 +49,6 @@ instance showLinecap :: Show Linecap where
 -- Same reason I have this as strokeDashArray
 strokeLinecap :: forall r i. Linecap -> IProp ( stroke :: String | r ) i
 strokeLinecap = unsafeCoerce <<< attr (AttrName "stroke-linecap") <<< show
-
-polarToCartesian :: Number -> Radians -> Vec2 Number
-polarToCartesian radius angle = (radius * _) <$> vec2 (cos angle) (sin angle)
 
 arcLength :: Radians -> Radians -> Radians
 arcLength start end = length $ Arc start end unit

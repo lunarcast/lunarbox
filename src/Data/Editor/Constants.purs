@@ -8,11 +8,14 @@ module Lunarbox.Data.Editor.Constants
   , mouseId
   , scrollStep
   , clampZoom
+  , nodeOffset
+  , nodeOffsetGrowthRate
+  , nodeOffsetInitialRadius
   ) where
 
 import Prelude
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
-import Math (Radians)
+import Math (Radians, pi)
 
 -- visual radius for nodes
 nodeRadius :: Number
@@ -49,3 +52,19 @@ scrollStep = 1.0 / 1.2
 -- Clamp the zoom between those values
 clampZoom :: Number -> Number
 clampZoom = clamp 0.1 10.0
+
+-- So when you add more than one node at a time the nodes are placed in 
+-- a logarithmic spiral to prevent overlaps
+-- The following 3 constants are the parameters for that spiral:
+--
+-- How much space to leave between newly created nodes
+nodeOffset :: Radians
+nodeOffset = pi / 3.0
+
+-- How much to increase the radius of the offset
+nodeOffsetGrowthRate :: Number
+nodeOffsetGrowthRate = 1.1
+
+-- The starting radius of the offset
+nodeOffsetInitialRadius :: Number
+nodeOffsetInitialRadius = 100.0
