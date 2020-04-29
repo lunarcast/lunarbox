@@ -11,7 +11,7 @@ import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
-import Data.Foldable (for_, sequence_)
+import Data.Foldable (for_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
@@ -37,7 +37,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
-import Lunarbox.Data.Editor.Camera (toWorldCoordinates)
+import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -75,6 +75,7 @@ data Action
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | SelectNode NodeId
+  | SceneZoom Number
   | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
   | SetRuntimeValue FunctionName NodeId RuntimeValue
@@ -91,12 +92,13 @@ type ChildSlots
 -- Actions to run the scene component with
 sceneActions :: Scene.Actions Action
 sceneActions =
-  { mouseDown: Just <<< SceneMouseDown
-  , mouseMove: (Just <<< _) <<< SceneMouseMove
-  , mouseUp: Just SceneMouseUp
+  { mouseUp: Just SceneMouseUp
+  , mouseDown: Just <<< SceneMouseDown
+  , zoom: Just <<< SceneZoom
   , selectNode: Just <<< SelectNode
-  , selectInput: (Just <<< _) <<< SelectInput
   , selectOutput: Just <<< SelectOutput
+  , mouseMove: (Just <<< _) <<< SceneMouseMove
+  , selectInput: (Just <<< _) <<< SelectInput
   , removeConnection: (Just <<< _) <<< RemoveConnection
   , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
   }
@@ -126,7 +128,7 @@ component =
         , sceneScale: zero
         , expression: nothing
         , currentFunction: Nothing
-        , lastMousePosition: Nothing
+        , lastMousePosition: zero
         , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
         , project: emptyProject $ NodeId "firstOutput"
         }
@@ -225,23 +227,24 @@ component =
       state@{ lastMousePosition } <- get
       state' <- getSceneMousePosition position
       camera <- gets $ view _currentCamera
-      sequence_ do
-        oldPosition <- toWorldCoordinates camera <$> lastMousePosition
-        newPosition <- toWorldCoordinates camera <$> view _lastMousePosition state'
-        let
-          offset = newPosition - oldPosition
+      let
+        oldPosition = toWorldCoordinates camera lastMousePosition
 
-          update =
-            if isPressed RightButton bits then
-              pan offset
-            else
-              over _nodeData
-                $ map \node@(NodeData { selected }) ->
-                    if selected then
-                      over _NodeDataPosition (_ + offset) node
-                    else
-                      node
-        pure $ put $ update state'
+        newPosition = toWorldCoordinates camera $ view _lastMousePosition state'
+
+        offset = newPosition - oldPosition
+
+        update =
+          if isPressed RightButton bits then
+            pan offset
+          else
+            over _nodeData
+              $ map \node@(NodeData { selected }) ->
+                  if selected then
+                    over _NodeDataPosition (_ + offset) node
+                  else
+                    node
+      put $ update state'
     SceneMouseUp -> do
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
@@ -260,6 +263,9 @@ component =
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
+    SceneZoom amount -> do
+      mousePosition <- gets $ view _lastMousePosition
+      modify_ $ over _currentCamera $ zoomOn mousePosition amount
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

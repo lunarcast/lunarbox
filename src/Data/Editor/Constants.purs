@@ -6,6 +6,8 @@ module Lunarbox.Data.Editor.Constants
   , connectionsWidth
   , scaleConnectionPreview
   , mouseId
+  , scrollStep
+  , clampZoom
   ) where
 
 import Prelude
@@ -39,3 +41,11 @@ scaleConnectionPreview = (_ / 1.01)
 -- Used for connection previews
 mouseId :: NodeId
 mouseId = NodeId "mouse"
+
+-- How much to scroll per event
+scrollStep :: Number
+scrollStep = 1.1
+
+-- Clamp the zoom between those values
+clampZoom :: Number -> Number
+clampZoom = clamp 0.1 10.0

@@ -80,7 +80,8 @@ import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.Camera (Camera, _CameraPosition)
+import Lunarbox.Data.Editor.Camera (Camera)
+import Lunarbox.Data.Editor.Camera as Camera
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
@@ -126,7 +127,7 @@ type State a s m
     , typeMap :: Map Location Type
     , colorMap :: Map Location Color
     , expression :: Expression Location
-    , lastMousePosition :: Maybe (Vec2 Number)
+    , lastMousePosition :: Vec2 Number
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
     , functionData :: Map FunctionName FunctionData
     , partialConnection :: PartialConnection
@@ -174,7 +175,7 @@ _colorMap = prop (SProxy :: _ "colorMap")
 _atColorMap :: forall a s m. Location -> Traversal' (State a s m) (Maybe Color)
 _atColorMap location = _colorMap <<< at location
 
-_lastMousePosition :: forall a s m. Lens' (State a s m) (Maybe (Vec2 Number))
+_lastMousePosition :: forall a s m. Lens' (State a s m) (Vec2 Number)
 _lastMousePosition = prop (SProxy :: _ "lastMousePosition")
 
 _expression :: forall a s m. Lens' (State a s m) (Expression Location)
@@ -396,7 +397,7 @@ removeConnection from (Tuple toId toIndex) state = state''
 
 -- Helper function to set the mouse position relative to the svg element
 setRelativeMousePosition :: forall a s m. DOMRect -> Vec2 Number -> State a s m -> State a s m
-setRelativeMousePosition { top, left } position = set _lastMousePosition $ Just sceneCoordinates
+setRelativeMousePosition { top, left } position = set _lastMousePosition sceneCoordinates
   where
   sceneCoordinates = position - vec2 left top
 
@@ -469,5 +470,6 @@ adjustSceneScale = do
   domRect <- liftEffect getSceneBoundingBox
   modify_ $ setScale domRect
 
+-- Pan the current camera in  screen coordinates
 pan :: forall a s m. Vec2 Number -> State a s m -> State a s m
-pan offset = over (_currentCamera <<< _CameraPosition) (_ - offset)
+pan = over _currentCamera <<< Camera.pan

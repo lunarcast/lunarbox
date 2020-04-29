@@ -16,13 +16,14 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Newtype (unwrap)
+import Data.Ord (signum)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
+import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
 import Lunarbox.Component.Editor.Node (renderNode)
@@ -33,6 +34,7 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
+import Lunarbox.Data.Editor.Constants (clampZoom, scrollStep)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -46,11 +48,13 @@ import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
+import Math (pow)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 import Unsafe.Coerce (unsafeCoerce)
 import Web.UIEvent.MouseEvent as ME
+import Web.UIEvent.WheelEvent (deltaY)
 
 type Input a s m
   = { project :: Project
@@ -61,7 +65,7 @@ type Input a s m
     , functionData :: Map FunctionName FunctionData
     , nodeData :: Map NodeId NodeData
     , partialConnection :: PartialConnection
-    , lastMousePosition :: Maybe (Vec2 Number)
+    , lastMousePosition :: Vec2 Number
     , valueMap :: ValueMap Location
     , functionUis :: Map FunctionName (FunctionUi a s m)
     , camera :: Camera
@@ -73,6 +77,7 @@ type Actions a
     , mouseDown :: Vec2 Number -> Maybe a
     , selectNode :: NodeId -> Maybe a
     , mouseUp :: Maybe a
+    , zoom :: Number -> Maybe a
     , selectInput :: NodeId -> Int -> Maybe a
     , selectOutput :: NodeId -> Maybe a
     , removeConnection :: NodeId -> Tuple NodeId Int -> Maybe a
@@ -158,7 +163,7 @@ createNodeComponent { functionName
           ]
         , hasOutput: not $ is _OutputNode node
         , selectionStatus: getSelectionStatus partialConnection id
-        , mousePosition: fromMaybe zero lastMousePosition
+        , mousePosition: lastMousePosition
         , value: Map.lookup location $ unwrap valueMap
         , ui: unsafeCoerce $ Map.lookup name functionUis
         }
@@ -171,14 +176,14 @@ createNodeComponent { functionName
 
 scene :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
 scene state@{ nodeData, camera, scale, lastMousePosition
-} actions@{ mouseMove, mouseDown, mouseUp, selectNode } = either (\err -> erroredEditor $ show err) success nodeHtml
+} actions@{ mouseMove, mouseDown, mouseUp, selectNode, zoom } = either (\err -> erroredEditor $ show err) success nodeHtml
   where
   sortedNodes :: Array (Tuple NodeId NodeData)
   sortedNodes =
     sortBy (\(Tuple _ v) (Tuple _ v') -> compare v v')
       $ Map.toUnfoldable nodeData
 
-  state' = state { lastMousePosition = toWorldCoordinates camera <$> lastMousePosition }
+  state' = state { lastMousePosition = toWorldCoordinates camera lastMousePosition }
 
   nodeHtml = sequence $ (createNodeComponent state' actions <$> sortedNodes :: Array (Either _ _))
 
@@ -188,7 +193,8 @@ scene state@{ nodeData, camera, scale, lastMousePosition
       , SA.height $ scale !! d1
       , SA.id "scene"
       , toViewBox scale camera
-      , onMouseMove $ \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onMouseDown $ \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+      , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+      , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+      , onWheel \e -> zoom $ clampZoom $ pow scrollStep $ signum $ deltaY e
       , onMouseUp $ const mouseUp
       ]
