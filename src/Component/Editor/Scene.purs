@@ -29,8 +29,6 @@ import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
 import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
-import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
-import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeString)
@@ -54,7 +52,6 @@ import Math (pow)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
-import Unsafe.Coerce (unsafeCoerce)
 import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.WheelEvent (deltaY)
 
@@ -62,7 +59,6 @@ type Input a s m
   = { project :: Project
     , functionName :: FunctionName
     , typeMap :: Map Location Type
-    , expression :: Expression Location
     , typeColors :: Map Location Color
     , functionData :: Map FunctionName FunctionData
     , nodeData :: Map NodeId NodeData
@@ -89,7 +85,6 @@ type Actions a
 -- Errors which could arise while creating the node svg
 data NodeBuildingError
   = MissingFunctionData FunctionName
-  | MissingExpression NodeId
   | MissingNode NodeId
   | MissingType Location
   | LiftedError ColoringError
@@ -97,7 +92,6 @@ data NodeBuildingError
 instance showNodeBuildingError :: Show NodeBuildingError where
   show = case _ of
     MissingFunctionData name -> "Cannot find function data for function " <> show name
-    MissingExpression id -> "Cannot find compiliation result for node " <> show id
     MissingNode id -> "Cannot find node " <> show id
     MissingType location -> "Cannot find inferred type for " <> show location
     LiftedError error -> show error
@@ -118,7 +112,6 @@ createNodeComponent :: forall s a m. Input a s m -> Actions a -> Tuple NodeId No
 createNodeComponent { functionName
 , project
 , typeMap
-, expression
 , functionData
 , typeColors
 , partialConnection
@@ -135,7 +128,6 @@ createNodeComponent { functionName
     location = generateLocation $ Location id
   node <- getNode functionName id project
   nodeType <- note (MissingType location) $ Map.lookup location typeMap
-  nodeExpression <- note (MissingExpression id) $ Expression.lookup location expression
   let
     name = getNodeName node
 
@@ -164,19 +156,18 @@ createNodeComponent { functionName
         , colorMap
         , nodeDataMap
         , labels:
-          [ labelText $ show name
-          , label $ highlightTypeToSvg (RGB 255 255 255) $ prettify
+          [ label $ highlightTypeToSvg (RGB 255 255 255) $ prettify
               $ foldr TArrow nodeType
               $ ( List.mapWithIndex \index type' -> fromMaybe type' $ Map.lookup (InputPin index) localTypeMap
                 )
               $ inputs functionType
-          , labelText $ sumarizeExpression nodeExpression
+          , labelText $ show name
           ]
         , hasOutput: not $ is _OutputNode node
         , selectionStatus: getSelectionStatus partialConnection id
         , mousePosition: lastMousePosition
         , value: Map.lookup location $ unwrap valueMap
-        , ui: unsafeCoerce $ Map.lookup name functionUis
+        , ui: Map.lookup name functionUis
         }
         { select: selectNode id
         , selectInput: selectInput id

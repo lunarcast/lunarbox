@@ -325,7 +325,6 @@ component =
   scene :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   scene { project
   , currentFunction: maybeCurrentFunction
-  , expression
   , typeMap
   , lastMousePosition
   , functionData
@@ -345,7 +344,6 @@ component =
       pure
         $ lazy2 Scene.scene
             { project
-            , expression
             , typeMap
             , lastMousePosition
             , functionData
