@@ -12,6 +12,8 @@ module Lunarbox.Data.Dataflow.Type
 import Prelude
 import Data.List (List(..), (:))
 import Data.Newtype (class Newtype, unwrap)
+import Lunarbox.Data.Char (arrow)
+import Lunarbox.Data.String (spaced)
 
 newtype TVarName
   = TVarName String
@@ -83,4 +85,4 @@ printType p (TArrow from to) = if p then "(" <> result <> ")" else result
 
   prefix = printType isArrow from
 
-  result = prefix <> " -> " <> show to
+  result = prefix <> spaced arrow <> show to

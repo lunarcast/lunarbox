@@ -1,5 +1,6 @@
 module Lunarbox.Svg.Attributes
   ( strokeWidth
+  , fontWeight
   , arc
   , chord
   , transparent
@@ -29,6 +30,10 @@ strokeWidth = unsafeCoerce SA.strokeWidth
 -- The halogen-svg lib doesn't support this so I had to make my own
 strokeDashArray :: forall r i. Array Number -> IProp ( stroke :: String | r ) i
 strokeDashArray = unsafeCoerce $ attr (AttrName "stroke-dasharray") <<< joinWith ","
+
+-- The lib doesn't have this one either...
+fontWeight :: forall r i. String -> IProp r i
+fontWeight = unsafeCoerce $ attr (AttrName "font-weight")
 
 -- stroke linecaps for svg
 data Linecap
