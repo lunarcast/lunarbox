@@ -9,6 +9,7 @@ module Lunarbox.Data.Editor.Node
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
+  , _ComplexNode
   , _nodeInputs
   ) where
 

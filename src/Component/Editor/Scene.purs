@@ -6,12 +6,13 @@ module Lunarbox.Component.Editor.Scene
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array (sortBy)
+import Data.Array (foldr, sortBy)
 import Data.Bifunctor (bimap)
 import Data.Default (def)
 import Data.Either (Either, either, note)
 import Data.Int (toNumber)
 import Data.Lens (is, preview, view)
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
@@ -32,7 +33,7 @@ import Lunarbox.Data.Dataflow.Expression (Expression, sumarizeExpression)
 import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeString)
 import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
 import Lunarbox.Data.Editor.Constants (clampZoom, scrollStep)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
@@ -40,9 +41,10 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _OutputNode)
+import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
 import Lunarbox.Data.Map (maybeBimap)
@@ -147,6 +149,11 @@ createNodeComponent { functionName
         pure $ Tuple locationPin type'
 
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
+  functionType <-
+    if is _ComplexNode node then
+      note (MissingType $ Location name) $ Map.lookup (Location name) typeMap
+    else
+      pure $ typeString
   colorMap <- bimap LiftedError identity $ generateTypeMap (flip Map.lookup localTypeMap) nodeFunctionData node
   pure
     $ HH.lazy2
@@ -158,7 +165,11 @@ createNodeComponent { functionName
         , nodeDataMap
         , labels:
           [ labelText $ show name
-          , label $ highlightTypeToSvg (RGB 255 255 255) $ prettify nodeType
+          , label $ highlightTypeToSvg (RGB 255 255 255) $ prettify
+              $ foldr TArrow nodeType
+              $ ( List.mapWithIndex \index type' -> fromMaybe type' $ Map.lookup (InputPin index) localTypeMap
+                )
+              $ inputs functionType
           , labelText $ sumarizeExpression nodeExpression
           ]
         , hasOutput: not $ is _OutputNode node
