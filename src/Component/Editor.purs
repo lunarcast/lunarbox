@@ -35,6 +35,9 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
+import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
@@ -48,7 +51,7 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentCamera, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, adjustSceneScale, compile, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentCamera, _currentFunction, _currentTab, _expression, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, adjustSceneScale, compile, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
@@ -154,10 +157,11 @@ component =
           json = stateToJson state
 
           result = jsonToState json
-
-          state' = case result of
-            Left err -> state
-            Right state'' -> state''
+        state' <- case result of
+          Left err -> do
+            printString err
+            pure state
+          Right state'' -> pure state''
         put state'
       | otherwise -> pure unit
     CreateNode name -> do
@@ -210,6 +214,10 @@ component =
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
       when (oldFunction == Nothing) adjustSceneScale
+      t <- gets $ view _typeMap
+      e <- gets $ view _expression
+      printString $ printTypeMap t
+      printString $ printSource e
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseDown position -> getSceneMousePosition position >>= put

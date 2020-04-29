@@ -33,7 +33,15 @@ type PermanentState r
 
 -- Encoding and decoding
 stateToJson :: forall r. { | PermanentState r } -> Json
-stateToJson { project, nextId, nodeData, functionData, cameras } = encodeJson { project, nextId, nodeData, functionData, cameras }
+stateToJson { project, nextId, nodeData, functionData, cameras, runtimeOverwrites } =
+  encodeJson
+    { project
+    , nextId
+    , nodeData
+    , functionData
+    , cameras
+    , runtimeOverwrites
+    }
 
 jsonToState :: forall a s m. Json -> Either String (State a s m)
 jsonToState json = do

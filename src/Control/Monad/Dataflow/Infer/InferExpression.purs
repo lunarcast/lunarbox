@@ -6,14 +6,17 @@ import Prelude
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (asks, local)
 import Control.Monad.State (gets, modify_)
-import Data.Array (find, foldr, zip)
+import Data.Array (find, zip)
+import Data.Either (Either(..))
 import Data.Lens (over, view)
-import Data.List ((:))
+import Data.List (List(..), (:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust)
 import Data.Set as Set
-import Data.Traversable (traverse)
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
+import Data.Traversable (sequence)
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _constraints, _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
+import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
@@ -58,7 +61,7 @@ createClosure name scheme =
 -- The opposite of generalie. Takes a Forall type and creates a type out of it it
 instantiate :: forall l. Ord l => Show l => Scheme -> Infer l Type
 instantiate (Forall q t) = do
-  q' <- traverse (const fresh) q
+  q' <- sequence $ fresh <$ q
   let
     scheme = Substitution $ Map.fromFoldable $ zip q q'
   pure $ apply scheme t
@@ -99,18 +102,25 @@ infer expression =
         pure tv
       Let _ shouldGeneralize name value body -> do
         t <- infer value
-        inner <- if shouldGeneralize then generalize t else pure $ Forall [] t
-        createClosure name inner (infer body)
+        constraints <- gets $ view _constraints
+        location <- asks $ view _location
+        environment <- asks $ view _typeEnv
+        case runSolve (SolveContext { location }) $ solve constraints of
+          Left err -> throwError err
+          Right substitution ->
+            local (over _typeEnv $ apply substitution) do
+              generalized <- generalize $ apply substitution t
+              createClosure name generalized $ infer body
       FixPoint _ body -> do
         t <- infer body
         tv <- fresh
         createConstraint (tv `TArrow` tv) t
         pure tv
-      Chain _ expressions -> do
-        foldr
-          (\expression' toDiscard -> toDiscard >>= (const $ infer expression'))
-          fresh
-          expressions
+      Chain _ Nil -> fresh
+      Chain _ (expression' : Nil) -> infer expression'
+      Chain location (expression' : expressions) -> do
+        void $ infer expression'
+        infer $ Chain location expressions
       Literal _ LNull -> fresh
       Literal _ (LInt _) -> pure typeNumber
       Literal _ (LBool _) -> pure typeBool

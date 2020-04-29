@@ -44,7 +44,7 @@ mouseId = NodeId "mouse"
 
 -- How much to scroll per event
 scrollStep :: Number
-scrollStep = 1.1
+scrollStep = 1.0 / 1.2
 
 -- Clamp the zoom between those values
 clampZoom :: Number -> Number

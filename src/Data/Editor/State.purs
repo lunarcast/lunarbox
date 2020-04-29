@@ -254,7 +254,7 @@ initializeFunction name state =
 
 -- Remove a conenction from the current function
 removeConnection :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> State a s m
-removeConnection from (Tuple toId toIndex) state = state''
+removeConnection from (Tuple toId toIndex) state = compile state''
   where
   state' = set (_atCurrentNode toId <<< _nodeInput toIndex) Nothing state
 

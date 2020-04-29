@@ -11,8 +11,8 @@
 // Libraries
 @import "normalize.css";
 
-// we don't want the user to drag stuff
 * {
+  // we don't want the user to drag stuff
   -webkit-user-drag: none;
 }
 
@@ -30,7 +30,7 @@ img,
   overflow: hidden;
 }
 
-// default font on everything
 :root {
+  // default font on everything
   font-family: fonts.$montserrat;
 }
