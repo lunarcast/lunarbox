@@ -38,7 +38,7 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Math (normalizeAngle)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
-import Math (cos, pi, sin)
+import Math (cos, floor, pi, sin)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -148,7 +148,7 @@ renderNode { nodeData: nodeData
     fromMaybe transparent
       $ Map.lookup OutputPin colorMap
 
-  centerPosition = view _NodeDataPosition nodeData
+  centerPosition = floor <$> view _NodeDataPosition nodeData
 
   (Tuple nodeDataWithMouse nodeWithMouse) = case selectionStatus of
     InputSelected index -> Tuple nodeDataMap' node'

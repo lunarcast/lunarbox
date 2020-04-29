@@ -16,6 +16,7 @@ import Data.Vec ((!!))
 import Halogen.HTML (IProp)
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
+import Math (floor)
 import Svg.Attributes as SA
 
 -- Holds information about the current viewbox in an easy to store format
@@ -42,7 +43,11 @@ toWorldCoordinates (Camera { position, zoom }) vec = position + ((_ / zoom) <$> 
 
 -- Generate a svg viewbox from a Camera
 toViewBox :: forall r i. Vec2 Number -> Camera -> IProp ( viewBox ∷ String | r ) i
-toViewBox scale (Camera { position, zoom }) = SA.viewBox (position !! d0) (position !! d1) (scale !! d0 * zoom) (scale !! d1 * zoom)
+toViewBox scale (Camera { position, zoom }) =
+  SA.viewBox (floor $ position !! d0)
+    (floor $ position !! d1)
+    (floor $ scale !! d0 * zoom)
+    (floor $ scale !! d1 * zoom)
 
 -- Lenses
 _CameraPosition :: Lens' Camera (Vec2 Number)
