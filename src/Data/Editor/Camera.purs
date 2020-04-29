@@ -12,6 +12,7 @@ module Lunarbox.Data.Editor.Camera
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default)
 import Data.Lens (Lens', over, view)
 import Data.Lens.Record (prop)
@@ -35,6 +36,10 @@ newtype Camera
 derive instance eqCamera :: Eq Camera
 
 derive instance newtypeCamera :: Newtype Camera _
+
+derive newtype instance encodeJsonCamera :: EncodeJson Camera
+
+derive newtype instance decodeJsonCamera :: DecodeJson Camera
 
 instance defaultCamera :: Default Camera where
   def =

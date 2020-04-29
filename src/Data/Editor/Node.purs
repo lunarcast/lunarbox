@@ -13,6 +13,8 @@ module Lunarbox.Data.Editor.Node
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (.:), (:=), (~>))
+import Data.Either (Either(..))
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
@@ -46,6 +48,25 @@ data Node
   | OutputNode (Maybe NodeId)
 
 derive instance eqNode :: Eq Node
+
+instance encodeJsonNode :: EncodeJson Node where
+  encodeJson InputNode = "type" := "input" ~> jsonEmptyObject
+  encodeJson (OutputNode id) = "type" := "output" ~> "inputId" := id ~> jsonEmptyObject
+  encodeJson (ComplexNode data') = "type" := "complex" ~> "innerData" := data' ~> jsonEmptyObject
+
+instance decodeJsonNode :: DecodeJson Node where
+  decodeJson json = do
+    obj <- decodeJson json
+    type' <- obj .: "type"
+    case type' of
+      "input" -> pure InputNode
+      "output" -> do
+        inputId <- obj .: "inputId"
+        pure $ OutputNode inputId
+      "complex" -> do
+        data' <- obj .: "innerData"
+        pure $ ComplexNode data'
+      _ -> Left $ "Cannot decode node of type " <> type'
 
 instance showNode :: Show Node where
   show InputNode = "InputNode"

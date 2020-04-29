@@ -1,6 +1,7 @@
 module Lunarbox.Data.Editor.Node.NodeId where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default)
 import Data.Lens (Lens')
 import Data.Newtype (class Newtype, unwrap)
@@ -14,6 +15,10 @@ derive instance eqNodeId :: Eq NodeId
 derive instance ordNodeId :: Ord NodeId
 
 derive instance newtypeNodeId :: Newtype NodeId _
+
+derive newtype instance encodeJsonNodeId :: EncodeJson NodeId
+
+derive newtype instance decodeJsonNodeId :: DecodeJson NodeId
 
 instance defaultNodeId :: Default NodeId where
   def = NodeId ""

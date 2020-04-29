@@ -7,6 +7,7 @@ module Lunarbox.Data.Editor.Node.NodeData
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -28,6 +29,10 @@ derive instance newtypeNodeData :: Newtype NodeData _
 derive instance eqNodeData :: Eq NodeData
 
 derive instance genericNodeData :: Generic NodeData _
+
+derive newtype instance encodeJsonNodeData :: EncodeJson NodeData
+
+derive newtype instance decodeJsonNodeData :: DecodeJson NodeData
 
 instance showNodeData :: Show NodeData where
   show = genericShow

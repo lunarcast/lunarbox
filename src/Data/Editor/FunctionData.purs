@@ -8,6 +8,7 @@ module Lunarbox.Data.Editor.FunctionData
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default, def)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -30,6 +31,10 @@ newtype FunctionData
 derive instance genericFunctionData :: Generic FunctionData _
 
 derive instance newtypeFunctionData :: Newtype FunctionData _
+
+derive newtype instance encodeJsonFunctionData :: EncodeJson FunctionData
+
+derive newtype instance decodeJsonFunctionData :: DecodeJson FunctionData
 
 instance showFunctionData :: Show FunctionData where
   show = genericShow

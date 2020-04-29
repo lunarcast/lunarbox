@@ -13,10 +13,12 @@ module Lunarbox.Data.Graph
   , edges
   , removeEdge
   , parents
+  , emptyGraph
   , _Graph
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Array (foldr)
 import Data.Array as Array
 import Data.Array as Foldable
@@ -47,6 +49,10 @@ derive instance ordGraph :: (Ord k, Ord v) => Ord (Graph k v)
 
 derive newtype instance showGraph :: (Show k, Show v) => Show (Graph k v)
 
+derive newtype instance encodeJsonFunctionData :: (Ord k, EncodeJson k, EncodeJson v) => EncodeJson (Graph k v)
+
+derive newtype instance decodeJsonFunctionData :: (Ord k, DecodeJson k, DecodeJson v) => DecodeJson (Graph k v)
+
 instance functorGraph :: Ord k => Functor (Graph k) where
   map f (Graph m) = Graph (map (lmap f) m)
 
@@ -56,7 +62,7 @@ instance semigroupGraph :: (Ord k, Semigroup v) => Semigroup (Graph k v) where
     f (Tuple v k) (Tuple v' k') = Tuple (v <> v') $ k `Set.union` k'
 
 instance monoidGraph :: (Ord k, Semigroup v) => Monoid (Graph k v) where
-  mempty = Graph $ Map.empty
+  mempty = emptyGraph
 
 instance foldableGraph :: Ord k => Foldable (Graph k) where
   foldMap f = foldMap (f <<< fst) <<< unwrap
@@ -83,6 +89,10 @@ instance indexGraph :: Ord k => Index (Graph k v) k v where
 instance atGraph :: Ord k => At (Graph k v) k v where
   -- good thing at least I understand this one:)
   at k = lens (lookup k) \m -> maybe (delete k m) (\v -> insert k v m)
+
+-- A graph with nothing in it
+emptyGraph :: forall k v. Ord k => Graph k v
+emptyGraph = Graph $ Map.empty
 
 toMap :: forall k v. Ord k => Graph k v -> Map.Map k v
 toMap = map fst <<< unwrap

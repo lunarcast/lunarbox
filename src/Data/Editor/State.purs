@@ -16,6 +16,7 @@ module Lunarbox.Data.Editor.State
   , setScale
   , adjustSceneScale
   , pan
+  , emptyState
   , _valueMap
   , _nodeData
   , _atNodeData
@@ -83,9 +84,9 @@ import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.Camera (Camera)
 import Lunarbox.Data.Editor.Camera as Camera
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, _OutputNode, _nodeInput, _nodeInputs)
@@ -93,7 +94,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
-import Lunarbox.Data.Editor.Project (Project, _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
+import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
@@ -138,144 +139,27 @@ type State a s m
     , sceneScale :: Vec2 Number
     }
 
--- Lenses
-_cameras :: forall a s m. Lens' (State a s m) (Map FunctionName Camera)
-_cameras = prop (SProxy :: _ "cameras")
-
-_camera :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Camera)
-_camera name = _cameras <<< at name
-
-_sceneScale :: forall a s m. Lens' (State a s m) (Vec2 Number)
-_sceneScale = prop (SProxy :: _ "sceneScale")
-
-_runtimeOverwrites :: forall a s m. Lens' (State a s m) (ValueMap Location)
-_runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
-
-_valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
-_valueMap = prop (SProxy :: _ "valueMap")
-
-_nodeData :: forall a s m. Lens' (State a s m) (Map (Tuple FunctionName NodeId) NodeData)
-_nodeData = prop (SProxy :: _ "nodeData")
-
-_atNodeData :: forall a s m. FunctionName -> NodeId -> Lens' (State a s m) (Maybe NodeData)
-_atNodeData name id = _nodeData <<< at (Tuple name id)
-
-_functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
-_functionData = prop (SProxy :: _ "functionData")
-
-_atFunctionData :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe FunctionData)
-_atFunctionData name = _functionData <<< at name
-
-_project :: forall a s m. Lens' (State a s m) Project
-_project = prop (SProxy :: _ "project")
-
-_colorMap :: forall a s m. Lens' (State a s m) (Map Location Color)
-_colorMap = prop (SProxy :: _ "colorMap")
-
-_atColorMap :: forall a s m. Location -> Traversal' (State a s m) (Maybe Color)
-_atColorMap location = _colorMap <<< at location
-
-_lastMousePosition :: forall a s m. Lens' (State a s m) (Vec2 Number)
-_lastMousePosition = prop (SProxy :: _ "lastMousePosition")
-
-_expression :: forall a s m. Lens' (State a s m) (Expression Location)
-_expression = prop (SProxy :: _ "expression")
-
-_typeMap :: forall a s m. Lens' (State a s m) (Map Location Type)
-_typeMap = prop (SProxy :: _ "typeMap")
-
-_nextId :: forall a s m. Lens' (State a s m) Int
-_nextId = prop (SProxy :: _ "nextId")
-
-_functions :: forall a s m. Lens' (State a s m) (G.Graph FunctionName DataflowFunction)
-_functions = _project <<< _ProjectFunctions
-
-_nodeGroup :: forall a s m. FunctionName -> Traversal' (State a s m) NodeGroup
-_nodeGroup name = _project <<< _projectNodeGroup name
-
-_nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (G.Graph NodeId Node)
-_nodes name = _nodeGroup name <<< _NodeGroupNodes
-
-_atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) (Maybe Node)
-_atNode name id = _project <<< _atProjectNode name id
-
-_isSelected :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) Boolean
-_isSelected name id = _atNodeData name id <<< _Just <<< _NodeDataSelected
-
-_function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
-_function name = _project <<< _atProjectFunction name
-
-_currentFunction :: forall a s m. Lens' (State a s m) (Maybe FunctionName)
-_currentFunction = prop (SProxy :: _ "currentFunction")
-
-_panelIsOpen :: forall a s m. Lens' (State a s m) Boolean
-_panelIsOpen = prop (SProxy :: _ "panelIsOpen")
-
-_currentTab :: forall a s m. Lens' (State a s m) Tab
-_currentTab = prop (SProxy :: _ "currentTab")
-
-_partialConnection :: forall a s m. Lens' (State a s m) PartialConnection
-_partialConnection = prop (SProxy :: _ "partialConnection")
-
-_partialFrom :: forall a s m. Lens' (State a s m) ((Maybe NodeId))
-_partialFrom = _partialConnection <<< _from
-
-_partialTo :: forall a s m. Lens' (State a s m) (Maybe (Tuple NodeId Int))
-_partialTo = _partialConnection <<< _to
-
-_currentNodeGroup :: forall a s m. Lens' (State a s m) (Maybe NodeGroup)
-_currentNodeGroup =
-  ( lens
-      ( \state -> do
-          currentFunction <- view _currentFunction state
-          preview (_nodeGroup currentFunction) state
-      )
-      ( \state maybeValue ->
-          fromMaybe state do
-            value <- maybeValue
-            currentFunction <- view _currentFunction state
-            pure $ set (_nodeGroup currentFunction) value state
-      )
-  )
-
-_atCurrentNodeData :: forall a s m. NodeId -> Traversal' (State a s m) (Maybe NodeData)
-_atCurrentNodeData id =
-  lens
-    ( \state -> do
-        currentFunction <- view _currentFunction state
-        view (_atNodeData currentFunction id) state
-    )
-    ( \state value ->
-        fromMaybe state do
-          currentFunction <- view _currentFunction state
-          pure $ set (_atNodeData currentFunction id) value state
-    )
-
-_currentNodes :: forall a s m. Traversal' (State a s m) (G.Graph NodeId Node)
-_currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
-
-_atCurrentNode :: forall a s m. NodeId -> Traversal' (State a s m) Node
-_atCurrentNode id = _currentNodes <<< ix id
-
-_functionUis :: forall a s m. Lens' (State a s m) (Map FunctionName (FunctionUi a s m))
-_functionUis = prop (SProxy :: _ "functionUis")
-
-_ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
-_ui functionName = _functionUis <<< at functionName
-
-_currentCamera :: forall a s m. Lens' (State a s m) Camera
-_currentCamera =
-  lens
-    ( \state ->
-        fromMaybe def do
-          currentFunction <- view _currentFunction state
-          join $ preview (_camera currentFunction) state
-    )
-    ( \state value ->
-        fromMaybe state do
-          currentFunction <- view _currentFunction state
-          pure $ set (_camera currentFunction) (Just value) state
-    )
+-- Starting state which contains nothing
+emptyState :: forall a s m. State a s m
+emptyState =
+  { currentTab: Settings
+  , nextId: 0
+  , panelIsOpen: false
+  , typeMap: mempty
+  , colorMap: mempty
+  , functionData: mempty
+  , valueMap: mempty
+  , runtimeOverwrites: mempty
+  , functionUis: mempty
+  , cameras: mempty
+  , nodeData: mempty
+  , partialConnection: def
+  , sceneScale: zero
+  , expression: nothing
+  , currentFunction: Nothing
+  , lastMousePosition: zero
+  , project: Project { main: FunctionName "main", functions: G.emptyGraph }
+  }
 
 -- Helpers
 -- Compile a project
@@ -473,3 +357,142 @@ adjustSceneScale = do
 -- Pan the current camera in  screen coordinates
 pan :: forall a s m. Vec2 Number -> State a s m -> State a s m
 pan = over _currentCamera <<< Camera.pan
+
+-- Lenses
+_cameras :: forall a s m. Lens' (State a s m) (Map FunctionName Camera)
+_cameras = prop (SProxy :: _ "cameras")
+
+_camera :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Camera)
+_camera name = _cameras <<< at name
+
+_sceneScale :: forall a s m. Lens' (State a s m) (Vec2 Number)
+_sceneScale = prop (SProxy :: _ "sceneScale")
+
+_runtimeOverwrites :: forall a s m. Lens' (State a s m) (ValueMap Location)
+_runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
+
+_valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
+_valueMap = prop (SProxy :: _ "valueMap")
+
+_nodeData :: forall a s m. Lens' (State a s m) (Map (Tuple FunctionName NodeId) NodeData)
+_nodeData = prop (SProxy :: _ "nodeData")
+
+_atNodeData :: forall a s m. FunctionName -> NodeId -> Lens' (State a s m) (Maybe NodeData)
+_atNodeData name id = _nodeData <<< at (Tuple name id)
+
+_functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
+_functionData = prop (SProxy :: _ "functionData")
+
+_atFunctionData :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe FunctionData)
+_atFunctionData name = _functionData <<< at name
+
+_project :: forall a s m. Lens' (State a s m) Project
+_project = prop (SProxy :: _ "project")
+
+_colorMap :: forall a s m. Lens' (State a s m) (Map Location Color)
+_colorMap = prop (SProxy :: _ "colorMap")
+
+_atColorMap :: forall a s m. Location -> Traversal' (State a s m) (Maybe Color)
+_atColorMap location = _colorMap <<< at location
+
+_lastMousePosition :: forall a s m. Lens' (State a s m) (Vec2 Number)
+_lastMousePosition = prop (SProxy :: _ "lastMousePosition")
+
+_expression :: forall a s m. Lens' (State a s m) (Expression Location)
+_expression = prop (SProxy :: _ "expression")
+
+_typeMap :: forall a s m. Lens' (State a s m) (Map Location Type)
+_typeMap = prop (SProxy :: _ "typeMap")
+
+_nextId :: forall a s m. Lens' (State a s m) Int
+_nextId = prop (SProxy :: _ "nextId")
+
+_functions :: forall a s m. Lens' (State a s m) (G.Graph FunctionName DataflowFunction)
+_functions = _project <<< _ProjectFunctions
+
+_nodeGroup :: forall a s m. FunctionName -> Traversal' (State a s m) NodeGroup
+_nodeGroup name = _project <<< _projectNodeGroup name
+
+_nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (G.Graph NodeId Node)
+_nodes name = _nodeGroup name <<< _NodeGroupNodes
+
+_atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) (Maybe Node)
+_atNode name id = _project <<< _atProjectNode name id
+
+_isSelected :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) Boolean
+_isSelected name id = _atNodeData name id <<< _Just <<< _NodeDataSelected
+
+_function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
+_function name = _project <<< _atProjectFunction name
+
+_currentFunction :: forall a s m. Lens' (State a s m) (Maybe FunctionName)
+_currentFunction = prop (SProxy :: _ "currentFunction")
+
+_panelIsOpen :: forall a s m. Lens' (State a s m) Boolean
+_panelIsOpen = prop (SProxy :: _ "panelIsOpen")
+
+_currentTab :: forall a s m. Lens' (State a s m) Tab
+_currentTab = prop (SProxy :: _ "currentTab")
+
+_partialConnection :: forall a s m. Lens' (State a s m) PartialConnection
+_partialConnection = prop (SProxy :: _ "partialConnection")
+
+_partialFrom :: forall a s m. Lens' (State a s m) ((Maybe NodeId))
+_partialFrom = _partialConnection <<< _from
+
+_partialTo :: forall a s m. Lens' (State a s m) (Maybe (Tuple NodeId Int))
+_partialTo = _partialConnection <<< _to
+
+_currentNodeGroup :: forall a s m. Lens' (State a s m) (Maybe NodeGroup)
+_currentNodeGroup =
+  ( lens
+      ( \state -> do
+          currentFunction <- view _currentFunction state
+          preview (_nodeGroup currentFunction) state
+      )
+      ( \state maybeValue ->
+          fromMaybe state do
+            value <- maybeValue
+            currentFunction <- view _currentFunction state
+            pure $ set (_nodeGroup currentFunction) value state
+      )
+  )
+
+_atCurrentNodeData :: forall a s m. NodeId -> Traversal' (State a s m) (Maybe NodeData)
+_atCurrentNodeData id =
+  lens
+    ( \state -> do
+        currentFunction <- view _currentFunction state
+        view (_atNodeData currentFunction id) state
+    )
+    ( \state value ->
+        fromMaybe state do
+          currentFunction <- view _currentFunction state
+          pure $ set (_atNodeData currentFunction id) value state
+    )
+
+_currentNodes :: forall a s m. Traversal' (State a s m) (G.Graph NodeId Node)
+_currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
+
+_atCurrentNode :: forall a s m. NodeId -> Traversal' (State a s m) Node
+_atCurrentNode id = _currentNodes <<< ix id
+
+_functionUis :: forall a s m. Lens' (State a s m) (Map FunctionName (FunctionUi a s m))
+_functionUis = prop (SProxy :: _ "functionUis")
+
+_ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
+_ui functionName = _functionUis <<< at functionName
+
+_currentCamera :: forall a s m. Lens' (State a s m) Camera
+_currentCamera =
+  lens
+    ( \state ->
+        fromMaybe def do
+          currentFunction <- view _currentFunction state
+          join $ preview (_camera currentFunction) state
+    )
+    ( \state value ->
+        fromMaybe state do
+          currentFunction <- view _currentFunction state
+          pure $ set (_camera currentFunction) (Just value) state
+    )

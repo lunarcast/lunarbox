@@ -11,6 +11,7 @@ import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
+import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
@@ -38,15 +39,16 @@ import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentCamera, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, adjustSceneScale, compile, deleteSelection, getSceneMousePosition, initializeFunction, pan, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.Project (_projectNodeGroup)
+import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentCamera, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, adjustSceneScale, compile, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
@@ -112,26 +114,7 @@ createId = do
 component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
 component =
   mkComponent
-    { initialState:
-      const
-        { currentTab: Settings
-        , nextId: 0
-        , panelIsOpen: false
-        , typeMap: mempty
-        , colorMap: mempty
-        , functionData: mempty
-        , valueMap: mempty
-        , runtimeOverwrites: mempty
-        , functionUis: mempty
-        , cameras: mempty
-        , partialConnection: def
-        , sceneScale: zero
-        , expression: nothing
-        , currentFunction: Nothing
-        , lastMousePosition: zero
-        , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
-        , project: emptyProject $ NodeId "firstOutput"
-        }
+    { initialState: const $ initializeFunction (FunctionName "main") emptyState
     , render
     , eval:
       mkEval
@@ -167,6 +150,17 @@ component =
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> do
         handleAction TogglePanel
+      | KE.ctrlKey event && KE.key event == "Enter" -> do
+        state <- get
+        let
+          json = stateToJson state
+
+          result = jsonToState json
+
+          state' = case result of
+            Left err -> state
+            Right state'' -> state''
+        put state'
       | otherwise -> pure unit
     LoadNodes -> do
       modify_ $ compile <<< loadPrelude
