@@ -2,14 +2,19 @@ module Lunarbox.Data.Editor.Camera
   ( Camera(..)
   , toWorldCoordinates
   , toViewBox
+  , _CameraPosition
   ) where
 
 import Prelude
 import Data.Default (class Default)
+import Data.Lens (Lens')
+import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype)
+import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (IProp)
+import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
 import Svg.Attributes as SA
 
@@ -38,3 +43,7 @@ toWorldCoordinates (Camera { position, zoom }) vec = position + ((_ / zoom) <$> 
 -- Generate a svg viewbox from a Camera
 toViewBox :: forall r i. Vec2 Number -> Camera -> IProp ( viewBox ∷ String | r ) i
 toViewBox scale (Camera { position, zoom }) = SA.viewBox (position !! d0) (position !! d1) (scale !! d0 * zoom) (scale !! d1 * zoom)
+
+-- Lenses
+_CameraPosition :: Lens' Camera (Vec2 Number)
+_CameraPosition = newtypeIso <<< prop (SProxy :: _ "position")

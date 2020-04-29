@@ -15,6 +15,7 @@ module Lunarbox.Data.Editor.State
   , evaluate
   , setScale
   , adjustSceneScale
+  , pan
   , _valueMap
   , _nodeData
   , _atNodeData
@@ -48,6 +49,7 @@ module Lunarbox.Data.Editor.State
   , _camera
   , _cameras
   , _sceneScale
+  , _currentCamera
   ) where
 
 import Prelude
@@ -78,7 +80,7 @@ import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.Camera (Camera)
+import Lunarbox.Data.Editor.Camera (Camera, _CameraPosition, toWorldCoordinates)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
@@ -260,6 +262,20 @@ _functionUis = prop (SProxy :: _ "functionUis")
 _ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
 _ui functionName = _functionUis <<< at functionName
 
+_currentCamera :: forall a s m. Lens' (State a s m) Camera
+_currentCamera =
+  lens
+    ( \state ->
+        fromMaybe def do
+          currentFunction <- view _currentFunction state
+          join $ preview (_camera currentFunction) state
+    )
+    ( \state value ->
+        fromMaybe state do
+          currentFunction <- view _currentFunction state
+          pure $ set (_camera currentFunction) (Just value) state
+    )
+
 -- Helpers
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
@@ -380,7 +396,9 @@ removeConnection from (Tuple toId toIndex) state = state''
 
 -- Helper function to set the mouse position relative to the svg element
 setRelativeMousePosition :: forall a s m. DOMRect -> Vec2 Number -> State a s m -> State a s m
-setRelativeMousePosition { top, left } position = set _lastMousePosition $ Just $ position - vec2 left top
+setRelativeMousePosition { top, left } position = set _lastMousePosition $ Just sceneCoordinates
+  where
+  sceneCoordinates = position - vec2 left top
 
 -- Helper to update the mouse position of the svg scene
 getSceneMousePosition :: forall q i o a s m. MonadEffect m => Vec2 Number -> HalogenM (State a s m) q i o m (State a s m)
@@ -450,3 +468,6 @@ adjustSceneScale :: forall q i o m a s. MonadEffect m => HalogenM (State a s m) 
 adjustSceneScale = do
   domRect <- liftEffect getSceneBoundingBox
   modify_ $ setScale domRect
+
+pan :: forall a s m. Vec2 Number -> State a s m -> State a s m
+pan offset = over (_currentCamera <<< _CameraPosition) (_ - offset)

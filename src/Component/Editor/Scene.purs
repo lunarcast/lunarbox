@@ -32,7 +32,7 @@ import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
-import Lunarbox.Data.Editor.Camera (Camera, toViewBox)
+import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -69,7 +69,7 @@ type Input a s m
     }
 
 type Actions a
-  = { mouseMove :: Vec2 Number -> Maybe a
+  = { mouseMove :: Int -> Vec2 Number -> Maybe a
     , mouseDown :: Vec2 Number -> Maybe a
     , selectNode :: NodeId -> Maybe a
     , mouseUp :: Maybe a
@@ -170,7 +170,7 @@ createNodeComponent { functionName
         }
 
 scene :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
-scene state@{ nodeData, camera, scale
+scene state@{ nodeData, camera, scale, lastMousePosition
 } actions@{ mouseMove, mouseDown, mouseUp, selectNode } = either (\err -> erroredEditor $ show err) success nodeHtml
   where
   sortedNodes :: Array (Tuple NodeId NodeData)
@@ -178,7 +178,9 @@ scene state@{ nodeData, camera, scale
     sortBy (\(Tuple _ v) (Tuple _ v') -> compare v v')
       $ Map.toUnfoldable nodeData
 
-  nodeHtml = sequence $ (createNodeComponent state actions <$> sortedNodes :: Array (Either _ _))
+  state' = state { lastMousePosition = toWorldCoordinates camera <$> lastMousePosition }
+
+  nodeHtml = sequence $ (createNodeComponent state' actions <$> sortedNodes :: Array (Either _ _))
 
   success =
     SE.svg
@@ -186,7 +188,7 @@ scene state@{ nodeData, camera, scale
       , SA.height $ scale !! d1
       , SA.id "scene"
       , toViewBox scale camera
-      , onMouseMove $ \e -> mouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+      , onMouseMove $ \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseDown $ \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const mouseUp
       ]

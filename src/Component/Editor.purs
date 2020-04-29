@@ -11,7 +11,7 @@ import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
-import Data.Foldable (for_)
+import Data.Foldable (for_, sequence_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
@@ -20,6 +20,7 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
+import Debug.Trace (spy)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe, subscribe', tell)
@@ -34,10 +35,10 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
+import Lunarbox.Data.Editor.Camera (toWorldCoordinates)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -46,8 +47,9 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentCamera, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, adjustSceneScale, compile, deleteSelection, getSceneMousePosition, initializeFunction, pan, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
+import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Lunarbox.Svg.Attributes (transparent)
@@ -70,7 +72,7 @@ data Action
   | StartFunctionCreation
   | SceneMouseUp
   | SceneMouseDown (Vec2 Number)
-  | SceneMouseMove (Vec2 Number)
+  | SceneMouseMove Int (Vec2 Number)
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | SelectNode NodeId
@@ -91,7 +93,7 @@ type ChildSlots
 sceneActions :: Scene.Actions Action
 sceneActions =
   { mouseDown: Just <<< SceneMouseDown
-  , mouseMove: Just <<< SceneMouseMove
+  , mouseMove: (Just <<< _) <<< SceneMouseMove
   , mouseUp: Just SceneMouseUp
   , selectNode: Just <<< SelectNode
   , selectInput: (Just <<< _) <<< SelectInput
@@ -217,27 +219,30 @@ component =
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
       when (oldFunction == Nothing) adjustSceneScale
-      sc <- gets $ view _sceneScale
-      print sc
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseDown position -> getSceneMousePosition position >>= put
-    SceneMouseMove position -> do
+    SceneMouseMove bits position -> do
       state@{ lastMousePosition } <- get
       state' <- getSceneMousePosition position
-      let
-        relativePosition = view _lastMousePosition state'
+      camera <- gets $ view _currentCamera
+      sequence_ do
+        oldPosition <- toWorldCoordinates camera <$> lastMousePosition
+        newPosition <- toWorldCoordinates camera <$> view _lastMousePosition state'
+        let
+          offset = newPosition - oldPosition
 
-        offset = fromMaybe zero $ (-) <$> relativePosition <*> lastMousePosition
-
-        moveNodes =
-          over _nodeData
-            $ map \node@(NodeData { selected }) ->
-                if selected then
-                  over _NodeDataPosition (_ + offset) node
-                else
-                  node
-      put $ moveNodes state'
+          update =
+            if isPressed RightButton bits then
+              pan offset
+            else
+              over _nodeData
+                $ map \node@(NodeData { selected }) ->
+                    if selected then
+                      over _NodeDataPosition (_ + offset) node
+                    else
+                      node
+        pure $ put $ update state'
     SceneMouseUp -> do
       modify_ $ over _nodeData $ map $ set _NodeDataSelected false
     SelectNode id -> do
