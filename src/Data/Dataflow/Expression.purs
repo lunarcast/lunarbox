@@ -67,7 +67,7 @@ data Expression l
   | FunctionCall l (Expression l) (Expression l)
   | Lambda l VarName (Expression l)
   | Literal l Literal
-  | Let l Boolean VarName (Expression l) (Expression l)
+  | Let l VarName (Expression l) (Expression l)
   | FixPoint l (Expression l)
   | Chain l (List (Expression l))
   | Native l NativeExpression
@@ -87,7 +87,7 @@ getLocation = case _ of
   FunctionCall l _ _ -> l
   Lambda l _ _ -> l
   Literal l _ -> l
-  Let l _ _ _ _ -> l
+  Let l _ _ _ -> l
   FixPoint l _ -> l
   Native l _ -> l
   Chain l _ -> l
@@ -99,7 +99,7 @@ toMap expression =
     <> case expression of
         FunctionCall _ calee input -> toMap calee <> toMap input
         Lambda _ _ body -> toMap body
-        Let _ _ _ value body -> toMap value <> toMap body
+        Let _ _ value body -> toMap value <> toMap body
         Chain _ expressions -> foldr (\expression' -> (<>) $ toMap expression') mempty expressions
         FixPoint _ body -> toMap body
         _ -> mempty
@@ -145,16 +145,16 @@ sumarizeExpression :: forall l. Show l => Eq l => Expression l -> String
 sumarizeExpression = printRawExpression $ const "..."
 
 printRawLet :: forall l. (Expression l -> String) -> Expression l -> String
-printRawLet print (Let _ _ name value _) = indent 2 (unwrap name <> " = " <> print value) <> "\n"
+printRawLet print (Let _ name value _) = indent 2 (unwrap name <> " = " <> print value) <> "\n"
 
 printRawLet _ _ = ""
 
 printLet :: forall l. Boolean -> (Expression l -> String) -> Expression l -> String
-printLet true print expression@(Let _ _ _ _ _) = "let\n" <> printLet false print expression
+printLet true print expression@(Let _ _ _ _) = "let\n" <> printLet false print expression
 
-printLet false print expression@(Let _ _ _ _ next@(Let _ _ _ _ _)) = printRawLet print expression <> printLet false print next
+printLet false print expression@(Let _ _ _ next@(Let _ _ _ _)) = printRawLet print expression <> printLet false print next
 
-printLet false print expression@(Let _ _ _ _ next) = printRawLet print expression <> "in\n" <> indent 2 (print next)
+printLet false print expression@(Let _ _ _ next) = printRawLet print expression <> "in\n" <> indent 2 (print next)
 
 printLet _ _ _ = ""
 
@@ -168,7 +168,7 @@ printRawExpression print expression = case expression of
   FunctionCall _ f i -> print f <> " " <> print i
   Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
   Literal _ literal -> show literal
-  Let _ _ _ _ _ -> printLet true (printRawExpression print) expression
+  Let _ _ _ _ -> printLet true (printRawExpression print) expression
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
   Native _ (NativeExpression t _) -> "native :: " <> show t
   Chain l (e : Nil) -> printRawExpression print e
@@ -203,10 +203,10 @@ wrapWith Nil = identity
 
 -- Optimize an expression
 optimize :: forall l. Expression l -> Expression l
-optimize expression@(Let location generalize name value body) = case removeWrappers body of
+optimize expression@(Let location name value body) = case removeWrappers body of
   Variable location' name'
     | name == name' -> wrapWith (wrappers body) $ wrap location' $ optimize value
-  _ -> Let location generalize name (optimize value) $ optimize body
+  _ -> Let location name (optimize value) $ optimize body
 
 optimize (FunctionCall location calee argument) = FunctionCall location (optimize calee) $ optimize argument
 

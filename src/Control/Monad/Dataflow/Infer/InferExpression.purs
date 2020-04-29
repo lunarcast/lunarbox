@@ -100,7 +100,7 @@ infer expression =
         tv <- fresh
         createConstraint funcType (inputType `TArrow` tv)
         pure tv
-      Let _ shouldGeneralize name value body -> do
+      Let _ name value body -> do
         t <- infer value
         constraints <- gets $ view _constraints
         location <- asks $ view _location

@@ -56,7 +56,7 @@ interpret expression = do
         Chain _ expressions -> case List.last expressions of
           Just expression' -> interpret expression'
           Nothing -> pure Null
-        Let _ _ name value body -> do
+        Let _ name value body -> do
           runtimeValue <- interpret value
           withTerm (show name) runtimeValue $ interpret body
         FixPoint _ function -> interpret $ FunctionCall location function $ FixPoint location function
