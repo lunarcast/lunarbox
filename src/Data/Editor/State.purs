@@ -13,6 +13,8 @@ module Lunarbox.Data.Editor.State
   , deleteSelection
   , setRuntimeValue
   , evaluate
+  , setScale
+  , adjustSceneScale
   , _valueMap
   , _nodeData
   , _atNodeData
@@ -44,6 +46,8 @@ module Lunarbox.Data.Editor.State
   , _ui
   , _runtimeOverwrites
   , _camera
+  , _cameras
+  , _sceneScale
   ) where
 
 import Prelude
@@ -66,7 +70,7 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), snd)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
-import Halogen (HalogenM, get, liftEffect)
+import Halogen (HalogenM, get, liftEffect, modify_)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
@@ -111,7 +115,7 @@ tabIcon = case _ of
   Tree -> "account_tree"
   Problems -> "error"
 
-type State h a
+type State a s m
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
     , project :: Project
@@ -125,91 +129,98 @@ type State h a
     , functionData :: Map FunctionName FunctionData
     , partialConnection :: PartialConnection
     , valueMap :: ValueMap Location
-    , functionUis :: Map FunctionName (FunctionUi h a)
+    , functionUis :: Map FunctionName (FunctionUi a s m)
     , runtimeOverwrites :: ValueMap Location
-    , camera :: Camera
+    , cameras :: Map FunctionName Camera
+    , sceneScale :: Vec2 Number
     }
 
 -- Lenses
-_camera :: forall h a. Lens' (State h a) Camera
-_camera = prop (SProxy :: _ "camera")
+_cameras :: forall a s m. Lens' (State a s m) (Map FunctionName Camera)
+_cameras = prop (SProxy :: _ "cameras")
 
-_runtimeOverwrites :: forall h a. Lens' (State h a) (ValueMap Location)
+_camera :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Camera)
+_camera name = _cameras <<< at name
+
+_sceneScale :: forall a s m. Lens' (State a s m) (Vec2 Number)
+_sceneScale = prop (SProxy :: _ "sceneScale")
+
+_runtimeOverwrites :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
-_valueMap :: forall h a. Lens' (State h a) (ValueMap Location)
+_valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
-_nodeData :: forall h a. Lens' (State h a) (Map (Tuple FunctionName NodeId) NodeData)
+_nodeData :: forall a s m. Lens' (State a s m) (Map (Tuple FunctionName NodeId) NodeData)
 _nodeData = prop (SProxy :: _ "nodeData")
 
-_atNodeData :: forall h a. FunctionName -> NodeId -> Lens' (State h a) (Maybe NodeData)
+_atNodeData :: forall a s m. FunctionName -> NodeId -> Lens' (State a s m) (Maybe NodeData)
 _atNodeData name id = _nodeData <<< at (Tuple name id)
 
-_functionData :: forall h a. Lens' (State h a) (Map FunctionName FunctionData)
+_functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
 _functionData = prop (SProxy :: _ "functionData")
 
-_atFunctionData :: forall h a. FunctionName -> Lens' (State h a) (Maybe FunctionData)
+_atFunctionData :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe FunctionData)
 _atFunctionData name = _functionData <<< at name
 
-_project :: forall h a. Lens' (State h a) Project
+_project :: forall a s m. Lens' (State a s m) Project
 _project = prop (SProxy :: _ "project")
 
-_colorMap :: forall h a. Lens' (State h a) (Map Location Color)
+_colorMap :: forall a s m. Lens' (State a s m) (Map Location Color)
 _colorMap = prop (SProxy :: _ "colorMap")
 
-_atColorMap :: forall h a. Location -> Traversal' (State h a) (Maybe Color)
+_atColorMap :: forall a s m. Location -> Traversal' (State a s m) (Maybe Color)
 _atColorMap location = _colorMap <<< at location
 
-_lastMousePosition :: forall h a. Lens' (State h a) (Maybe (Vec2 Number))
+_lastMousePosition :: forall a s m. Lens' (State a s m) (Maybe (Vec2 Number))
 _lastMousePosition = prop (SProxy :: _ "lastMousePosition")
 
-_expression :: forall h a. Lens' (State h a) (Expression Location)
+_expression :: forall a s m. Lens' (State a s m) (Expression Location)
 _expression = prop (SProxy :: _ "expression")
 
-_typeMap :: forall h a. Lens' (State h a) (Map Location Type)
+_typeMap :: forall a s m. Lens' (State a s m) (Map Location Type)
 _typeMap = prop (SProxy :: _ "typeMap")
 
-_nextId :: forall h a. Lens' (State h a) Int
+_nextId :: forall a s m. Lens' (State a s m) Int
 _nextId = prop (SProxy :: _ "nextId")
 
-_functions :: forall h a. Lens' (State h a) (G.Graph FunctionName DataflowFunction)
+_functions :: forall a s m. Lens' (State a s m) (G.Graph FunctionName DataflowFunction)
 _functions = _project <<< _ProjectFunctions
 
-_nodeGroup :: forall h a. FunctionName -> Traversal' (State h a) NodeGroup
+_nodeGroup :: forall a s m. FunctionName -> Traversal' (State a s m) NodeGroup
 _nodeGroup name = _project <<< _projectNodeGroup name
 
-_nodes :: forall h a. FunctionName -> Traversal' (State h a) (G.Graph NodeId Node)
+_nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (G.Graph NodeId Node)
 _nodes name = _nodeGroup name <<< _NodeGroupNodes
 
-_atNode :: forall h a. FunctionName -> NodeId -> Traversal' (State h a) (Maybe Node)
+_atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) (Maybe Node)
 _atNode name id = _project <<< _atProjectNode name id
 
-_isSelected :: forall h a. FunctionName -> NodeId -> Traversal' (State h a) Boolean
+_isSelected :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) Boolean
 _isSelected name id = _atNodeData name id <<< _Just <<< _NodeDataSelected
 
-_function :: forall h a. FunctionName -> Traversal' (State h a) (Maybe DataflowFunction)
+_function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
 _function name = _project <<< _atProjectFunction name
 
-_currentFunction :: forall h a. Lens' (State h a) (Maybe FunctionName)
+_currentFunction :: forall a s m. Lens' (State a s m) (Maybe FunctionName)
 _currentFunction = prop (SProxy :: _ "currentFunction")
 
-_panelIsOpen :: forall h a. Lens' (State h a) Boolean
+_panelIsOpen :: forall a s m. Lens' (State a s m) Boolean
 _panelIsOpen = prop (SProxy :: _ "panelIsOpen")
 
-_currentTab :: forall h a. Lens' (State h a) Tab
+_currentTab :: forall a s m. Lens' (State a s m) Tab
 _currentTab = prop (SProxy :: _ "currentTab")
 
-_partialConnection :: forall h a. Lens' (State h a) PartialConnection
+_partialConnection :: forall a s m. Lens' (State a s m) PartialConnection
 _partialConnection = prop (SProxy :: _ "partialConnection")
 
-_partialFrom :: forall h a. Lens' (State h a) ((Maybe NodeId))
+_partialFrom :: forall a s m. Lens' (State a s m) ((Maybe NodeId))
 _partialFrom = _partialConnection <<< _from
 
-_partialTo :: forall h a. Lens' (State h a) (Maybe (Tuple NodeId Int))
+_partialTo :: forall a s m. Lens' (State a s m) (Maybe (Tuple NodeId Int))
 _partialTo = _partialConnection <<< _to
 
-_currentNodeGroup :: forall h a. Lens' (State h a) (Maybe NodeGroup)
+_currentNodeGroup :: forall a s m. Lens' (State a s m) (Maybe NodeGroup)
 _currentNodeGroup =
   ( lens
       ( \state -> do
@@ -224,7 +235,7 @@ _currentNodeGroup =
       )
   )
 
-_atCurrentNodeData :: forall h a. NodeId -> Traversal' (State h a) (Maybe NodeData)
+_atCurrentNodeData :: forall a s m. NodeId -> Traversal' (State a s m) (Maybe NodeData)
 _atCurrentNodeData id =
   lens
     ( \state -> do
@@ -237,21 +248,21 @@ _atCurrentNodeData id =
           pure $ set (_atNodeData currentFunction id) value state
     )
 
-_currentNodes :: forall h a. Traversal' (State h a) (G.Graph NodeId Node)
+_currentNodes :: forall a s m. Traversal' (State a s m) (G.Graph NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
-_atCurrentNode :: forall h a. NodeId -> Traversal' (State h a) Node
+_atCurrentNode :: forall a s m. NodeId -> Traversal' (State a s m) Node
 _atCurrentNode id = _currentNodes <<< ix id
 
-_functionUis :: forall h a. Lens' (State h a) (Map FunctionName (FunctionUi h a))
+_functionUis :: forall a s m. Lens' (State a s m) (Map FunctionName (FunctionUi a s m))
 _functionUis = prop (SProxy :: _ "functionUis")
 
-_ui :: forall h a. FunctionName -> Traversal' (State h a) (Maybe (FunctionUi h a))
+_ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
 _ui functionName = _functionUis <<< at functionName
 
 -- Helpers
 -- Compile a project
-compile :: forall h a. State h a -> State h a
+compile :: forall a s m. State a s m -> State a s m
 compile state@{ project, expression, typeMap, valueMap } =
   let
     expression' = compileProject project
@@ -268,7 +279,7 @@ compile state@{ project, expression, typeMap, valueMap } =
     evaluate $ state { expression = expression', typeMap = typeMap' }
 
 -- Evaluate the current expression and write into the value map
-evaluate :: forall h a. State h a -> State h a
+evaluate :: forall a s m. State a s m -> State a s m
 evaluate state = set _valueMap valueMap state
   where
   context =
@@ -285,7 +296,7 @@ evaluate state = set _valueMap valueMap state
       $ interpret expression
 
 -- Tries connecting the pins the user selected
-tryConnecting :: forall h a. State h a -> State h a
+tryConnecting :: forall a s m. State a s m -> State a s m
 tryConnecting state =
   fromMaybe state do
     from <- view _partialFrom state
@@ -319,11 +330,11 @@ tryConnecting state =
     pure $ compile state''''
 
 -- Set the function the user is editing at the moment
-setCurrentFunction :: forall h a. Maybe FunctionName -> State h a -> State h a
+setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
 setCurrentFunction = set _currentFunction
 
 -- Creates a function, adds an output node and set it as the current edited function
-initializeFunction :: forall h a. FunctionName -> State h a -> State h a
+initializeFunction :: forall a s m. FunctionName -> State a s m -> State a s m
 initializeFunction name state =
   let
     id = NodeId $ show name <> "-output"
@@ -341,7 +352,7 @@ initializeFunction name state =
     compile state''''
 
 -- Remove a conenction from the current function
-removeConnection :: forall h a. NodeId -> Tuple NodeId Int -> State h a -> State h a
+removeConnection :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> State a s m
 removeConnection from (Tuple toId toIndex) state = state''
   where
   state' = set (_atCurrentNode toId <<< _nodeInput toIndex) Nothing state
@@ -368,18 +379,18 @@ removeConnection from (Tuple toId toIndex) state = state''
       state'
 
 -- Helper function to set the mouse position relative to the svg element
-setRelativeMousePosition :: forall h a. DOMRect -> Vec2 Number -> State h a -> State h a
+setRelativeMousePosition :: forall a s m. DOMRect -> Vec2 Number -> State a s m -> State a s m
 setRelativeMousePosition { top, left } position = set _lastMousePosition $ Just $ position - vec2 left top
 
 -- Helper to update the mouse position of the svg scene
-getSceneMousePosition :: forall q i o m h a. MonadEffect m => Vec2 Number -> HalogenM (State h a) q i o m (State h a)
+getSceneMousePosition :: forall q i o a s m. MonadEffect m => Vec2 Number -> HalogenM (State a s m) q i o m (State a s m)
 getSceneMousePosition position = do
   state <- get
   bounds <- liftEffect getSceneBoundingBox
   pure $ setRelativeMousePosition bounds position state
 
 -- Deletes a node form a given function
-deleteNode :: forall h a. FunctionName -> NodeId -> State h a -> State h a
+deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
 deleteNode functionName id state =
   if isOutput then
     state
@@ -406,7 +417,7 @@ deleteNode functionName id state =
   removeNodeData = set (_atNodeData functionName id) Nothing
 
 -- Delete all selected nodes
-deleteSelection :: forall h a. State h a -> State h a
+deleteSelection :: forall a s m. State a s m -> State a s m
 deleteSelection state =
   fromMaybe state do
     currentFunction <- view _currentFunction state
@@ -423,9 +434,19 @@ deleteSelection state =
     pure $ compile $ foldr (deleteNode currentFunction) state selectedNodes
 
 -- Sets the runtime value at a location to any runtime value
-setRuntimeValue :: forall h a. FunctionName -> NodeId -> RuntimeValue -> State h a -> State h a
+setRuntimeValue :: forall a s m. FunctionName -> NodeId -> RuntimeValue -> State a s m -> State a s m
 setRuntimeValue functionName nodeId value =
   evaluate
     <<< set
         (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
         (Just value)
+
+-- Set the scale of the scene
+setScale :: forall a s m. DOMRect -> State a s m -> State a s m
+setScale { height, width } = set _sceneScale $ vec2 width height
+
+-- Adjusts the scale based on the scene I get in ts
+adjustSceneScale :: forall q i o m a s. MonadEffect m => HalogenM (State a s m) q i o m Unit
+adjustSceneScale = do
+  domRect <- liftEffect getSceneBoundingBox
+  modify_ $ setScale domRect

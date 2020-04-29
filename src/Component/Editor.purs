@@ -10,6 +10,7 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Array (foldr, (..))
 import Data.Default (def)
+import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Foldable (for_)
 import Data.Lens (over, preview, set, view)
 import Data.List.Lazy as List
@@ -21,7 +22,7 @@ import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (replicate)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe, subscribe', tell)
 import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
@@ -33,6 +34,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
+import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type (numberOfInputs)
@@ -44,14 +46,16 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup, emptyProject)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _typeMap, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atColorMap, _atNode, _atNodeData, _currentFunction, _currentTab, _function, _functions, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, compile, deleteSelection, getSceneMousePosition, initializeFunction, removeConnection, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Lunarbox.Svg.Attributes (transparent)
+import Web.Event.Event (EventType(..))
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.Window (document) as Web
+import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
@@ -73,6 +77,8 @@ data Action
   | LoadNodes
   | RemoveConnection NodeId (Tuple NodeId Int)
   | SetRuntimeValue FunctionName NodeId RuntimeValue
+  | AdjustSceneScale
+  | TogglePanel
 
 data Query a
   = Void
@@ -95,7 +101,7 @@ sceneActions =
   }
 
 -- This is a helper monad which just generates an id
-createId :: forall m h. HalogenM (State h Action) Action ChildSlots Void m (Tuple NodeId (State h Action -> State h Action))
+createId :: forall m. HalogenM (State Action ChildSlots m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
 createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
@@ -111,15 +117,17 @@ component =
         , typeMap: mempty
         , colorMap: mempty
         , functionData: mempty
-        , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
+        , valueMap: mempty
+        , runtimeOverwrites: mempty
+        , functionUis: mempty
+        , cameras: mempty
+        , partialConnection: def
+        , sceneScale: zero
+        , expression: nothing
         , currentFunction: Nothing
         , lastMousePosition: Nothing
-        , expression: nothing
+        , nodeData: Map.singleton (Tuple (FunctionName "main") $ NodeId "firstOutput") def
         , project: emptyProject $ NodeId "firstOutput"
-        , partialConnection: def
-        , valueMap: mempty
-        , functionUis: mempty
-        , runtimeOverwrites: mempty
         }
     , render
     , eval:
@@ -130,22 +138,32 @@ component =
             }
     }
   where
-  handleAction :: forall h. Action -> HalogenM (State h Action) Action ChildSlots Void m Unit
+  handleAction :: Action -> HalogenM (State Action ChildSlots m) Action ChildSlots Void m Unit
   handleAction = case _ of
     Init -> do
+      window <- liftEffect Web.window
+      document <- liftEffect $ Web.document window
+      -- Stuff which we need to run at the start
       handleAction LoadNodes
-      document <- liftEffect $ Web.document =<< Web.window
+      handleAction AdjustSceneScale
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
           KET.keyup
           (HTMLDocument.toEventTarget document)
           (map (HandleKey sid) <<< KE.fromEvent)
+      -- Registr resize events
+      void $ subscribe
+        $ ES.eventListenerEventSource
+            (EventType "resize")
+            (Window.toEventTarget window)
+            (const $ Just AdjustSceneScale)
+    AdjustSceneScale -> adjustSceneScale
     HandleKey sid event
       | KE.key event == "Delete" || KE.key event == "Backspace" -> do
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> do
-        modify_ $ over _panelIsOpen not
+        handleAction TogglePanel
       | otherwise -> pure unit
     LoadNodes -> do
       modify_ $ compile <<< loadPrelude
@@ -184,16 +202,23 @@ component =
 
                 state'''' = over _functions (G.insertEdge name currentFunction) state'''
               void $ put $ compile $ setId state''''
+    TogglePanel -> do
+      bounds <- liftEffect getSceneBoundingBox
+      modify_ $ setScale bounds <<< over _panelIsOpen not
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
-      modify_
-        if (oldTab == newTab) then
-          over _panelIsOpen not
-        else
-          set _currentTab newTab
+      if (oldTab == newTab) then
+        handleAction TogglePanel
+      else
+        modify_ $ set _currentTab newTab
     CreateFunction name -> do
       modify_ $ initializeFunction name
-    SelectFunction name -> modify_ $ setCurrentFunction name
+    SelectFunction name -> do
+      oldFunction <- gets $ view _currentFunction
+      modify_ $ setCurrentFunction name
+      when (oldFunction == Nothing) adjustSceneScale
+      sc <- gets $ view _sceneScale
+      print sc
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseDown position -> getSceneMousePosition position >>= put
@@ -257,7 +282,7 @@ component =
     where
     icon = sidebarIcon currentTab
 
-  panel :: State _ Action -> HH.HTML _ Action
+  panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   panel { currentTab, project, currentFunction, functionData, typeMap } = case currentTab of
     Settings ->
       container "panel-container"
@@ -289,7 +314,7 @@ component =
         ]
     _ -> HH.text "not implemented"
 
-  scene :: forall h. State h Action -> HH.ComponentHTML Action ChildSlots m
+  scene :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   scene { project
   , currentFunction: maybeCurrentFunction
   , expression
@@ -298,9 +323,11 @@ component =
   , functionData
   , nodeData
   , colorMap
+  , cameras
   , partialConnection
   , valueMap
   , functionUis
+  , sceneScale
   } =
     fromMaybe
       emptyEditor do
@@ -310,8 +337,6 @@ component =
       pure
         $ lazy2 Scene.scene
             { project
-            , functionName: currentFunction
-            , typeColors: colorMap
             , expression
             , typeMap
             , lastMousePosition
@@ -319,6 +344,10 @@ component =
             , partialConnection
             , valueMap
             , functionUis
+            , scale: sceneScale
+            , typeColors: colorMap
+            , functionName: currentFunction
+            , camera: fromMaybe def $ Map.lookup currentFunction cameras
             , nodeData:
               Map.fromFoldable
                 $ (uncurry \(Tuple _ id) value -> Tuple id value)
@@ -328,7 +357,7 @@ component =
             }
             sceneActions
 
-  render :: State _ Action -> HH.HTML _ Action
+  render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"

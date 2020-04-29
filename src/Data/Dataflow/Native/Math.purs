@@ -20,7 +20,7 @@ addRuntimeValue (Number n) (Number n') = Number $ n + n'
 
 addRuntimeValue _ _ = Null
 
-add :: forall h a. NativeConfig h a
+add :: forall a s m. NativeConfig a s m
 add =
   NativeConfig
     { name: FunctionName "add"

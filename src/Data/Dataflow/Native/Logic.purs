@@ -40,7 +40,7 @@ binaryLogicFunction = binaryFunction <<< binaryLogicFunction'
 binaryLogicFunctionType :: Type
 binaryLogicFunctionType = TArrow typeBool $ TArrow typeBool typeBool
 
-not' :: forall h a. NativeConfig h a
+not' :: forall a s m. NativeConfig a s m
 not' =
   NativeConfig
     { name: FunctionName "not"
@@ -49,7 +49,7 @@ not' =
     , component: Nothing
     }
 
-and :: forall h a. NativeConfig h a
+and :: forall a s m. NativeConfig a s m
 and =
   NativeConfig
     { name: FunctionName "and"
@@ -58,7 +58,7 @@ and =
     , component: Nothing
     }
 
-or :: forall h a. NativeConfig h a
+or :: forall a s m. NativeConfig a s m
 or =
   NativeConfig
     { name: FunctionName "or"
@@ -72,7 +72,7 @@ evalXor a b
   | a == b = false
   | otherwise = true
 
-xor :: forall h a. NativeConfig h a
+xor :: forall a s m. NativeConfig a s m
 xor =
   NativeConfig
     { name: FunctionName "xor"

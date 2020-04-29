@@ -26,7 +26,7 @@ evalPipe input (Function function) = function input
 
 evalPipe _ _ = Null
 
-pipe :: forall h a. NativeConfig h a
+pipe :: forall a s m. NativeConfig a s m
 pipe =
   NativeConfig
     { name: FunctionName "pipe"
@@ -44,7 +44,7 @@ typeIdentity = Forall [ input ] $ TArrow (TVarariable input) (TVarariable input)
   where
   input = TVarName "i"
 
-identity' :: forall h a. NativeConfig h a
+identity' :: forall a s m. NativeConfig a s m
 identity' =
   NativeConfig
     { name: FunctionName "identity"
@@ -63,7 +63,7 @@ typeConst = Forall [ input, ignore ] $ TArrow (TVarariable input) $ TArrow (TVar
 
   ignore = TVarName "ignore"
 
-const' :: forall h a. NativeConfig h a
+const' :: forall a s m. NativeConfig a s m
 const' =
   NativeConfig
     { name: FunctionName "const"

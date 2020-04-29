@@ -2,6 +2,7 @@ module Lunarbox.Data.Dataflow.Native.Literal (true', false', boolean) where
 
 import Prelude
 import Data.Maybe (Maybe(..))
+import Halogen.HTML as HH
 import Lunarbox.Component.Switch (switch, switchHeight, switchWidth)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
@@ -14,7 +15,7 @@ import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-true' :: forall h a. NativeConfig h a
+true' :: forall a s m. NativeConfig a s m
 true' =
   NativeConfig
     { name: FunctionName "true"
@@ -23,7 +24,7 @@ true' =
     , component: Nothing
     }
 
-false' :: forall h a. NativeConfig h a
+false' :: forall a s m. NativeConfig a s m
 false' =
   NativeConfig
     { name: FunctionName "false"
@@ -33,7 +34,7 @@ false' =
     }
 
 booleaUi ::
-  forall h a. FunctionUi h a
+  forall a s m. FunctionUi a s m
 booleaUi { value } { setValue } =
   SE.foreignObject
     [ SA.height switchHeight
@@ -43,11 +44,11 @@ booleaUi { value } { setValue } =
     [ switch { checked: toBoolean value, round: true } (setValue <<< Bool)
     ]
 
-boolean :: forall h a. NativeConfig h a
+boolean :: forall a s m. NativeConfig a s m
 boolean =
   NativeConfig
     { name: FunctionName "boolean"
     , expression: (NativeExpression (Forall [] typeBool) $ Bool false)
     , functionData: internal []
-    , component: Just booleaUi
+    , component: Just $ HH.lazy2 booleaUi
     }

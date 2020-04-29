@@ -12,7 +12,6 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (replicate)
 import Halogen (ClassName(..))
-import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
@@ -53,7 +52,7 @@ resolvePin (InputPin index) type' = inputs type' !! index
 
 resolvePin OutputPin type' = Just $ output type'
 
-nodeInput :: forall h a. Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input h a
+nodeInput :: forall a s m. Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input a s m
 nodeInput typeMap name functionData =
   { nodeData: def
   , node
@@ -81,7 +80,7 @@ nodeInput typeMap name functionData =
       , function: name
       }
 
-makeNode :: forall h a. Actions a -> NodeDescriptor -> FunctionName -> Map.Map Location Type -> FunctionData -> HTML h a
+makeNode :: forall a s m. Actions a -> NodeDescriptor -> FunctionName -> Map.Map Location Type -> FunctionData -> HH.ComponentHTML a s m
 makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
   HH.div [ className "node" ]
     [ SE.svg
@@ -125,7 +124,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
         ]
     ]
 
-add :: forall h a. Input -> Actions a -> HTML h a
+add :: forall a s m. Input -> Actions a -> HH.ComponentHTML a s m
 add { project, currentFunction, functionData, typeMap } actions =
   container "nodes"
     $ ( \(Tuple name descriptor) ->

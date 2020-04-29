@@ -17,7 +17,7 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
-import Halogen.HTML (HTML, IProp)
+import Halogen.HTML (HTML, IProp, ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
@@ -50,10 +50,10 @@ data SelectionStatus
   | OutputSelected
   | NothingSelected
 
-type Input h a
+type Input a s m
   = { nodeData :: NodeData
     , node :: Node
-    , labels :: Array (HTML h a)
+    , labels :: Array (ComponentHTML a s m)
     , functionData :: FunctionData
     , colorMap :: Map Pin SA.Color
     , hasOutput :: Boolean
@@ -61,7 +61,7 @@ type Input h a
     , selectionStatus :: SelectionStatus
     , mousePosition :: Vec2 Number
     , value :: Maybe RuntimeValue
-    , ui :: Maybe (FunctionUi h a)
+    , ui :: Maybe (FunctionUi a s m)
     }
 
 type Actions a
@@ -100,7 +100,7 @@ scaleConnection id position
   | id == mouseId = scaleConnectionPreview <$> position
   | otherwise = position
 
-renderNode :: forall h a. Input h a -> Actions a -> HTML h a
+renderNode :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
 renderNode { nodeData: nodeData
 , functionData
 , labels
@@ -125,8 +125,8 @@ renderNode { nodeData: nodeData
     $ [ overlays maxRadius labels
       ]
     <> valueSvg
-    <> uiSvg
     <> arcs
+    <> uiSvg
     <> [ movementHandler
       , output
           hasOutput

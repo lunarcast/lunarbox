@@ -18,7 +18,8 @@ import Data.Maybe (Maybe, fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
-import Data.Vec (vec2)
+import Data.Typelevel.Num (d0, d1)
+import Data.Vec (vec2, (!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
@@ -31,6 +32,7 @@ import Lunarbox.Data.Dataflow.Expression as Expression
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Editor.Camera (Camera, toViewBox)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -50,7 +52,7 @@ import Svg.Elements as SE
 import Unsafe.Coerce (unsafeCoerce)
 import Web.UIEvent.MouseEvent as ME
 
-type Input h a
+type Input a s m
   = { project :: Project
     , functionName :: FunctionName
     , typeMap :: Map Location Type
@@ -61,7 +63,9 @@ type Input h a
     , partialConnection :: PartialConnection
     , lastMousePosition :: Maybe (Vec2 Number)
     , valueMap :: ValueMap Location
-    , functionUis :: Map FunctionName (FunctionUi h a)
+    , functionUis :: Map FunctionName (FunctionUi a s m)
+    , camera :: Camera
+    , scale :: Vec2 Number
     }
 
 type Actions a
@@ -103,7 +107,7 @@ getNodeName = case _ of
 getNode :: FunctionName -> NodeId -> Project -> NodeBuild Node
 getNode name id = note (MissingNode id) <<< join <<< (preview $ _atProjectNode name id)
 
-createNodeComponent :: forall h s a m. Input h a -> Actions a -> Tuple NodeId NodeData -> NodeBuild (ComponentHTML a s m)
+createNodeComponent :: forall s a m. Input a s m -> Actions a -> Tuple NodeId NodeData -> NodeBuild (ComponentHTML a s m)
 createNodeComponent { functionName
 , project
 , typeMap
@@ -165,8 +169,8 @@ createNodeComponent { functionName
         , setValue: setValue functionName id
         }
 
-scene :: forall h a s m. Input h a -> Actions a -> ComponentHTML a s m
-scene state@{ nodeData
+scene :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
+scene state@{ nodeData, camera, scale
 } actions@{ mouseMove, mouseDown, mouseUp, selectNode } = either (\err -> erroredEditor $ show err) success nodeHtml
   where
   sortedNodes :: Array (Tuple NodeId NodeData)
@@ -178,9 +182,10 @@ scene state@{ nodeData
 
   success =
     SE.svg
-      [ SA.width 100000.0
-      , SA.height 100000.0
+      [ SA.width $ scale !! d0
+      , SA.height $ scale !! d1
       , SA.id "scene"
+      , toViewBox scale camera
       , onMouseMove $ \e -> mouseMove $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseDown $ \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseUp $ const mouseUp

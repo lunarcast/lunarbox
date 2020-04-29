@@ -26,7 +26,7 @@ evalIf (Bool false) = binaryFunction $ flip const
 
 evalIf _ = Null
 
-if' :: forall h a. NativeConfig h a
+if' :: forall a s m. NativeConfig a s m
 if' =
   NativeConfig
     { name: FunctionName "if"
