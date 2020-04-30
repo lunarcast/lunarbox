@@ -21,7 +21,7 @@ import Routing.Duplex (parse)
 import Routing.PushState (makeInterface, matchesWith)
 
 baseUrl :: BaseUrl
-baseUrl = BaseUrl "something"
+baseUrl = BaseUrl "http://something.com"
 
 main :: Effect Unit
 main =

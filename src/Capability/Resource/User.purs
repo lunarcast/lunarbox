@@ -27,4 +27,4 @@ class
 instance manageUserHalogenM :: ManageUser m => ManageUser (HalogenM st act slots msg m) where
   loginUser = lift <<< loginUser
   registerUser = lift <<< registerUser
-  getCurrentUser = getCurrentUser
+  getCurrentUser = lift getCurrentUser

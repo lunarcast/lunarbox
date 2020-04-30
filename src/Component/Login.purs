@@ -20,6 +20,7 @@ import Lunarbox.Api.Request (LoginFields)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.User (class ManageUser, loginUser)
 import Lunarbox.Component.Utils (className, whenElem)
+import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Profile (Email)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Form.Field as Field
@@ -57,6 +58,7 @@ component =
             Just profile -> do
               void $ query F._formless unit $ injQuery $ SetLoginError false unit
               st <- get
+              print "here"
               when st.redirect $ navigate Home
 
   render _ =
