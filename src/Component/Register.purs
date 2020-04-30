@@ -15,7 +15,7 @@ import Formless as F
 import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Lunarbox.Api.Requests (RegisterFields)
+import Lunarbox.Api.Request (RegisterFields)
 import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Profile (Email, Username)

@@ -10,6 +10,7 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Login as Login
 import Lunarbox.Component.Register as Register
@@ -39,7 +40,13 @@ type ChildSlots
 type ComponentM m a
   = HalogenM State Action ChildSlots Void m a
 
-component :: forall m. MonadAff m => MonadEffect m => Navigate m => MonadReader Config m => Component HH.HTML Query {} Void m
+component ::
+  forall m.
+  MonadAff m =>
+  MonadEffect m =>
+  Navigate m =>
+  MonadReader Config m =>
+  ManageUser m => Component HH.HTML Query {} Void m
 component =
   mkComponent
     { initialState: const { route: Nothing }

@@ -11,14 +11,17 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
+import Formless (injQuery)
 import Formless as F
-import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, defaultEval, get, mkComponent, mkEval, modify_, query)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Lunarbox.Api.Requests (LoginFields)
+import Lunarbox.Api.Request (LoginFields)
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Capability.Resource.User (class ManageUser, loginUser)
 import Lunarbox.Component.Utils (className, whenElem)
-import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Profile (Email)
+import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Form.Field as Field
 import Lunarbox.Form.Validation (emailValidators, passwordValidators)
 import Lunarbox.Form.Validation as V
@@ -33,7 +36,7 @@ type Input
 type ChildSlots
   = ( formless :: F.Slot LoginForm FormQuery () LoginFields Unit )
 
-component :: forall q o m. MonadEffect m => MonadAff m => Component HH.HTML q Input o m
+component :: forall q o m. MonadEffect m => MonadAff m => ManageUser m => Navigate m => Component HH.HTML q Input o m
 component =
   mkComponent
     { initialState: identity
@@ -47,9 +50,14 @@ component =
   where
   handleAction :: Action -> HalogenM Input Action ChildSlots o m Unit
   handleAction = case _ of
-    HandleLoginForm { email, password } -> do
-      print email
-      print password
+    HandleLoginForm fields -> do
+      loginUser fields
+        >>= case _ of
+            Nothing -> void $ query F._formless unit $ injQuery $ SetLoginError true unit
+            Just profile -> do
+              void $ query F._formless unit $ injQuery $ SetLoginError false unit
+              st <- get
+              when st.redirect $ navigate Home
 
   render _ =
     formPage "Login"

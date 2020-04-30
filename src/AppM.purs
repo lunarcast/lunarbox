@@ -5,7 +5,10 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, runRead
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Lunarbox.Api.Request as Request
+import Lunarbox.Api.Utils (authenticate, mkRequest)
 import Lunarbox.Capability.Navigate (class Navigate)
+import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Route (routingCodec)
 import Routing.Duplex (print)
@@ -41,3 +44,8 @@ derive newtype instance monadReaderAppM :: MonadReader Config AppM
 
 instance navigateAppM :: Navigate AppM where
   navigate = liftEffect <<< setHash <<< print routingCodec
+
+instance manageUserAppM :: ManageUser AppM where
+  loginUser = authenticate Request.login
+  registerUser = authenticate Request.register
+  getCurrentUser = mkRequest Request.profile

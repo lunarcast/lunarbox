@@ -12,7 +12,7 @@ import Halogen (Component, hoist, tell)
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.HTML (HTML)
 import Halogen.VDom.Driver (runUI)
-import Lunarbox.Api.Requests (BaseUrl(..), profile)
+import Lunarbox.Api.Request (BaseUrl(..), profile)
 import Lunarbox.AppM (runAppM)
 import Lunarbox.Component.Router as Router
 import Lunarbox.Config (Config(..))

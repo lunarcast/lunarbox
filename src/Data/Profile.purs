@@ -1,14 +1,20 @@
 module Lunarbox.Data.Profile
   ( Username(..)
   , Email(..)
-  , Profile(..)
+  , ProfileRep
+  , Profile
+  , ProfileWithEmail
+  , _username
   ) where
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Lens (Lens')
+import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype)
+import Data.Symbol (SProxy(..))
 
 newtype Email
   = Email String
@@ -46,23 +52,18 @@ derive newtype instance decodeJsonUsername :: DecodeJson Username
 instance showUsername :: Show Username where
   show = genericShow
 
-newtype Profile
-  = Profile
-  { username :: Username
-  , email :: Email
-  }
+-- The actual type for profiles
+type ProfileRep row
+  = ( username :: Username
+    | row
+    )
 
-derive instance newtypeProfile :: Newtype Profile _
+type Profile
+  = { | ProfileRep () }
 
-derive instance genericProfile :: Generic Profile _
+type ProfileWithEmail
+  = { | ProfileRep ( email :: Email ) }
 
-derive instance eq :: Eq Profile
-
-derive instance ord :: Ord Profile
-
-derive newtype instance encodeJsonProfile :: EncodeJson Profile
-
-derive newtype instance decodeJsonProfile :: DecodeJson Profile
-
-instance showProfile :: Show Profile where
-  show = genericShow
+-- Lenses
+_username :: forall r. Lens' { username :: Username | r } Username
+_username = prop (SProxy :: _ "username")

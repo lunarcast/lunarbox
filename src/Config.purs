@@ -3,15 +3,22 @@ module Lunarbox.Config
   , DevOptions(..)
   , UserEnv
   , shouldCancelOnBlur
+  , _user
+  , _currentUser
+  , _baseUrl
   ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, asks)
+import Data.Lens (Lens')
+import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
+import Data.Symbol (SProxy(..))
 import Effect.Aff.Bus (BusRW)
 import Effect.Ref (Ref)
-import Lunarbox.Api.Requests (BaseUrl)
+import Lunarbox.Api.Request (BaseUrl)
+import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Profile (Profile)
 
 type DevOptions
@@ -41,3 +48,13 @@ shouldCancelOnBlur = do
   case devOptions of
     Just { cancelInputsOnBlur } -> pure cancelInputsOnBlur
     Nothing -> pure true
+
+-- Lenses
+_user :: Lens' Config UserEnv
+_user = newtypeIso <<< prop (SProxy :: _ "user")
+
+_currentUser :: Lens' Config (Ref (Maybe Profile))
+_currentUser = _user <<< prop (SProxy :: _ "currentUser")
+
+_baseUrl :: Lens' Config BaseUrl
+_baseUrl = newtypeIso <<< prop (SProxy :: _ "baseUrl")

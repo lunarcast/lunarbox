@@ -1,4 +1,4 @@
-module Lunarbox.Api.Requests where
+module Lunarbox.Api.Request where
 
 import Prelude
 import Affjax (Request, printError, request)
