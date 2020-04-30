@@ -1,11 +1,10 @@
--- His is a modified version of https://github.com/thomashoneyman/purescript-halogen-realworld/blob/master/src/Component/Utils.purs
+-- This is a little bit modified version of https://github.com/thomashoneyman/purescript-halogen-realworld/blob/master/src/Component/Utils.purs
+-- If you're a judge from ie you should probably look somewhere else :D
 module Lunarbox.Component.HOC.Connect where
 
 import Prelude
-import Lunarbox.Component.Utils (busEventSource)
-import Lunarbox.Data.Profile (Profile)
-import Lunarbox.Config (UserEnv)
 import Control.Monad.Reader (class MonadAsk, asks)
+import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
@@ -13,6 +12,9 @@ import Effect.Ref as Ref
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Lunarbox.Component.Utils (busEventSource)
+import Lunarbox.Config (Config, _user)
+import Lunarbox.Data.Profile (Profile)
 import Prim.Row as Row
 import Record as Record
 
@@ -34,9 +36,9 @@ _inner = SProxy :: SProxy "inner"
 -- | component because it has no queries or outputs of its own. That makes
 -- | it a transparent wrapper around the inner component.
 component ::
-  forall query input output m r.
+  forall query input output m.
   MonadAff m =>
-  MonadAsk { userEnv :: UserEnv | r } m =>
+  MonadAsk Config m =>
   Row.Lacks "currentUser" input =>
   H.Component HH.HTML query { | WithCurrentUser input } output m ->
   H.Component HH.HTML query { | input } output m
@@ -57,16 +59,11 @@ component innerComponent =
     }
   where
   handleAction = case _ of
-    -- On initialization we'll read the current value of the user in
-    -- state; we'll also subscribe to any updates so we can always
-    -- stay in sync.
     Initialize -> do
-      { currentUser, userBus } <- asks _.userEnv
+      { currentUser, userBus } <- asks $ view _user
       _ <- H.subscribe (HandleUserBus <$> busEventSource userBus)
       mbProfile <- liftEffect $ Ref.read currentUser
       H.modify_ _ { currentUser = mbProfile }
-    -- When the user in global state changes, this event will occur
-    -- and we need to update our local state to stay in sync.
     HandleUserBus mbProfile -> H.modify_ _ { currentUser = mbProfile }
     Receive input -> do
       { currentUser } <- H.get
