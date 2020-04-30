@@ -10,18 +10,20 @@ import Formless as F
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Component.Utils (className, maybeElement)
+import Lunarbox.Component.Utils (className)
 import Lunarbox.Form.Validation as V
 import Type.Row as Row
 
 -- Reusable submit button
 submit :: forall form act slots m. String -> F.ComponentHTML form act slots m
 submit buttonText =
-  HH.button
-    [ className "submit"
-    , onClick $ const $ Just F.submit
+  HH.div [ className "submit-container" ]
+    [ HH.button
+        [ className "submit"
+        , onClick $ const $ Just F.submit
+        ]
+        [ HH.text buttonText ]
     ]
-    [ HH.text buttonText ]
 
 -- Modified version of  https://github.com/thomashoneyman/purescript-halogen-realworld/blob/master/src/Form/Field.purs
 input ::
@@ -40,14 +42,16 @@ input fieldSymbol form props =
     [ className "form-group" ]
     [ HH.input
         ( append
-            [ className "form-control form-control-lg"
+            [ className "form-field"
             , HP.value $ F.getInput fieldSymbol form
             , onValueInput $ Just <<< F.setValidate fieldSymbol
             ]
             props
         )
-    , maybeElement (F.getError fieldSymbol form) \err ->
-        HH.div
-          [ className "error-messages" ]
-          [ HH.text $ show err ]
+    , case (F.getError fieldSymbol form) of
+        Just err ->
+          HH.div
+            [ className "error-message form-message" ]
+            [ HH.text $ show err ]
+        Nothing -> HH.div [ className "no-error form-message" ] [ HH.text "✔ everything good" ]
     ]

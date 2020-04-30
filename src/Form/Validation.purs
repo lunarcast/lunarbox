@@ -14,12 +14,14 @@ data FormError
   | InvalidUsername
 
 instance showFormError :: Show FormError where
-  show = case _ of
-    Required -> "This field is required."
-    TooShort min -> "This field needs at least " <> show min <> " characters."
-    TooLong max -> "This fields cannot include more than " <> show max <> " characters."
-    InvalidEmail -> "Invalid email address"
-    InvalidUsername -> "Invalid username"
+  show error =
+    "✖ "
+      <> case error of
+          Required -> "This field is required."
+          TooShort min -> "This field needs at least " <> show min <> " characters."
+          TooLong max -> "This fields cannot include more than " <> show max <> " characters."
+          InvalidEmail -> "Invalid email address"
+          InvalidUsername -> "Invalid username"
 
 -- Helper to validate form errors based on a predicate
 condition :: forall a. (a -> Boolean) -> FormError -> a -> Either FormError a

@@ -21,6 +21,7 @@ import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Profile (Email)
 import Lunarbox.Form.Field as Field
 import Lunarbox.Form.Validation as V
+import Lunarbox.Page.FormPage (formPage)
 
 data Action
   = HandleLoginForm LoginFields
@@ -49,7 +50,9 @@ component =
       print email
       print password
 
-  render _ = HH.slot F._formless unit formComponent unit (Just <<< HandleLoginForm)
+  render _ =
+    formPage "Login"
+      $ HH.slot F._formless unit formComponent unit (Just <<< HandleLoginForm)
 
 -- Formless form for logging in
 newtype LoginForm r f

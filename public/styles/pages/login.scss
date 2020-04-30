@@ -1,0 +1,99 @@
+@use "../utils/utils";
+
+@import "../theme.scss";
+
+#form-page {
+  display: flex;
+  height: 100%;
+
+  * {
+    padding-left: 0;
+  }
+
+  #form-left {
+    @include utils.center;
+
+    width: 30vw;
+    background: $primary-dark;
+  }
+
+  #form-right {
+    @include utils.center;
+
+    background: $primary;
+    flex-grow: 1;
+  }
+}
+
+#form-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+
+  min-width: 70%;
+
+  #title {
+    color: $on-primary;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+}
+
+#form-container {
+  form fieldset {
+    border: none;
+  }
+
+  .submit-container {
+    display: flex;
+    justify-content: flex-end;
+
+    .submit {
+      background: $primary-dark;
+      color: $on-primary;
+
+      padding: 0.8rem;
+      width: 7rem;
+
+      outline: none;
+      border: none;
+    }
+  }
+}
+
+#form-container .form-field {
+  background: $primary-dark;
+  color: $on-dark-pale;
+
+  width: 100%;
+  padding: 1rem;
+
+  outline: none;
+  border: none;
+
+  transition: filter $transition-time;
+
+  &:focus {
+    filter: brightness(1.5);
+  }
+
+  &:hover {
+    filter: brightness(1.3);
+  }
+}
+
+.form-group {
+  padding-bottom: 0;
+}
+
+.form-group .form-message {
+  margin: 1rem;
+
+  &.error-message {
+    color: $error;
+  }
+
+  &.no-error {
+    color: $secondary;
+  }
+}
