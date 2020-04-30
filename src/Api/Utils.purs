@@ -38,17 +38,17 @@ authenticate ::
   MonadAsk Config m =>
   (BaseUrl -> a -> m (Either String Profile)) ->
   a ->
-  m (Maybe Profile)
+  m (Either String Profile)
 authenticate req fields = do
   { currentUser, userBus } <- asks $ view _user
   baseUrl <- asks $ view _baseUrl
   print "lol"
   req baseUrl fields
     >>= case _ of
-        Left error -> printString error *> pure Nothing
+        Left error -> printString error *> pure (Left error)
         Right profile -> do
           print profile
           liftEffect $ Ref.write (Just profile) currentUser
           --   any time we write to the current user ref, we should also broadcast the change
           liftAff $ Bus.write (Just profile) userBus
-          pure (Just profile)
+          pure (Right profile)

@@ -6,10 +6,11 @@ module Lunarbox.Capability.Resource.User
   ) where
 
 import Prelude
-import Lunarbox.Api.Request (LoginFields, RegisterFields)
-import Lunarbox.Data.Profile (Profile)
+import Data.Either (Either)
 import Data.Maybe (Maybe)
 import Halogen (HalogenM, lift)
+import Lunarbox.Api.Request (LoginFields, RegisterFields)
+import Lunarbox.Data.Profile (Profile)
 
 -- | This capability represents the ability to manage users in our system. We support logging users
 -- | in, and registering them, as well as reading information about various users and who follows
@@ -19,8 +20,8 @@ import Halogen (HalogenM, lift)
 -- | so on in the implementation.
 class
   Monad m <= ManageUser m where
-  loginUser :: LoginFields -> m (Maybe Profile)
-  registerUser :: RegisterFields -> m (Maybe Profile)
+  loginUser :: LoginFields -> m (Either String Profile)
+  registerUser :: RegisterFields -> m (Either String Profile)
   getCurrentUser :: m (Maybe Profile)
 
 -- | This instance lets us avoid having to use `lift` when we use these functions in a component.

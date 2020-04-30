@@ -7,6 +7,7 @@ module Lunarbox.Component.Login
   ) where
 
 import Prelude
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff)
@@ -19,7 +20,7 @@ import Halogen.HTML.Properties as HP
 import Lunarbox.Api.Request (LoginFields)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.User (class ManageUser, loginUser)
-import Lunarbox.Component.Utils (className, whenElem)
+import Lunarbox.Component.Utils (className, maybeElement)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Profile (Email)
 import Lunarbox.Data.Route (Route(..))
@@ -54,9 +55,9 @@ component =
     HandleLoginForm fields -> do
       loginUser fields
         >>= case _ of
-            Nothing -> void $ query F._formless unit $ injQuery $ SetLoginError true unit
-            Just profile -> do
-              void $ query F._formless unit $ injQuery $ SetLoginError false unit
+            Left err -> void $ query F._formless unit $ injQuery $ SetLoginError (Just err) unit
+            Right profile -> do
+              void $ query F._formless unit $ injQuery $ SetLoginError Nothing unit
               st <- get
               print "here"
               when st.redirect $ navigate Home
@@ -77,7 +78,7 @@ newtype LoginForm r f
 derive instance newtypeLoginForm :: Newtype (LoginForm r f) _
 
 data FormQuery a
-  = SetLoginError Boolean a
+  = SetLoginError (Maybe String) a
 
 derive instance functorFormQuery :: Functor (FormQuery)
 
@@ -93,7 +94,7 @@ formComponent =
         , handleQuery = handleQuery
         }
   where
-  formInput :: i -> F.Input LoginForm ( loginError :: Boolean ) m
+  formInput :: i -> F.Input LoginForm ( loginError :: Maybe String ) m
   formInput _ =
     { validators:
       LoginForm
@@ -101,7 +102,7 @@ formComponent =
         , password: passwordValidators
         }
     , initialInputs: Nothing
-    , loginError: false
+    , loginError: Nothing
     }
 
   handleEvent = F.raiseResult
@@ -115,11 +116,11 @@ formComponent =
   proxies = F.mkSProxies (F.FormProxy :: _ LoginForm)
 
   render { form, loginError } =
-    HH.form_
-      [ whenElem loginError \_ ->
+    HH.form [ className "form" ]
+      [ maybeElement loginError \err ->
           HH.div
-            [ className "error-messages" ]
-            [ HH.text "Email or password is invalid" ]
+            [ className "error-message form-message" ]
+            [ HH.text err ]
       , HH.fieldset_
           [ Field.input proxies.email form
               [ HP.placeholder "Email"

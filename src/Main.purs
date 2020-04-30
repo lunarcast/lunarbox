@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Data.Either (hush)
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
@@ -16,12 +16,13 @@ import Lunarbox.Api.Request (BaseUrl(..), profile)
 import Lunarbox.AppM (runAppM)
 import Lunarbox.Component.Router as Router
 import Lunarbox.Config (Config(..))
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Route (routingCodec)
 import Routing.Duplex (parse)
 import Routing.PushState (makeInterface, matchesWith)
 
 baseUrl :: BaseUrl
-baseUrl = BaseUrl "http://something.com"
+baseUrl = BaseUrl "http://localhost:8090"
 
 main :: Effect Unit
 main =
@@ -30,8 +31,12 @@ main =
     -- Bus to store the current user profile
     userBus <- liftEffect $ Bus.make
     -- Request the current suer
-    response <- profile baseUrl
-    liftEffect $ Ref.write (hush response) currentUser
+    responseWithError <- profile baseUrl
+    case responseWithError of
+      Left err -> do
+        printString err
+        liftEffect $ Ref.write Nothing currentUser
+      Right user -> liftEffect $ Ref.write (Just user) currentUser
     -- create a routing interface
     nav <- liftEffect makeInterface
     -- wait for the body to be created

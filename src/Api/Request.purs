@@ -4,8 +4,9 @@ import Prelude
 import Affjax (Request, printError, request)
 import Affjax.RequestBody as RB
 import Affjax.ResponseFormat as RF
+import Affjax.StatusCode (StatusCode(..))
 import Data.Argonaut (Json, decodeJson, encodeJson)
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
@@ -13,6 +14,7 @@ import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Lunarbox.Api.Endpoint (Endpoint(..), endpointCodec)
 import Lunarbox.Data.Profile (Email, Profile, Username)
+import Lunarbox.Data.Utils (decodeAt)
 import Routing.Duplex (print)
 
 -- Possible methods we can perform
@@ -85,4 +87,9 @@ profile baseUrl = requestUser baseUrl { endpoint: Profile, method: Get }
 requestUser :: forall m. MonadAff m => BaseUrl -> RequestOptions -> m (Either String Profile)
 requestUser baseUrl opts = do
   res <- liftAff $ request $ defaultRequest baseUrl opts
-  pure $ decodeJson =<< bimap printError _.body res
+  pure do
+    response <- lmap printError res
+    if response.status /= StatusCode 200 then
+      Left =<< decodeAt "message" response.body
+    else
+      decodeJson response.body
