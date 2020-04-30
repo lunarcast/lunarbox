@@ -11,6 +11,7 @@ import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkCompo
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Editor as Editor
+import Lunarbox.Component.Login as Login
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Route (Route(..), parseRoute)
@@ -30,6 +31,7 @@ data Action
 type ChildSlots
   = ( editor :: Slot Editor.Query Void Unit
     , settings :: OpaqueSlot Unit
+    , login :: OpaqueSlot Unit
     )
 
 type ComponentM m a
@@ -71,5 +73,6 @@ component =
       <#> case _ of
           Home -> home unit
           Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
+          Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: true } absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound
