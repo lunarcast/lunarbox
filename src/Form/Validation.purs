@@ -5,7 +5,7 @@ import Data.Either (Either(..))
 import Data.String as String
 import Formless (Validation)
 import Formless as F
-import Lunarbox.Data.Profile (Email(..))
+import Lunarbox.Data.Profile (Email(..), Username(..))
 import Lunarbox.Data.String (containsDigits, hasLowecase, hasUppercase)
 
 data FormError
@@ -70,4 +70,8 @@ passwordValidators = required >>> minLength 8 >>> maxLength 32 >>> needsUppercas
 
 -- Validators for the email
 emailValidators :: forall m a. Monad m => Validation a m FormError String Email
-emailValidators = required >>> minLength 3 >>> email
+emailValidators = required >>> minLength 3 >>> maxLength 32 >>> email
+
+-- Validators for the usernames
+usernameValidators :: forall m a. Monad m => Validation a m FormError String Username
+usernameValidators = required >>> minLength 3 >>> maxLength 32 >>> (F.hoistFnE_ $ Right <<< Username)

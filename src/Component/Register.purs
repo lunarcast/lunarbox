@@ -2,7 +2,7 @@ module Lunarbox.Component.Register
   ( component
   , Input
   , ChildSlots
-  , LoginForm(..)
+  , RegisterForm(..)
   , FormQuery(..)
   ) where
 
@@ -15,22 +15,23 @@ import Formless as F
 import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Lunarbox.Api.Requests (LoginFields)
+import Lunarbox.Api.Requests (RegisterFields)
 import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Control.Monad.Effect (print)
-import Lunarbox.Data.Profile (Email)
+import Lunarbox.Data.Profile (Email, Username)
 import Lunarbox.Form.Field as Field
+import Lunarbox.Form.Validation (emailValidators, passwordValidators, usernameValidators)
 import Lunarbox.Form.Validation as V
 import Lunarbox.Page.FormPage (formPage)
 
 data Action
-  = HandleLoginForm LoginFields
+  = HandleRegisterForm RegisterFields
 
 type Input
   = { redirect :: Boolean }
 
 type ChildSlots
-  = ( formless :: F.Slot LoginForm FormQuery () LoginFields Unit )
+  = ( formless :: F.Slot RegisterForm FormQuery () RegisterFields Unit )
 
 component :: forall q o m. MonadEffect m => MonadAff m => Component HH.HTML q Input o m
 component =
@@ -46,34 +47,35 @@ component =
   where
   handleAction :: Action -> HalogenM Input Action ChildSlots o m Unit
   handleAction = case _ of
-    HandleLoginForm { email, password } -> do
+    HandleRegisterForm { email, password } -> do
       print email
       print password
 
   render _ =
-    formPage "Login"
-      $ HH.slot F._formless unit formComponent unit (Just <<< HandleLoginForm)
+    formPage "Register"
+      $ HH.slot F._formless unit formComponent unit (Just <<< HandleRegisterForm)
 
 -- Formless form for logging in
-newtype LoginForm r f
-  = LoginForm
+newtype RegisterForm r f
+  = RegisterForm
   ( r
       ( email :: f V.FormError String Email
+      , username :: f V.FormError String Username
       , password :: f V.FormError String String
       )
   )
 
-derive instance newtypeLoginForm :: Newtype (LoginForm r f) _
+derive instance newtypeRegisterForm :: Newtype (RegisterForm r f) _
 
 data FormQuery a
-  = SetLoginError Boolean a
+  = SetRegisterError Boolean a
 
 derive instance functorFormQuery :: Functor (FormQuery)
 
 formComponent ::
   forall i slots m.
   MonadAff m =>
-  F.Component LoginForm FormQuery slots i LoginFields m
+  F.Component RegisterForm FormQuery slots i RegisterFields m
 formComponent =
   F.component formInput
     $ F.defaultSpec
@@ -82,12 +84,13 @@ formComponent =
         , handleQuery = handleQuery
         }
   where
-  formInput :: i -> F.Input LoginForm ( loginError :: Boolean ) m
+  formInput :: i -> F.Input RegisterForm ( loginError :: Boolean ) m
   formInput _ =
     { validators:
-      LoginForm
-        { email: V.required >>> V.minLength 3 >>> V.email
-        , password: V.required >>> V.minLength 2 >>> V.maxLength 20
+      RegisterForm
+        { email: emailValidators
+        , username: usernameValidators
+        , password: passwordValidators
         }
     , initialInputs: Nothing
     , loginError: false
@@ -97,11 +100,11 @@ formComponent =
 
   handleQuery :: forall a. FormQuery a -> HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
-    SetLoginError bool a -> do
+    SetRegisterError bool a -> do
       modify_ _ { loginError = bool }
       pure (Just a)
 
-  proxies = F.mkSProxies (F.FormProxy :: _ LoginForm)
+  proxies = F.mkSProxies (F.FormProxy :: _ RegisterForm)
 
   render { form, loginError } =
     HH.form_
@@ -110,7 +113,11 @@ formComponent =
             [ className "error-messages" ]
             [ HH.text "Email or password is invalid" ]
       , HH.fieldset_
-          [ Field.input proxies.email form
+          [ Field.input proxies.username form
+              [ HP.placeholder "Username"
+              , HP.type_ HP.InputText
+              ]
+          , Field.input proxies.email form
               [ HP.placeholder "Email"
               , HP.type_ HP.InputEmail
               ]
@@ -118,6 +125,6 @@ formComponent =
               [ HP.placeholder "Password"
               , HP.type_ HP.InputPassword
               ]
-          , Field.submit "Log in"
+          , Field.submit "Register"
           ]
       ]
