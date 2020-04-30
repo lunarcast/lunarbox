@@ -42,7 +42,6 @@ authenticate ::
 authenticate req fields = do
   { currentUser, userBus } <- asks $ view _user
   baseUrl <- asks $ view _baseUrl
-  print "lol"
   req baseUrl fields
     >>= case _ of
         Left error -> printString error *> pure (Left error)

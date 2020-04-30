@@ -1,24 +1,26 @@
 module Lunarbox.Component.Register
   ( component
-  , Input
   , ChildSlots
   , RegisterForm(..)
   , FormQuery(..)
   ) where
 
 import Prelude
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Formless as F
-import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_, query)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Lunarbox.Api.Request (RegisterFields)
-import Lunarbox.Component.Utils (className, whenElem)
-import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Capability.Resource.User (class ManageUser, registerUser)
+import Lunarbox.Component.Utils (className, maybeElement)
 import Lunarbox.Data.Profile (Email, Username)
+import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Form.Field as Field
 import Lunarbox.Form.Validation (emailValidators, passwordValidators, usernameValidators)
 import Lunarbox.Form.Validation as V
@@ -27,13 +29,10 @@ import Lunarbox.Page.FormPage (formPage)
 data Action
   = HandleRegisterForm RegisterFields
 
-type Input
-  = { redirect :: Boolean }
-
 type ChildSlots
   = ( formless :: F.Slot RegisterForm FormQuery () RegisterFields Unit )
 
-component :: forall q o m. MonadEffect m => MonadAff m => Component HH.HTML q Input o m
+component :: forall q o m i. MonadEffect m => MonadAff m => Navigate m => ManageUser m => Component HH.HTML q i o m
 component =
   mkComponent
     { initialState: identity
@@ -45,11 +44,15 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM Input Action ChildSlots o m Unit
+  handleAction :: Action -> HalogenM i Action ChildSlots o m Unit
   handleAction = case _ of
-    HandleRegisterForm { email, password } -> do
-      print email
-      print password
+    HandleRegisterForm fields -> do
+      registerUser fields
+        >>= case _ of
+            Left err -> void $ query F._formless unit $ F.injQuery $ SetRegisterError (Just err) unit
+            Right profile -> do
+              void $ query F._formless unit $ F.injQuery $ SetRegisterError Nothing unit
+              navigate Home
 
   render _ =
     formPage "Register"
@@ -68,7 +71,7 @@ newtype RegisterForm r f
 derive instance newtypeRegisterForm :: Newtype (RegisterForm r f) _
 
 data FormQuery a
-  = SetRegisterError Boolean a
+  = SetRegisterError (Maybe String) a
 
 derive instance functorFormQuery :: Functor (FormQuery)
 
@@ -84,7 +87,7 @@ formComponent =
         , handleQuery = handleQuery
         }
   where
-  formInput :: i -> F.Input RegisterForm ( loginError :: Boolean ) m
+  formInput :: i -> F.Input RegisterForm ( registerError :: Maybe String ) m
   formInput _ =
     { validators:
       RegisterForm
@@ -93,7 +96,7 @@ formComponent =
         , password: passwordValidators
         }
     , initialInputs: Nothing
-    , loginError: false
+    , registerError: Nothing
     }
 
   handleEvent = F.raiseResult
@@ -101,17 +104,17 @@ formComponent =
   handleQuery :: forall a. FormQuery a -> HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
     SetRegisterError bool a -> do
-      modify_ _ { loginError = bool }
+      modify_ _ { registerError = bool }
       pure (Just a)
 
   proxies = F.mkSProxies (F.FormProxy :: _ RegisterForm)
 
-  render { form, loginError } =
-    HH.form_
-      [ whenElem loginError \_ ->
+  render { form, registerError } =
+    HH.form [ className "form" ]
+      [ maybeElement registerError \err ->
           HH.div
-            [ className "error-messages" ]
-            [ HH.text "Email or password is invalid" ]
+            [ className "error-message form-message" ]
+            [ HH.text err ]
       , HH.fieldset_
           [ Field.input proxies.username form
               [ HP.placeholder "Username"

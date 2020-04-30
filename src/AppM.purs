@@ -1,18 +1,19 @@
 module Lunarbox.AppM where
 
 import Prelude
-import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, runReaderT)
+import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
+import Data.Lens (view)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Foreign (unsafeToForeign)
 import Lunarbox.Api.Request as Request
 import Lunarbox.Api.Utils (authenticate, mkRequest)
 import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.User (class ManageUser)
-import Lunarbox.Config (Config)
+import Lunarbox.Config (Config, _changeRoute)
 import Lunarbox.Data.Route (routingCodec)
 import Routing.Duplex (print)
-import Routing.Hash (setHash)
 
 -- Todo: better type for errors
 type Error
@@ -43,7 +44,9 @@ derive newtype instance monadAskAppM :: MonadAsk Config AppM
 derive newtype instance monadReaderAppM :: MonadReader Config AppM
 
 instance navigateAppM :: Navigate AppM where
-  navigate = liftEffect <<< setHash <<< print routingCodec
+  navigate path = do
+    changeRoute <- asks $ view _changeRoute
+    liftEffect $ changeRoute (unsafeToForeign {}) $ print routingCodec path
 
 instance manageUserAppM :: ManageUser AppM where
   loginUser = authenticate Request.login

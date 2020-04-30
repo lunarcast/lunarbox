@@ -1,8 +1,9 @@
 module Lunarbox.Component.Router where
 
 import Prelude
-import Control.Monad.Reader (class MonadReader)
-import Data.Either (hush)
+import Control.Monad.Reader (class MonadReader, asks)
+import Data.Either (Either(..))
+import Data.Lens (view)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
@@ -15,10 +16,10 @@ import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Login as Login
 import Lunarbox.Component.Register as Register
 import Lunarbox.Component.Utils (OpaqueSlot)
-import Lunarbox.Config (Config)
+import Lunarbox.Config (Config, _locationState)
+import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Route (Route(..), parseRoute)
 import Lunarbox.Page.Home (home)
-import Routing.Hash (getHash)
 
 type State
   = { route :: Maybe Route
@@ -29,6 +30,7 @@ data Query a
 
 data Action
   = Initialize
+  | NavigateTo Route
 
 type ChildSlots
   = ( editor :: Slot Editor.Query Void Unit
@@ -37,8 +39,8 @@ type ChildSlots
     , register :: OpaqueSlot Unit
     )
 
-type ComponentM m a
-  = HalogenM State Action ChildSlots Void m a
+type ComponentM
+  = HalogenM State Action ChildSlots Void
 
 component ::
   forall m.
@@ -63,15 +65,24 @@ component =
   handleAction :: Action -> ComponentM m Unit
   handleAction = case _ of
     Initialize -> do
-      initialRoute <- hush <<< parseRoute <$> liftEffect getHash
-      navigate $ fromMaybe Home initialRoute
+      getLocationState <- asks $ view _locationState
+      { path } <- liftEffect getLocationState
+      case parseRoute path of
+        Left error -> do
+          printString $ "An error occured trying to parse the curent route. Defaulting to Home. " <> show error
+          navigate Home
+        Right route -> navigate route
+    NavigateTo destination -> do
+      print "called navigateTo"
+      { route } <- get
+      when (route /= Just destination) $ navigate destination
 
   handleQuery :: forall a. Query a -> ComponentM m (Maybe a)
   handleQuery = case _ of
-    Navigate dest a -> do
+    Navigate destination a -> do
       { route } <- get
-      when (route /= Just dest) $ modify_ (_ { route = Just dest })
-      pure (Just a)
+      when (route /= Just destination) $ modify_ (_ { route = Just destination })
+      pure $ Just a
 
   notFound =
     HH.div_
@@ -80,9 +91,9 @@ component =
   render { route } =
     route
       <#> case _ of
-          Home -> home unit
+          Home -> home { navigate: Just <<< NavigateTo }
           Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
-          Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: true } absurd
-          Register -> HH.slot (SProxy :: _ "register") unit Register.component { redirect: true } absurd
+          Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
+          Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound

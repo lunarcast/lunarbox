@@ -1,6 +1,5 @@
 module Main where
 
-import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -17,8 +16,8 @@ import Lunarbox.AppM (runAppM)
 import Lunarbox.Component.Router as Router
 import Lunarbox.Config (Config(..))
 import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Route (routingCodec)
-import Routing.Duplex (parse)
+import Lunarbox.Data.Route (parseRoute)
+import Prelude (Unit, Void, bind, discard, void, when, ($), (/=))
 import Routing.PushState (makeInterface, matchesWith)
 
 baseUrl :: BaseUrl
@@ -48,6 +47,7 @@ main =
         Config
           { devOptions: Just { cancelInputsOnBlur: true }
           , baseUrl
+          , pushStateInterface: nav
           , user:
             { currentUser
             , userBus
@@ -60,7 +60,5 @@ main =
     let
       onRouteChange = \old new ->
         when (old /= Just new) do
-          launchAff_ $ halogenIO.query $ tell $ Router.Navigate $ new
-    void $ liftEffect
-      $ matchesWith (parse routingCodec) onRouteChange nav
-    pure unit
+          launchAff_ $ halogenIO.query $ tell $ Router.Navigate new
+    void $ liftEffect $ matchesWith parseRoute onRouteChange nav

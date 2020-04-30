@@ -6,6 +6,9 @@ module Lunarbox.Config
   , _user
   , _currentUser
   , _baseUrl
+  , _locationState
+  , _pushStateInterface
+  , _changeRoute
   ) where
 
 import Prelude
@@ -15,11 +18,14 @@ import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
+import Effect (Effect)
 import Effect.Aff.Bus (BusRW)
 import Effect.Ref (Ref)
+import Foreign (Foreign)
 import Lunarbox.Api.Request (BaseUrl)
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Profile (Profile)
+import Routing.PushState (PushStateInterface, LocationState)
 
 type DevOptions
   = Maybe
@@ -38,6 +44,7 @@ newtype Config
   { devOptions :: DevOptions
   , baseUrl :: BaseUrl
   , user :: UserEnv
+  , pushStateInterface :: PushStateInterface
   }
 
 derive instance newtypeConfig :: Newtype Config _
@@ -58,3 +65,12 @@ _currentUser = _user <<< prop (SProxy :: _ "currentUser")
 
 _baseUrl :: Lens' Config BaseUrl
 _baseUrl = newtypeIso <<< prop (SProxy :: _ "baseUrl")
+
+_pushStateInterface :: Lens' Config PushStateInterface
+_pushStateInterface = newtypeIso <<< prop (SProxy :: _ "pushStateInterface")
+
+_changeRoute :: Lens' Config (Foreign -> String -> Effect Unit)
+_changeRoute = _pushStateInterface <<< prop (SProxy :: _ "replaceState")
+
+_locationState :: Lens' Config (Effect LocationState)
+_locationState = _pushStateInterface <<< prop (SProxy :: _ "locationState")

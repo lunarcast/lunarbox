@@ -34,9 +34,9 @@ endpointCodec =
   root $ prefix "api"
     $ sum
         { "Login": "auth" / "login" / noArgs
+        , "Register": "users" / noArgs
         , "Logout": "auth" / "lougout" / noArgs
         , "Profile": "users" / noArgs
-        , "Register": "register" / noArgs
         , "Projects": "projects" / noArgs
         , "Project": "projects" / string segment
         }

@@ -53,14 +53,14 @@ component =
   handleAction :: Action -> HalogenM Input Action ChildSlots o m Unit
   handleAction = case _ of
     HandleLoginForm fields -> do
+      print "im here"
       loginUser fields
         >>= case _ of
             Left err -> void $ query F._formless unit $ injQuery $ SetLoginError (Just err) unit
             Right profile -> do
               void $ query F._formless unit $ injQuery $ SetLoginError Nothing unit
-              st <- get
-              print "here"
-              when st.redirect $ navigate Home
+              state <- get
+              when state.redirect $ navigate Home
 
   render _ =
     formPage "Login"
@@ -109,8 +109,8 @@ formComponent =
 
   handleQuery :: forall a. FormQuery a -> HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
-    SetLoginError bool a -> do
-      modify_ _ { loginError = bool }
+    SetLoginError value a -> do
+      modify_ _ { loginError = value }
       pure (Just a)
 
   proxies = F.mkSProxies (F.FormProxy :: _ LoginForm)

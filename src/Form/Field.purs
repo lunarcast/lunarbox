@@ -19,8 +19,9 @@ submit :: forall form act slots m. String -> F.ComponentHTML form act slots m
 submit buttonText =
   HH.div [ className "submit-container" ]
     [ HH.button
-        [ className "submit"
+        [ className "submit-form"
         , onClick $ const $ Just F.submit
+        -- , onClick $ const Nothing
         ]
         [ HH.text buttonText ]
     ]
