@@ -6,6 +6,7 @@ You can edit this file as you like.
 , dependencies =
   [ "aff"
   , "aff-bus"
+  , "affjax"
   , "argonaut"
   , "argonaut-generic"
   , "arrays"

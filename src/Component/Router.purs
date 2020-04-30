@@ -70,6 +70,6 @@ component =
     route
       <#> case _ of
           Home -> home unit
-          Settings -> HH.text "settings"
           Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
+          _ -> HH.text "not implemented"
       # fromMaybe notFound
