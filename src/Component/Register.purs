@@ -1,4 +1,4 @@
-module Lunarbox.Component.Login
+module Lunarbox.Component.Register
   ( component
   , Input
   , ChildSlots
@@ -20,7 +20,6 @@ import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Profile (Email)
 import Lunarbox.Form.Field as Field
-import Lunarbox.Form.Validation (emailValidators, passwordValidators)
 import Lunarbox.Form.Validation as V
 import Lunarbox.Page.FormPage (formPage)
 
@@ -87,8 +86,8 @@ formComponent =
   formInput _ =
     { validators:
       LoginForm
-        { email: emailValidators
-        , password: passwordValidators
+        { email: V.required >>> V.minLength 3 >>> V.email
+        , password: V.required >>> V.minLength 2 >>> V.maxLength 20
         }
     , initialInputs: Nothing
     , loginError: false

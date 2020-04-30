@@ -52,11 +52,19 @@
       background: $primary-dark;
       color: $on-primary;
 
+      font-weight: bold;
+      filter: brightness(1.8);
+      transition: filter $transition-time;
+
       padding: 0.8rem;
       width: 7rem;
 
       outline: none;
       border: none;
+
+      &:hover {
+        filter: brightness(2.4);
+      }
     }
   }
 }
