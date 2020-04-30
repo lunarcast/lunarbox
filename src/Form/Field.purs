@@ -39,7 +39,7 @@ input ::
   Array (HH.IProp HTMLinput (F.Action form act)) ->
   F.ComponentHTML form act slots m
 input fieldSymbol form props =
-  HH.fieldset
+  HH.div
     [ className "form-group" ]
     [ HH.input
         ( append

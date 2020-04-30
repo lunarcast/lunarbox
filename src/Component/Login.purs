@@ -116,12 +116,12 @@ formComponent =
   proxies = F.mkSProxies (F.FormProxy :: _ LoginForm)
 
   render { form, loginError } =
-    HH.form [ className "form" ]
+    HH.div [ className "form" ]
       [ maybeElement loginError \err ->
           HH.div
             [ className "error-message form-message" ]
             [ HH.text err ]
-      , HH.fieldset_
+      , HH.div_
           [ Field.input proxies.email form
               [ HP.placeholder "Email"
               , HP.type_ HP.InputEmail

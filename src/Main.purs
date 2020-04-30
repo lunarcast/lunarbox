@@ -17,7 +17,7 @@ import Lunarbox.Component.Router as Router
 import Lunarbox.Config (Config(..))
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Route (parseRoute)
-import Prelude (Unit, Void, bind, discard, void, when, ($), (/=))
+import Prelude
 import Routing.PushState (makeInterface, matchesWith)
 
 baseUrl :: BaseUrl
@@ -35,7 +35,9 @@ main =
       Left err -> do
         printString err
         liftEffect $ Ref.write Nothing currentUser
-      Right user -> liftEffect $ Ref.write (Just user) currentUser
+      Right user -> do
+        printString $ "Logged in as " <> show user.username
+        liftEffect $ Ref.write (Just user) currentUser
     -- create a routing interface
     nav <- liftEffect makeInterface
     -- wait for the body to be created

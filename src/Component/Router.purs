@@ -17,7 +17,7 @@ import Lunarbox.Component.Login as Login
 import Lunarbox.Component.Register as Register
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Config (Config, _locationState)
-import Lunarbox.Control.Monad.Effect (print, printString)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Route (Route(..), parseRoute)
 import Lunarbox.Page.Home (home)
 
@@ -73,7 +73,6 @@ component =
           navigate Home
         Right route -> navigate route
     NavigateTo destination -> do
-      print "called navigateTo"
       { route } <- get
       when (route /= Just destination) $ navigate destination
 
