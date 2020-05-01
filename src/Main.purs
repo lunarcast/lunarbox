@@ -1,5 +1,6 @@
 module Main where
 
+import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -15,9 +16,8 @@ import Lunarbox.Api.Request (BaseUrl(..), profile)
 import Lunarbox.AppM (runAppM)
 import Lunarbox.Component.Router as Router
 import Lunarbox.Config (Config(..))
-import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Route (parseRoute)
-import Prelude
 import Routing.PushState (makeInterface, matchesWith)
 
 devUrl :: BaseUrl
@@ -29,6 +29,7 @@ prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com/api/"
 main :: Boolean -> Effect Unit
 main production =
   runHalogenAff do
+    print production
     -- Url to make requests to
     let
       baseUrl :: BaseUrl
