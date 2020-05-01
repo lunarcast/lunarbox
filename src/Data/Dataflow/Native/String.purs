@@ -2,6 +2,7 @@ module Lunarbox.Data.Dataflow.Native.String
   ( stringLength
   , concatStrings
   , reverseString
+  , trimString
   ) where
 
 import Prelude
@@ -17,7 +18,13 @@ import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 
--- Evaluate a not function
+-- Helper for unary functions operating on strnigs
+stringUnary :: (String -> String) -> RuntimeValue
+stringUnary unary =
+  Function case _ of
+    String string -> String $ unary string
+    _ -> Null
+
 evalLength :: RuntimeValue -> RuntimeValue
 evalLength (String string) = Number $ toNumber $ String.length string
 
@@ -46,16 +53,23 @@ concatStrings =
     , component: Nothing
     }
 
-evalReverse :: RuntimeValue -> RuntimeValue
-evalReverse (String string) = String $ String.fromCodePointArray $ Array.reverse $ String.toCodePointArray string
-
-evalReverse _ = Null
+evalReverse :: RuntimeValue
+evalReverse = stringUnary $ String.fromCodePointArray <<< Array.reverse <<< String.toCodePointArray
 
 reverseString :: forall a s m. NativeConfig a s m
 reverseString =
   NativeConfig
     { name: FunctionName "reverse"
-    , expression: NativeExpression (Forall [] $ TArrow typeString typeString) $ Function evalReverse
+    , expression: NativeExpression (Forall [] $ TArrow typeString typeString) evalReverse
+    , functionData: internal [ { name: "string" } ]
+    , component: Nothing
+    }
+
+trimString :: forall a s m. NativeConfig a s m
+trimString =
+  NativeConfig
+    { name: FunctionName "trim"
+    , expression: NativeExpression (Forall [] $ TArrow typeString typeString) $ stringUnary String.trim
     , functionData: internal [ { name: "string" } ]
     , component: Nothing
     }

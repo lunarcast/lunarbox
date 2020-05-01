@@ -9,7 +9,7 @@ import Lunarbox.Data.Dataflow.Native.Literal (boolean, false', number, string, t
 import Lunarbox.Data.Dataflow.Native.Logic (and, not', or, xor)
 import Lunarbox.Data.Dataflow.Native.Math (add)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig, loadNativeConfigs)
-import Lunarbox.Data.Dataflow.Native.String (concatStrings, reverseString, stringLength)
+import Lunarbox.Data.Dataflow.Native.String (concatStrings, reverseString, stringLength, trimString)
 import Lunarbox.Data.Editor.State (State)
 
 -- Array wita s mll the built in nodes
@@ -33,6 +33,7 @@ configs =
   , reverseString
   , concatStrings
   , stringLength
+  , trimString
   ]
 
 -- Load all the built in nodes
