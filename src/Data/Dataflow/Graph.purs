@@ -8,7 +8,7 @@ import Data.Lens.At (at)
 import Data.List (catMaybes, foldr)
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), inputs, wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Graph (Graph, topologicalSort)
 
@@ -26,7 +26,18 @@ compileGraph toExpression graph main =
   in
     foldr
       ( \(Tuple key value) body ->
-          Let Nowhere (VarName $ show key) value body
+          let
+            name = VarName $ show key
+
+            inputCount = inputs value
+
+            finalValue =
+              if inputCount == 0 then
+                value
+              else
+                FixPoint Nowhere $ Lambda Nowhere name value
+          in
+            Let Nowhere name finalValue body
       )
       (Variable Nowhere $ VarName $ show main)
       $ catMaybes
