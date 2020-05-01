@@ -1,17 +1,4 @@
-module Lunarbox.Data.Editor.Constants
-  ( nodeRadius
-  , arcSpacing
-  , arcWidth
-  , inputLayerOffset
-  , connectionsWidth
-  , scaleConnectionPreview
-  , mouseId
-  , scrollStep
-  , clampZoom
-  , nodeOffset
-  , nodeOffsetGrowthRate
-  , nodeOffsetInitialRadius
-  ) where
+module Lunarbox.Data.Editor.Constants where
 
 import Prelude
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
@@ -68,3 +55,7 @@ nodeOffsetGrowthRate = 1.1
 -- The starting radius of the offset
 nodeOffsetInitialRadius :: Number
 nodeOffsetInitialRadius = 100.0
+
+-- The width of the number and string inputs
+inputWIdth :: Number
+inputWIdth = 75.0

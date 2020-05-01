@@ -6,17 +6,19 @@ module Lunarbox.Data.Dataflow.Native.Literal
   ) where
 
 import Prelude
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Number (fromString)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Switch (switch, switchHeight, switchWidth)
+import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), toBoolean, toNumber)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (typeBool, typeNumber)
+import Lunarbox.Data.Editor.Constants (inputWIdth)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
@@ -65,13 +67,14 @@ numberUi :: forall a s m. FunctionUi a s m
 numberUi { value } { setValue } =
   SE.foreignObject
     [ SA.height switchHeight
-    , SA.width switchWidth
-    , SA.x $ switchWidth / -2.0
+    , SA.width inputWIdth
+    , SA.x $ inputWIdth / -2.0
     ]
     [ HH.input
         [ HP.value $ show $ toNumber value
         , HP.type_ HP.InputNumber
-        , onValueInput $ setValue <<< Number <<< fromMaybe 0.0 <<< fromString
+        , className "number node-input"
+        , onValueInput $ setValue <=< map Number <<< fromString
         ]
     ]
 

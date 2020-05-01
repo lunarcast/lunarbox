@@ -1,0 +1,19 @@
+@import "../theme.scss";
+
+.node-input {
+  border: none;
+  outline: none;
+
+  background: transparent;
+  color: $on-dark-pale;
+
+  transition: filter $transition-time;
+
+  &:focus {
+    filter: brightness(1.5);
+  }
+
+  &.number {
+    border-bottom: 3px solid rgb(35, 78, 196);
+  }
+}
