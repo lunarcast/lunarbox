@@ -36,3 +36,17 @@ img,
   // default font on everything
   font-family: fonts.$montserrat;
 }
+
+// Remove arrows from number inputs
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}

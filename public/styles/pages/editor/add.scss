@@ -69,3 +69,27 @@
     }
   }
 }
+
+#nodes #node-text > #curry-node {
+  display: flex;
+  align-items: center;
+
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+
+  input {
+    flex-grow: 1;
+    width: 100%;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+    color: $on-primary;
+
+    margin-left: 1rem;
+    border-bottom: 3px solid $on-dark-pale;
+  }
+
+  width: 100%;
+}

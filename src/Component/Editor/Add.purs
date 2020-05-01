@@ -6,6 +6,7 @@ import Prelude
 import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Either (either)
+import Data.Int (fromString, toNumber)
 import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -13,7 +14,7 @@ import Data.Tuple (Tuple(..))
 import Data.Unfoldable (replicate)
 import Halogen (ClassName(..))
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick)
+import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
@@ -40,11 +41,13 @@ type Input
     , currentFunction :: Maybe FunctionName
     , functionData :: Map.Map FunctionName FunctionData
     , typeMap :: Map.Map Location Type
+    , inputCountMap :: Map.Map FunctionName Int
     }
 
 type Actions a
   = { edit :: FunctionName -> Maybe a
     , addNode :: FunctionName -> Maybe a
+    , changeInputCount :: FunctionName -> Int -> Maybe a
     }
 
 resolvePin :: Pin -> Type -> Maybe Type
@@ -52,8 +55,8 @@ resolvePin (InputPin index) type' = inputs type' !! index
 
 resolvePin OutputPin type' = Just $ output type'
 
-nodeInput :: forall a s m. Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input a s m
-nodeInput typeMap name functionData =
+nodeInput :: forall a s m. Int -> Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input a s m
+nodeInput inputCount typeMap name functionData =
   { nodeData: def
   , node
   , functionData
@@ -72,16 +75,20 @@ nodeInput typeMap name functionData =
   , ui: Nothing
   }
   where
-  inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
-
   node =
     ComplexNode
       { inputs: replicate inputCount Nothing
       , function: name
       }
 
-makeNode :: forall a s m. Actions a -> NodeDescriptor -> FunctionName -> Map.Map Location Type -> FunctionData -> HH.ComponentHTML a s m
-makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
+makeNode ::
+  forall a s m.
+  Actions a ->
+  NodeDescriptor ->
+  FunctionName ->
+  Map.Map Location Type ->
+  Map.Map FunctionName Int -> FunctionData -> HH.ComponentHTML a s m
+makeNode { edit, addNode, changeInputCount } { isUsable, isEditable } name typeMap inputCountMap functionData =
   HH.div [ className "node" ]
     [ SE.svg
         [ SA.width 75.0
@@ -89,7 +96,7 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
         , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
         ]
         [ renderNode
-            (nodeInput typeMap name functionData)
+            (nodeInput inputCount typeMap name functionData)
             { select: Nothing
             , selectOutput: Nothing
             , selectInput: const Nothing
@@ -108,6 +115,16 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
                 <<< highlightTypeToHTML (RGB 255 255 255)
                 <<< prettify
                 <$> Map.lookup (Location name) typeMap
+            , container "curry-node"
+                [ container "curry-text" [ HH.text "inputs:" ]
+                , HH.input
+                    [ HP.value $ show inputCount
+                    , HP.type_ $ HP.InputNumber
+                    , HP.min 0.0
+                    , HP.max $ toNumber maxInputs
+                    , onValueInput $ changeInputCount name <=< map (clamp 0 maxInputs) <<< fromString
+                    ]
+                ]
             ]
         , container "node-buttons"
             [ HH.div
@@ -123,15 +140,19 @@ makeNode { edit, addNode } { isUsable, isEditable } name typeMap functionData =
             ]
         ]
     ]
+  where
+  maxInputs = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+
+  inputCount = fromMaybe maxInputs $ Map.lookup name inputCountMap
 
 add :: forall a s m. Input -> Actions a -> HH.ComponentHTML a s m
-add { project, currentFunction, functionData, typeMap } actions =
+add { project, currentFunction, functionData, typeMap, inputCountMap } actions =
   container "nodes"
     $ ( \(Tuple name descriptor) ->
           let
             functionData' = fromMaybe def $ Map.lookup name functionData
           in
-            makeNode actions descriptor name typeMap functionData'
+            makeNode actions descriptor name typeMap inputCountMap functionData'
       )
     <$> ( Map.toUnfoldable
           $ describe currentFunction project

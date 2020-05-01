@@ -54,5 +54,5 @@ input fieldSymbol form props =
           HH.div
             [ className "error-message form-message" ]
             [ HH.text $ show err ]
-        Nothing -> HH.div [ className "no-error form-message" ] [ HH.text "✔ everything good" ]
+        Nothing -> HH.div [ className "no-error form-message" ] [ HH.text "✔ Everything good" ]
     ]

@@ -93,6 +93,7 @@ type State a s m
     , cameras :: Map FunctionName Camera
     , sceneScale :: Vec2 Number
     , addedNodes :: Int
+    , inputCountMap :: Map FunctionName Int
     }
 
 -- Starting state which contains nothing
@@ -115,6 +116,7 @@ emptyState =
   , currentFunction: Nothing
   , lastMousePosition: zero
   , addedNodes: 0
+  , inputCountMap: mempty
   , project: Project { main: FunctionName "main", functions: G.emptyGraph }
   }
 
@@ -132,11 +134,14 @@ createNode name = do
   typeMap <- gets $ view _typeMap
   maybeCurrentFunction <- gets $ view _currentFunction
   maybeNodeFunction <- gets $ preview $ _function name
+  desiredInputCount <- gets $ preview $ _atInputCount name
   for_ (join maybeNodeFunction) \function -> do
     addedNodes <- gets $ (toNumber <<< view _addedNodes)
     center <- gets sceneCenter
     let
-      inputCount = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+      maxInputs = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+
+      inputCount = fromMaybe maxInputs $ join desiredInputCount
 
       inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
 
@@ -372,6 +377,12 @@ sceneCenter state = toWorldCoordinates camera $ (_ / 2.0) <$> scale
   camera = view _currentCamera state
 
 -- Lenses
+_inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
+_inputCountMap = prop (SProxy :: _ "inputCountMap")
+
+_atInputCount :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Int)
+_atInputCount name = _inputCountMap <<< at name
+
 _addedNodes :: forall a s m. Lens' (State a s m) Int
 _addedNodes = prop (SProxy :: _ "addedNodes")
 

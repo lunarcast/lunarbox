@@ -45,7 +45,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _currentCamera, _currentFunction, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentCamera, _currentFunction, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -77,6 +77,7 @@ data Action
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | AdjustSceneScale
   | TogglePanel
+  | ChangeInputCount FunctionName Int
 
 data Query a
   = Void
@@ -231,6 +232,8 @@ component =
     SceneZoom amount -> do
       mousePosition <- gets $ view _lastMousePosition
       modify_ $ over _currentCamera $ zoomOn mousePosition amount
+    ChangeInputCount function amount -> do
+      modify_ $ set (_atInputCount function) $ Just amount
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -258,7 +261,7 @@ component =
     icon = sidebarIcon currentTab
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap } = case currentTab of
     Settings ->
       container "panel-container"
         [ container "title" [ HH.text "Project settings" ]
@@ -282,9 +285,10 @@ component =
     Add ->
       container "panel-container"
         [ container "title" [ HH.text "Add node" ]
-        , lazy2 AddC.add { project, currentFunction, functionData, typeMap }
+        , lazy2 AddC.add { project, currentFunction, functionData, typeMap, inputCountMap }
             { edit: Just <<< SelectFunction <<< Just
             , addNode: Just <<< CreateNode
+            , changeInputCount: (Just <<< _) <<< ChangeInputCount
             }
         ]
     _ -> HH.text "not implemented"

@@ -31,6 +31,7 @@ import Lunarbox.Page.FormPage (formPage)
 
 data Action
   = HandleLoginForm LoginFields
+  | ToRegister
 
 type Input
   = { redirect :: Boolean }
@@ -61,10 +62,16 @@ component =
               void $ query F._formless unit $ injQuery $ SetLoginError Nothing unit
               state <- get
               when state.redirect $ navigate Home
+    ToRegister -> navigate Register
 
   render _ =
-    formPage "Login"
-      $ HH.slot F._formless unit formComponent unit (Just <<< HandleLoginForm)
+    formPage
+      { title: "Welcome back"
+      , content: HH.slot F._formless unit formComponent unit (Just <<< HandleLoginForm)
+      , message: "Don't have an account?"
+      , action: "Register!"
+      , onAction: Just ToRegister
+      }
 
 -- Formless form for logging in
 newtype LoginForm r f

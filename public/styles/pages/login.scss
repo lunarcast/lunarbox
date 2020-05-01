@@ -38,10 +38,39 @@
 
   min-width: 70%;
 
-  #title {
-    color: $on-primary;
-    font-size: 3rem;
-    margin-bottom: 1rem;
+  #title-row {
+    display: flex;
+    #title {
+      color: $on-primary;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      flex-grow: 1;
+    }
+
+    #message {
+      display: flex;
+      align-items: flex-end;
+
+      font-size: 1.5rem;
+      height: 3rem;
+
+      #message-normal {
+        color: $on-dark-pale;
+        filter: brightness(0.7);
+      }
+
+      #message-action {
+        color: $secondary;
+        transition: filter $transition-time;
+
+        margin-left: 1rem;
+        cursor: pointer;
+
+        &:hover {
+          filter: brightness(1.4);
+        }
+      }
+    }
   }
 }
 
@@ -87,12 +116,12 @@
 
   transition: filter $transition-time;
 
-  &:focus {
-    filter: brightness(1.5);
-  }
-
   &:hover {
     filter: brightness(1.3);
+  }
+
+  &:focus {
+    filter: brightness(1.5);
   }
 }
 

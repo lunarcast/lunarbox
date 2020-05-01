@@ -28,6 +28,7 @@ import Lunarbox.Page.FormPage (formPage)
 
 data Action
   = HandleRegisterForm RegisterFields
+  | ToLogin
 
 type ChildSlots
   = ( formless :: F.Slot RegisterForm FormQuery () RegisterFields Unit )
@@ -53,10 +54,16 @@ component =
             Right profile -> do
               void $ query F._formless unit $ F.injQuery $ SetRegisterError Nothing unit
               navigate Home
+    ToLogin -> navigate Login
 
   render _ =
-    formPage "Register"
-      $ HH.slot F._formless unit formComponent unit (Just <<< HandleRegisterForm)
+    formPage
+      { title: "Register"
+      , content: HH.slot F._formless unit formComponent unit (Just <<< HandleRegisterForm)
+      , message: "Already have an account? "
+      , action: "Log in!"
+      , onAction: Just ToLogin
+      }
 
 -- Formless form for logging in
 newtype RegisterForm r f
