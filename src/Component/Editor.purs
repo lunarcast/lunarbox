@@ -9,7 +9,6 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
-import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Lens (over, preview, set, view)
@@ -19,9 +18,10 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff (Milliseconds(..), delay)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, fork, mkComponent, mkEval, query, subscribe, subscribe', tell)
 import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
@@ -45,7 +45,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _currentCamera, _currentFunction, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, setScale, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _currentCamera, _currentFunction, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -161,8 +161,14 @@ component =
     CreateNode name -> do
       modify_ $ execState $ createNode name
     TogglePanel -> do
-      bounds <- liftEffect getSceneBoundingBox
-      modify_ $ setScale bounds <<< over _panelIsOpen not
+      modify_ $ over _panelIsOpen not
+      -- We do not want to block the rendering until the animation ends so we create a new "thread"
+      void
+        $ fork do
+            -- Wait for the css animation to end
+            liftAff $ delay $ Milliseconds 220.0
+            -- Do the adjusting
+            adjustSceneScale
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       if (oldTab == newTab) then
