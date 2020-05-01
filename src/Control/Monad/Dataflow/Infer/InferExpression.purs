@@ -4,8 +4,9 @@ module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression
 
 import Prelude
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Reader (asks, local)
+import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.State (gets, modify_)
+import Control.Monad.Writer (listen)
 import Data.Array (find, zip)
 import Data.Either (Either(..))
 import Data.Lens (over, view)
@@ -14,7 +15,8 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust)
 import Data.Set as Set
 import Data.Traversable (sequence)
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _constraints, _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
+import Data.Tuple (Tuple(..))
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
@@ -100,17 +102,16 @@ infer expression =
         tv <- fresh
         createConstraint funcType (inputType `TArrow` tv)
         pure tv
-      Let _ name value body -> do
-        t <- infer value
-        constraints <- gets $ view _constraints
-        location <- asks $ view _location
-        environment <- asks $ view _typeEnv
-        case runSolve (SolveContext { location }) $ solve constraints of
+      Let location name value body -> do
+        env <- ask
+        (Tuple t0 (InferOutput { constraints })) <- listen $ infer value
+        subst <- case runSolve (SolveContext { location }) $ solve constraints of
+          Right result -> pure result
           Left err -> throwError err
-          Right substitution ->
-            local (over _typeEnv $ apply substitution) do
-              generalized <- generalize $ apply substitution t
-              createClosure name generalized $ infer body
+        let
+          t1 = apply subst t0
+        generalized <- local (const env) $ generalize t1
+        createClosure name generalized $ infer body
       FixPoint _ body -> do
         t <- infer body
         tv <- fresh
