@@ -2,6 +2,7 @@ module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
   , binaryFunction
   , toBoolean
+  , toNumber
   , _Number
   , _String
   , _Function
@@ -71,6 +72,12 @@ toBoolean :: RuntimeValue -> Boolean
 toBoolean value
   | value == Bool true = true
   | otherwise = false
+
+-- Extract a number from a runtime value, defaulting to 0
+toNumber :: RuntimeValue -> Number
+toNumber (Number inner) = inner
+
+toNumber _ = 0.0
 
 -- Lenses
 _Number :: Prism' RuntimeValue Number

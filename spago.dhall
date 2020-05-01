@@ -26,6 +26,7 @@ You can edit this file as you like.
   , "math"
   , "maybe"
   , "memoize"
+  , "numbers"
   , "ordered-collections"
   , "profunctor-lenses"
   , "psci-support"
