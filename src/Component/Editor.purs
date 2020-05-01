@@ -10,8 +10,8 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Either (Either(..))
-import Data.Foldable (for_)
-import Data.Lens (over, preview, set, view)
+import Data.Foldable (foldr, for_)
+import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -40,12 +40,13 @@ import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentCamera, _currentFunction, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -215,8 +216,20 @@ component =
       modify_ $ resetNodeOffset <<< (over _nodeData $ map $ set _NodeDataSelected false)
     SelectNode id -> do
       maybeCurrentFunction <- gets $ view _currentFunction
+      nodes <- gets $ preview _currentNodes
+      state <- get
+      let
+        nodeIds = Set.toUnfoldable $ G.keys $ fromMaybe G.emptyGraph nodes
+
+        nodeData = List.catMaybes $ (\nodeId -> join $ preview (_atCurrentNodeData nodeId) state) <$> nodeIds
+
+        zPositions = (view _NodeDataZPosition) <$> nodeData
+
+        zPosition = 1 + foldr max (-1) zPositions
       for_ maybeCurrentFunction \currentFunction -> do
-        modify_ $ set (_isSelected currentFunction id) true
+        modify_
+          $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
+          <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
       let
         setTo = set _partialTo $ Just $ Tuple id index
