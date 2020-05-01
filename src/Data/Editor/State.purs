@@ -32,13 +32,13 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Editor.Camera (Camera, toWorldCoordinates)
 import Lunarbox.Data.Editor.Camera as Camera
 import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
@@ -46,7 +46,7 @@ import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupNodes)
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
@@ -129,46 +129,57 @@ createId = do
   modify_ $ over _nextId (_ + 1)
   pure $ NodeId $ show nextId
 
+inputNodeName :: FunctionName
+inputNodeName = FunctionName "input"
+
 createNode :: forall a s m. FunctionName -> StateM.State (State a s m) Unit
 createNode name = do
+  let
+    isInput = name == inputNodeName
   id <- createId
-  typeMap <- gets $ view _typeMap
   maybeCurrentFunction <- gets $ view _currentFunction
-  maybeNodeFunction <- gets $ preview $ _function name
   desiredInputCount <- gets $ preview $ _atInputCount name
-  functionDataInputs <- gets $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
-  for_ (join maybeNodeFunction) \function -> do
-    addedNodes <- gets $ (toNumber <<< view _addedNodes)
-    center <- gets sceneCenter
-    let
+  functionDataInputs <-
+    if isInput then
+      pure []
+    else
+      gets
+        $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
+  addedNodes <- gets $ (toNumber <<< view _addedNodes)
+  center <- gets sceneCenter
+  let
+    node =
+      if isInput then
+        InputNode
+      else
+        ComplexNode
+          { inputs: replicate inputCount Nothing
+          , function: name
+          }
+      where
       maxInputs = Array.length functionDataInputs
 
       inputCount = fromMaybe maxInputs $ join desiredInputCount
 
       inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
 
-      node =
-        ComplexNode
-          { inputs: replicate inputCount Nothing
-          , function: name
-          }
+    angle = nodeOffset * addedNodes
 
-      angle = nodeOffset * addedNodes
+    radius = nodeOffsetInitialRadius * (nodeOffsetGrowthRate `pow` angle)
 
-      radius = nodeOffsetInitialRadius * (nodeOffsetGrowthRate `pow` angle)
+    offset = polarToCartesian radius angle
 
-      offset = polarToCartesian radius angle
+    position = offset + center
 
-      position = offset + center
-
-      nodeData = set _NodeDataPosition position def
-    for_ maybeCurrentFunction
-      $ \currentFunction -> do
-          modify_ $ over _addedNodes (_ + 1)
-          modify_ $ set (_atNode currentFunction id) $ Just node
-          modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
-          modify_ $ over _functions $ G.insertEdge name currentFunction
-          modify_ $ compile
+    nodeData = set _NodeDataPosition position def
+  for_ maybeCurrentFunction
+    $ \currentFunction -> do
+        modify_ $ over _addedNodes (_ + 1)
+        modify_ $ set (_atNode currentFunction id) $ Just node
+        modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
+        when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
+        when (not isInput) $ modify_ $ over _functions $ G.insertEdge name currentFunction
+        modify_ $ compile
 
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
@@ -184,8 +195,32 @@ compile state@{ project, expression, typeMap, valueMap } =
         Right map -> Map.delete Nowhere map
         -- TODO: make it so this accounts for errors
         Left _ -> mempty
+
+    visualFunctions :: List FunctionName
+    visualFunctions =
+      Set.toUnfoldable
+        $ Map.keys
+        $ Map.filter (is _VisualFunction)
+        $ G.toMap
+        $ view _functions state
+
+    state' =
+      foldr
+        ( \functionName state'' ->
+            fromMaybe state'' do
+              functionType <- Map.lookup (Location functionName) typeMap
+              let
+                functionData =
+                  internal
+                    $ List.toUnfoldable
+                    $ List.mapWithIndex (\index _ -> { name: "Input " <> show index })
+                    $ inputs functionType
+              pure $ set (_atFunctionData functionName) (Just functionData) state''
+        )
+        state
+        visualFunctions
   in
-    evaluate $ state { expression = expression', typeMap = typeMap' }
+    evaluate $ state' { expression = expression', typeMap = typeMap' }
 
 -- Evaluate the current expression and write into the value map
 evaluate :: forall a s m. State a s m -> State a s m

@@ -14,14 +14,11 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Tuple (fst)
-import Debug.Trace (spy)
-import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, InterpreterContext, _location, _overwrites, _termEnv, runInterpreter)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv, runInterpreter)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), getLocation)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
-import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (typeString)
 
 -- Gets a value from the current environment
 getVariable :: forall l. Ord l => String -> Interpreter l RuntimeValue
@@ -32,16 +29,6 @@ getVariable name = do
 -- Perform an action in an environment with an extra variable
 withTerm :: forall l. Ord l => String -> RuntimeValue -> Interpreter l ~> Interpreter l
 withTerm name value = local $ over _termEnv $ TermEnvironment.insert name value
-
--- Wrap a runtime value inside a native expression
-makeNative :: forall l. Default l => RuntimeValue -> Expression l
-makeNative value = Native def $ NativeExpression (Forall [] typeString) value
-
--- Make a function lazy
-makeLazy :: forall l. Default l => Ord l => InterpreterContext l -> Expression l -> Expression l
-makeLazy env inner =
-  makeNative
-    $ Function \arg -> spy "lazy" $ fst $ runInterpreter env $ interpret $ FunctionCall def inner $ makeNative arg
 
 -- Interpret an expression into a runtimeValue
 interpret :: forall l. Ord l => Default l => Expression l -> Interpreter l RuntimeValue
@@ -75,7 +62,7 @@ interpret expression = do
           withTerm (show name) runtimeValue $ interpret body
         FixPoint _ function -> do
           env <- ask
-          interpret $ FunctionCall location function $ makeLazy env $ FixPoint def function
+          interpret $ FunctionCall location function $ FixPoint def function
         Native _ (NativeExpression _ inner) -> pure inner
         FunctionCall _ function argument -> do
           runtimeArgument <- interpret argument

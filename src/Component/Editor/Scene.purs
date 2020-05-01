@@ -15,7 +15,7 @@ import Data.Lens (is, preview, view)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Ord (signum)
 import Data.Traversable (sequence)
@@ -43,8 +43,9 @@ import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
+import Lunarbox.Data.Editor.NodeGroup (_NodeGroupInputs)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
-import Lunarbox.Data.Editor.Project (Project, _atProjectNode)
+import Lunarbox.Data.Editor.Project (Project, _atProjectNode, _projectNodeGroup)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
@@ -125,20 +126,30 @@ createNodeComponent { functionName
 
     position = view _NodeDataPosition nodeData
 
+    currentFunctionLocation = Location functionName
+
     location = generateLocation $ Location id
+  nodeGroup <- note (MissingType location) $ preview (_projectNodeGroup functionName) project
+  let
+    inputIndex = List.findIndex (_ == id) $ view _NodeGroupInputs nodeGroup
   node <- getNode functionName id project
-  nodeType <- note (MissingType location) $ Map.lookup location typeMap
+  currentFunctionType <- note (MissingType currentFunctionLocation) $ Map.lookup currentFunctionLocation typeMap
+  nodeType <- case inputIndex of
+    Just index -> note (MissingType location) $ (inputs currentFunctionType) `List.index` index
+    Nothing -> note (MissingType location) $ Map.lookup location typeMap
   let
     name = getNodeName node
 
-    localTypeMap =
-      flip maybeBimap typeMap \location' type' -> do
-        locationName <- preview _ExtendedLocation location'
-        locationId <- preview (_LocationExtension <<< _ExtendedLocation) location'
-        locationPin <- preview (_LocationExtension <<< _LocationExtension) location'
-        guard $ locationName == functionName
-        guard $ locationId == id
-        pure $ Tuple locationPin type'
+    localTypeMap = case inputIndex of
+      Just index -> Map.singleton OutputPin nodeType
+      Nothing ->
+        flip maybeBimap typeMap \location' type' -> do
+          locationName <- preview _ExtendedLocation location'
+          locationId <- preview (_LocationExtension <<< _ExtendedLocation) location'
+          locationPin <- preview (_LocationExtension <<< _LocationExtension) location'
+          guard $ locationName == functionName
+          guard $ locationId == id
+          pure $ Tuple locationPin type'
 
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   functionType <-

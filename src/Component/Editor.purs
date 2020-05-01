@@ -34,7 +34,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
-import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
@@ -303,6 +303,11 @@ component =
             , addNode: Just <<< CreateNode
             , changeInputCount: (Just <<< _) <<< ChangeInputCount
             }
+        , container "create-input"
+            [ HH.button [ onClick $ const $ Just $ CreateNode $ FunctionName "input" ]
+                [ HH.text "Create input node"
+                ]
+            ]
         ]
     _ -> HH.text "not implemented"
 
