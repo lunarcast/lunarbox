@@ -8,6 +8,10 @@ import Math (Radians, pi)
 nodeRadius :: Number
 nodeRadius = 50.0
 
+-- The radius of the little circle in the middle of nodes
+outputRadius :: Number
+outputRadius = 10.0
+
 -- How much spage to display between node inputs
 arcSpacing :: Radians
 arcSpacing = 0.1

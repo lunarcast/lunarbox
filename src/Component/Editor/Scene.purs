@@ -39,7 +39,7 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -140,8 +140,6 @@ createNodeComponent { functionName
         guard $ locationId == id
         pure $ Tuple locationPin type'
 
-    inputCount = List.length $ view _nodeInputs node
-
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   functionType <-
     if is _ComplexNode node then
@@ -162,7 +160,6 @@ createNodeComponent { functionName
               $ foldr TArrow nodeType
               $ ( List.mapWithIndex \index type' -> fromMaybe type' $ Map.lookup (InputPin index) localTypeMap
                 )
-              $ List.take inputCount
               $ inputs functionType
           , labelText $ show name
           ]

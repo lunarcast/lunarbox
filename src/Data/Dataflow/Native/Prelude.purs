@@ -3,24 +3,22 @@ module Lunarbox.Data.Dataflow.Native.Prelude
   , loadPrelude
   ) where
 
+import Prelude
 import Lunarbox.Data.Dataflow.Native.ControlFlow (if')
-import Lunarbox.Data.Dataflow.Native.Function (const', identity', pipe)
+import Lunarbox.Data.Dataflow.Native.Function (functionNodes)
 import Lunarbox.Data.Dataflow.Native.Literal (boolean, false', number, string, true')
 import Lunarbox.Data.Dataflow.Native.Logic (and, not', or, xor)
 import Lunarbox.Data.Dataflow.Native.Math (mathNodes)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig, loadNativeConfigs)
 import Lunarbox.Data.Dataflow.Native.String (concatStrings, reverseString, stringLength, trimString)
 import Lunarbox.Data.Editor.State (State)
-import Prelude
 
 -- Array wita s mll the built in nodes
 configs :: forall a s m. Array (NativeConfig a s m)
 configs =
   mathNodes
+    <> functionNodes
     <> [ if'
-      , pipe
-      , identity'
-      , const'
       , true'
       , false'
       , boolean

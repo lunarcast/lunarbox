@@ -4,9 +4,11 @@ module Lunarbox.Component.Editor.Add
 
 import Prelude
 import Control.MonadZero (guard)
+import Data.Array as Array
 import Data.Default (def)
 import Data.Either (either)
 import Data.Int (fromString, toNumber)
+import Data.Lens (view)
 import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -22,10 +24,10 @@ import Lunarbox.Component.Editor.Node (SelectionStatus(..), renderNode)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
-import Lunarbox.Data.Dataflow.Type (Type, inputs, numberOfInputs, output)
+import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
@@ -141,7 +143,7 @@ makeNode { edit, addNode, changeInputCount } { isUsable, isEditable } name typeM
         ]
     ]
   where
-  maxInputs = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+  maxInputs = Array.length $ view _FunctionDataInputs functionData
 
   inputCount = fromMaybe maxInputs $ Map.lookup name inputCountMap
 

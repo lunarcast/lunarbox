@@ -7,16 +7,16 @@ import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.State (gets, modify_)
 import Control.Monad.Writer (listen)
-import Data.Array (find, zip)
+import Data.Array (zip)
 import Data.Either (Either(..))
 import Data.Lens (over, view)
 import Data.List (List(..), (:))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _location, _typeEnv, createConstraint, rememberType, withLocation)
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
@@ -31,24 +31,14 @@ import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
 -- Uses the state from within the Infer monad to prevent duplicates
 fresh :: forall l. Ord l => Show l => Boolean -> Infer l Type
 fresh generalizable = do
-  location <- asks $ view _location
-  used <- gets $ view _usedNames
-  if isJust $ find (_ == show location) used then do
-    count <- gets $ view _count
-    modify_
-      $ over _count (_ + 1)
-    pure
-      $ TVariable generalizable
-      $ TVarName
-      $ "t"
-      <> show count
-  else do
-    modify_
-      $ over _usedNames (show location : _)
-    pure
-      $ TVariable generalizable
-      $ TVarName
-      $ show location
+  count <- gets $ view _count
+  modify_
+    $ over _count (_ + 1)
+  pure
+    $ TVariable generalizable
+    $ TVarName
+    $ "t"
+    <> show count
 
 -- Create a scope for a variable to be in
 createClosure :: forall l a. Ord l => VarName -> Scheme -> Infer l a -> Infer l a

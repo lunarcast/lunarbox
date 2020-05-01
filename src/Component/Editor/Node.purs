@@ -27,7 +27,7 @@ import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, scaleConnectionPreview)
+import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
@@ -225,7 +225,7 @@ renderNode { nodeData: nodeData
                         radius = nodeRadius + (toNumber layer) * inputLayerOffset
 
                         -- Position of the middle of this arc
-                        inputPosition = vec2 (cos angle * radius) (sin angle * radius)
+                        inputPosition = (_ * radius) <$> vec2 (cos angle) (sin angle)
 
                         -- The color of the input arc
                         inputColor = fromMaybe transparent $ Map.lookup (InputPin index) colorMap
@@ -240,10 +240,12 @@ renderNode { nodeData: nodeData
                               targetPosition = view _NodeDataPosition targetData
 
                               isMouse = nodeId == mouseId
+
+                              originalPosition = scaleConnection nodeId $ targetPosition - centerPosition
                             pure
                               $ renderEdge
                                   { from: inputPosition
-                                  , to: scaleConnection nodeId $ targetPosition - centerPosition
+                                  , to: originalPosition - ((_ * outputRadius) <$> vec2 (cos angle) (sin angle))
                                   , color
                                   , dotted: isMouse
                                   , className: Just "node-connection"

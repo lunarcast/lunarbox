@@ -3,6 +3,7 @@ module Lunarbox.Capability.Editor.Type
   , typeToColor
   , generateTypeMap
   , prettify
+  , combineColors
   ) where
 
 import Prelude

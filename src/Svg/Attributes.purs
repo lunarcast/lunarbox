@@ -6,6 +6,7 @@ module Lunarbox.Svg.Attributes
   , transparent
   , strokeDashArray
   , strokeLinecap
+  , colorsAreEqual
   , Linecap(..)
   ) where
 
@@ -87,3 +88,11 @@ chord radius startAngle endAngle =
 -- Transparent color
 transparent :: Color
 transparent = RGBA 0 0 0 0.0
+
+-- Thres no Eq instance for colors so I made a helper
+colorsAreEqual :: Color -> Color -> Boolean
+colorsAreEqual (RGBA r g b a) (RGBA r' g' b' a') = r == r' && g == g' && b == b' && a == a'
+
+colorsAreEqual (RGB r g b) (RGB r' g' b') = r == r' && g == g' && b == b'
+
+colorsAreEqual _ _ = false

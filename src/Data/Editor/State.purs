@@ -4,6 +4,7 @@ import Prelude
 import Control.Monad.State (gets)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
+import Data.Array as Array
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
@@ -31,13 +32,13 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Dataflow.Type (Type, numberOfInputs)
+import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.Camera (Camera, toWorldCoordinates)
 import Lunarbox.Data.Editor.Camera as Camera
 import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
@@ -135,11 +136,12 @@ createNode name = do
   maybeCurrentFunction <- gets $ view _currentFunction
   maybeNodeFunction <- gets $ preview $ _function name
   desiredInputCount <- gets $ preview $ _atInputCount name
+  functionDataInputs <- gets $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
   for_ (join maybeNodeFunction) \function -> do
     addedNodes <- gets $ (toNumber <<< view _addedNodes)
     center <- gets sceneCenter
     let
-      maxInputs = fromMaybe 0 $ numberOfInputs <$> Map.lookup (Location name) typeMap
+      maxInputs = Array.length functionDataInputs
 
       inputCount = fromMaybe maxInputs $ join desiredInputCount
 
