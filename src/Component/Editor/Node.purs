@@ -245,7 +245,11 @@ renderNode { nodeData: nodeData
                             pure
                               $ renderEdge
                                   { from: inputPosition
-                                  , to: originalPosition - ((_ * outputRadius) <$> vec2 (cos angle) (sin angle))
+                                  , to:
+                                    if isMouse then
+                                      originalPosition
+                                    else
+                                      originalPosition - ((_ * outputRadius) <$> vec2 (cos angle) (sin angle))
                                   , color
                                   , dotted: isMouse
                                   , className: Just "node-connection"
