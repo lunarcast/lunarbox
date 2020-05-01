@@ -12,10 +12,10 @@ import Prelude (const, identity, ($))
 
 typePipe :: Scheme
 typePipe =
-  Forall [ input, output ] $ TArrow (TVarariable input)
+  Forall [ input, output ] $ TArrow (TVariable true input)
     $ TArrow
-        (TArrow (TVarariable input) (TVarariable output))
-        (TVarariable output)
+        (TArrow (TVariable true input) (TVariable true output))
+        (TVariable true output)
   where
   input = TVarName "i"
 
@@ -40,7 +40,7 @@ pipe =
     }
 
 typeIdentity :: Scheme
-typeIdentity = Forall [ input ] $ TArrow (TVarariable input) (TVarariable input)
+typeIdentity = Forall [ input ] $ TArrow (TVariable true input) (TVariable true input)
   where
   input = TVarName "i"
 
@@ -57,7 +57,7 @@ identity' =
     }
 
 typeConst :: Scheme
-typeConst = Forall [ input, ignore ] $ TArrow (TVarariable input) $ TArrow (TVarariable ignore) (TVarariable input)
+typeConst = Forall [ input, ignore ] $ TArrow (TVariable true input) $ TArrow (TVariable true ignore) (TVariable true input)
   where
   input = TVarName "input"
 

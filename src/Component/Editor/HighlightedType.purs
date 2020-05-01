@@ -39,7 +39,7 @@ highlightedType container bold highlight defaultColor = case _ of
       _ -> false
 
     result = highlightedType container bold highlight defaultColor from
-  TVarariable name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
+  TVariable _ name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
     where
     shade = seededInt (show name') 100 255
   other -> highlight color $ HH.text $ show other

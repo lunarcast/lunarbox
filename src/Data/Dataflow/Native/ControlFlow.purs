@@ -17,7 +17,7 @@ typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn $ TArrow typeRe
   where
   return = TVarName "a"
 
-  typeReturn = TVarariable return
+  typeReturn = TVariable true return
 
 evalIf :: RuntimeValue -> RuntimeValue
 evalIf (Bool true) = binaryFunction const

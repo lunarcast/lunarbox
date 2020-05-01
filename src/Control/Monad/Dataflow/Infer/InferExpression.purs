@@ -29,8 +29,8 @@ import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
 
 -- Create a fewsh type variable
 -- Uses the state from within the Infer monad to prevent duplicates
-fresh :: forall l. Ord l => Show l => Infer l Type
-fresh = do
+fresh :: forall l. Ord l => Show l => Boolean -> Infer l Type
+fresh generalizable = do
   location <- asks $ view _location
   used <- gets $ view _usedNames
   if isJust $ find (_ == show location) used then do
@@ -38,7 +38,7 @@ fresh = do
     modify_
       $ over _count (_ + 1)
     pure
-      $ TVarariable
+      $ TVariable generalizable
       $ TVarName
       $ "t"
       <> show count
@@ -46,7 +46,7 @@ fresh = do
     modify_
       $ over _usedNames (show location : _)
     pure
-      $ TVarariable
+      $ TVariable generalizable
       $ TVarName
       $ show location
 
@@ -63,7 +63,7 @@ createClosure name scheme =
 -- The opposite of generalie. Takes a Forall type and creates a type out of it it
 instantiate :: forall l. Ord l => Show l => Scheme -> Infer l Type
 instantiate (Forall q t) = do
-  q' <- sequence $ fresh <$ q
+  q' <- sequence $ fresh true <$ q
   let
     scheme = Substitution $ Map.fromFoldable $ zip q q'
   pure $ apply scheme t
@@ -93,13 +93,13 @@ infer expression =
       Variable _ name -> do
         lookupEnv name
       Lambda _ param body -> do
-        tv <- fresh
+        tv <- fresh true
         t <- createClosure param (Forall [] tv) $ infer body
         pure $ tv `TArrow` t
       FunctionCall _ func input -> do
         funcType <- infer func
         inputType <- infer input
-        tv <- fresh
+        tv <- fresh true
         createConstraint funcType (inputType `TArrow` tv)
         pure tv
       Let location name value body -> do
@@ -114,15 +114,15 @@ infer expression =
         createClosure name generalized $ infer body
       FixPoint _ body -> do
         t <- infer body
-        tv <- fresh
+        tv <- fresh true
         createConstraint (tv `TArrow` tv) t
         pure tv
-      Chain _ Nil -> fresh
+      Chain _ Nil -> fresh true
       Chain _ (expression' : Nil) -> infer expression'
       Chain location (expression' : expressions) -> do
         void $ infer expression'
         infer $ Chain location expressions
-      Literal _ LNull -> fresh
+      Literal _ LNull -> fresh false
       Literal _ (LInt _) -> pure typeNumber
       Literal _ (LBool _) -> pure typeBool
       Native _ (NativeExpression scheme _) -> instantiate scheme

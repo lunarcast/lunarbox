@@ -31,8 +31,8 @@ instance tvarShow :: Show TVarName where
 
 data Type
   = TConstant String
+  | TVariable Boolean TVarName
   | TArrow Type Type
-  | TVarariable TVarName
 
 -- Primitive types
 typeNumber :: Type
@@ -73,7 +73,7 @@ instance typeShow :: Show Type where
   show = printType false
 
 printType :: Boolean -> Type -> String
-printType _ (TVarariable v) = show v
+printType _ (TVariable _ v) = show v
 
 printType _ (TConstant s) = s
 
