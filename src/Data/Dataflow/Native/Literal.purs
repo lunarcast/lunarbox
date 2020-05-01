@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Native.Literal
   , false'
   , boolean
   , number
+  , string
   ) where
 
 import Prelude
@@ -15,9 +16,9 @@ import Lunarbox.Component.Switch (switch, switchHeight, switchWidth)
 import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), toBoolean, toNumber)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), toBoolean, toNumber, toString)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (typeBool, typeNumber)
+import Lunarbox.Data.Dataflow.Type (typeBool, typeNumber, typeString)
 import Lunarbox.Data.Editor.Constants (inputWIdth)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -85,4 +86,28 @@ number =
     , expression: (NativeExpression (Forall [] typeNumber) $ Number 0.0)
     , functionData: internal []
     , component: Just $ HH.lazy2 numberUi
+    }
+
+stringUI :: forall a s m. FunctionUi a s m
+stringUI { value } { setValue } =
+  SE.foreignObject
+    [ SA.height switchHeight
+    , SA.width inputWIdth
+    , SA.x $ inputWIdth / -2.0
+    ]
+    [ HH.input
+        [ HP.value $ toString value
+        , HP.type_ HP.InputText
+        , className "string node-input"
+        , onValueInput $ setValue <<< String
+        ]
+    ]
+
+string :: forall a s m. NativeConfig a s m
+string =
+  NativeConfig
+    { name: FunctionName "string"
+    , expression: (NativeExpression (Forall [] typeString) $ String "lunarbox")
+    , functionData: internal []
+    , component: Just $ HH.lazy2 stringUI
     }

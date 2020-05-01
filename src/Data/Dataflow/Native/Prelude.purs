@@ -5,7 +5,7 @@ module Lunarbox.Data.Dataflow.Native.Prelude
 
 import Lunarbox.Data.Dataflow.Native.ControlFlow (if')
 import Lunarbox.Data.Dataflow.Native.Function (const', identity', pipe)
-import Lunarbox.Data.Dataflow.Native.Literal (boolean, false', number, true')
+import Lunarbox.Data.Dataflow.Native.Literal (boolean, false', number, string, true')
 import Lunarbox.Data.Dataflow.Native.Logic (and, not', or, xor)
 import Lunarbox.Data.Dataflow.Native.Math (add)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig, loadNativeConfigs)
@@ -23,6 +23,7 @@ configs =
   , false'
   , boolean
   , number
+  , string
   , not'
   , and
   , or

@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Runtime
   , binaryFunction
   , toBoolean
   , toNumber
+  , toString
   , _Number
   , _String
   , _Function
@@ -78,6 +79,12 @@ toNumber :: RuntimeValue -> Number
 toNumber (Number inner) = inner
 
 toNumber _ = 0.0
+
+-- Similar to show except it doesn't put quotes around strings
+toString :: RuntimeValue -> String
+toString (String inner) = inner
+
+toString other = show other
 
 -- Lenses
 _Number :: Prism' RuntimeValue Number
