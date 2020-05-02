@@ -120,6 +120,7 @@ renderNode { nodeData: nodeData
 } =
   SE.g
     [ SA.transform [ SA.Translate (centerPosition !! d0) (centerPosition !! d1) ]
+    , SA.class_ "node"
     , allowMoving
     ]
     $ [ overlays maxRadius labels

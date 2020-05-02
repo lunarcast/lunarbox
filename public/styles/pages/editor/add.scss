@@ -104,6 +104,11 @@
         text-overflow: ellipsis;
         width: calc(15rem - 100px);
 
+        * {
+          cursor: default;
+          user-select: none;
+        }
+
         #node-name {
           font-size: 1.4rem;
 
