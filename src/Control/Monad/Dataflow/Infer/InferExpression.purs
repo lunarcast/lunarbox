@@ -4,16 +4,21 @@ module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression
 
 import Prelude
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Reader (asks, local)
+import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.State (gets, modify_)
-import Data.Array (find, foldr, zip)
+import Control.Monad.Writer (listen)
+import Data.Array (zip)
+import Data.Either (Either(..))
 import Data.Lens (over, view)
-import Data.List ((:))
+import Data.List (List(..), (:))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..))
 import Data.Set as Set
-import Data.Traversable (traverse)
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, _count, _location, _typeEnv, _usedNames, createConstraint, rememberType, withLocation)
+import Data.Traversable (sequence)
+import Data.Tuple (Tuple(..))
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _location, _typeEnv, createConstraint, rememberType, withLocation)
+import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
@@ -24,26 +29,16 @@ import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
 
 -- Create a fewsh type variable
 -- Uses the state from within the Infer monad to prevent duplicates
-fresh :: forall l. Ord l => Show l => Infer l Type
-fresh = do
-  location <- asks $ view _location
-  used <- gets $ view _usedNames
-  if isJust $ find (_ == show location) used then do
-    count <- gets $ view _count
-    modify_
-      $ over _count (_ + 1)
-    pure
-      $ TVarariable
-      $ TVarName
-      $ "t"
-      <> show count
-  else do
-    modify_
-      $ over _usedNames (show location : _)
-    pure
-      $ TVarariable
-      $ TVarName
-      $ show location
+fresh :: forall l. Ord l => Show l => Boolean -> Infer l Type
+fresh generalizable = do
+  count <- gets $ view _count
+  modify_
+    $ over _count (_ + 1)
+  pure
+    $ TVariable generalizable
+    $ TVarName
+    $ "t"
+    <> show count
 
 -- Create a scope for a variable to be in
 createClosure :: forall l a. Ord l => VarName -> Scheme -> Infer l a -> Infer l a
@@ -58,7 +53,7 @@ createClosure name scheme =
 -- The opposite of generalie. Takes a Forall type and creates a type out of it it
 instantiate :: forall l. Ord l => Show l => Scheme -> Infer l Type
 instantiate (Forall q t) = do
-  q' <- traverse (const fresh) q
+  q' <- sequence $ fresh true <$ q
   let
     scheme = Substitution $ Map.fromFoldable $ zip q q'
   pure $ apply scheme t
@@ -88,30 +83,36 @@ infer expression =
       Variable _ name -> do
         lookupEnv name
       Lambda _ param body -> do
-        tv <- fresh
+        tv <- fresh true
         t <- createClosure param (Forall [] tv) $ infer body
         pure $ tv `TArrow` t
       FunctionCall _ func input -> do
         funcType <- infer func
         inputType <- infer input
-        tv <- fresh
+        tv <- fresh true
         createConstraint funcType (inputType `TArrow` tv)
         pure tv
-      Let _ shouldGeneralize name value body -> do
-        t <- infer value
-        inner <- if shouldGeneralize then generalize t else pure $ Forall [] t
-        createClosure name inner (infer body)
+      Let location name value body -> do
+        env <- ask
+        (Tuple t0 (InferOutput { constraints })) <- listen $ infer value
+        subst <- case runSolve (SolveContext { location }) $ solve constraints of
+          Right result -> pure result
+          Left err -> throwError err
+        let
+          t1 = apply subst t0
+        generalized <- local (const env) $ generalize t1
+        createClosure name generalized $ infer body
       FixPoint _ body -> do
         t <- infer body
-        tv <- fresh
+        tv <- fresh true
         createConstraint (tv `TArrow` tv) t
         pure tv
-      Chain _ expressions -> do
-        foldr
-          (\expression' toDiscard -> toDiscard >>= (const $ infer expression'))
-          fresh
-          expressions
-      Literal _ LNull -> fresh
+      Chain _ Nil -> fresh true
+      Chain _ (expression' : Nil) -> infer expression'
+      Chain location (expression' : expressions) -> do
+        void $ infer expression'
+        infer $ Chain location expressions
+      Literal _ LNull -> fresh false
       Literal _ (LInt _) -> pure typeNumber
       Literal _ (LBool _) -> pure typeBool
       Native _ (NativeExpression scheme _) -> instantiate scheme

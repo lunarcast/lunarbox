@@ -6,6 +6,7 @@ module Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret
 import Prelude
 import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.Writer (tell)
+import Data.Default (class Default, def)
 import Data.Int (toNumber)
 import Data.Lens (over, set, view)
 import Data.List as List
@@ -18,6 +19,8 @@ import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExp
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
+import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
+import Lunarbox.Data.Dataflow.Type (typeString)
 
 -- Gets a value from the current environment
 getVariable :: forall l. Ord l => String -> Interpreter l RuntimeValue
@@ -29,8 +32,12 @@ getVariable name = do
 withTerm :: forall l. Ord l => String -> RuntimeValue -> Interpreter l ~> Interpreter l
 withTerm name value = local $ over _termEnv $ TermEnvironment.insert name value
 
+-- Wrap a runtime value in an expression
+makeNative :: forall l. Ord l => Default l => RuntimeValue -> Expression l
+makeNative = Native def <<< NativeExpression (Forall [] typeString)
+
 -- Interpret an expression into a runtimeValue
-interpret :: forall l. Ord l => Expression l -> Interpreter l RuntimeValue
+interpret :: forall l. Ord l => Default l => Expression l -> Interpreter l RuntimeValue
 interpret expression = do
   overwrites <- asks $ view _overwrites
   let
@@ -47,6 +54,8 @@ interpret expression = do
         Variable _ name -> getVariable $ show name
         Lambda _ argumentName body -> do
           env <- ask
+          -- This is here to generate data for node uis
+          void $ withTerm (show argumentName) Null $ interpret body
           pure $ Function
             $ \argument ->
                 fst
@@ -56,15 +65,16 @@ interpret expression = do
         Chain _ expressions -> case List.last expressions of
           Just expression' -> interpret expression'
           Nothing -> pure Null
-        Let _ _ name value body -> do
+        Let _ name value body -> do
           runtimeValue <- interpret value
           withTerm (show name) runtimeValue $ interpret body
-        FixPoint _ function -> interpret $ FunctionCall location function $ FixPoint location function
+        FixPoint _ function -> do
+          env <- ask
+          interpret $ FunctionCall location function $ FixPoint def function
         Native _ (NativeExpression _ inner) -> pure inner
         FunctionCall _ function argument -> do
           runtimeArgument <- interpret argument
-          runtimeFunction <-
-            interpret function
+          runtimeFunction <- interpret function
           pure case runtimeFunction of
             Function call -> call runtimeArgument
             _ -> Null

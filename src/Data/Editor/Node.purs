@@ -9,10 +9,15 @@ module Lunarbox.Data.Editor.Node
   , _ComplexNodeFunction
   , _ComplexNodeInputs
   , _OutputNode
+  , _ComplexNode
   , _nodeInputs
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
+import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
+import Data.Generic.Rep (class Generic)
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
@@ -47,6 +52,14 @@ data Node
 
 derive instance eqNode :: Eq Node
 
+derive instance genericNode :: Generic Node _
+
+instance encodeJsonNode :: EncodeJson Node where
+  encodeJson = genericEncodeJson
+
+instance decodeJsonNode :: DecodeJson Node where
+  decodeJson = genericDecodeJson
+
 instance showNode :: Show Node where
   show InputNode = "InputNode"
   show (OutputNode id) = "Output " <> maybe "???" show id
@@ -80,7 +93,7 @@ compileNode nodes id child =
       outputNode id case outputId of
         Just outputId' -> Variable Nowhere $ VarName $ show outputId'
         Nothing -> nothing
-    ComplexNode { inputs, function } -> Let Nowhere false name value child
+    ComplexNode { inputs, function } -> Let Nowhere name value child
       where
       name = VarName $ show id
 

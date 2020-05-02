@@ -1,0 +1,142 @@
+@use "../utils/utils";
+
+@import "../theme.scss";
+
+#form-page {
+  display: flex;
+  height: 100%;
+
+  * {
+    padding-left: 0;
+  }
+
+  #form-left {
+    @include utils.center;
+
+    width: 30vw;
+    background: $primary-dark;
+  }
+
+  #form-right {
+    @include utils.center;
+
+    background: $primary;
+    flex-grow: 1;
+  }
+}
+
+@media only screen and (max-width: 1000px) {
+  #form-page #form-left {
+    display: none;
+  }
+}
+
+#form-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+
+  min-width: 70%;
+
+  #title-row {
+    display: flex;
+    #title {
+      color: $on-primary;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      flex-grow: 1;
+    }
+
+    #message {
+      display: flex;
+      align-items: flex-end;
+
+      font-size: 1.5rem;
+      height: 3rem;
+
+      #message-normal {
+        color: $on-dark-pale;
+        filter: brightness(0.7);
+      }
+
+      #message-action {
+        color: $secondary;
+        transition: filter $transition-time;
+
+        margin-left: 1rem;
+        cursor: pointer;
+
+        &:hover {
+          filter: brightness(1.4);
+        }
+      }
+    }
+  }
+}
+
+#form-container {
+  form fieldset {
+    border: none;
+  }
+
+  .submit-container {
+    display: flex;
+    justify-content: flex-end;
+
+    .submit-form {
+      background: $primary-dark;
+      color: $on-primary;
+
+      font-weight: bold;
+      filter: brightness(1.8);
+      transition: filter $transition-time;
+
+      padding: 0.8rem;
+      width: 7rem;
+
+      outline: none;
+      border: none;
+
+      &:hover {
+        filter: brightness(2.4);
+      }
+    }
+  }
+}
+
+#form-container .form-field {
+  background: $primary-dark;
+  color: $on-dark-pale;
+
+  width: 100%;
+  padding: 1rem;
+
+  outline: none;
+  border: none;
+
+  transition: filter $transition-time;
+
+  &:hover {
+    filter: brightness(1.3);
+  }
+
+  &:focus {
+    filter: brightness(1.5);
+  }
+}
+
+.form-group {
+  padding-bottom: 0;
+}
+
+.form .form-message {
+  margin: 1rem;
+
+  &.error-message {
+    color: $error;
+  }
+
+  &.no-error {
+    color: $secondary;
+  }
+}

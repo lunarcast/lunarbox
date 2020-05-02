@@ -17,7 +17,7 @@ typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn $ TArrow typeRe
   where
   return = TVarName "a"
 
-  typeReturn = TVarariable return
+  typeReturn = TVariable true return
 
 evalIf :: RuntimeValue -> RuntimeValue
 evalIf (Bool true) = binaryFunction const
@@ -26,7 +26,7 @@ evalIf (Bool false) = binaryFunction $ flip const
 
 evalIf _ = Null
 
-if' :: forall h a. NativeConfig h a
+if' :: forall a s m. NativeConfig a s m
 if' =
   NativeConfig
     { name: FunctionName "if"

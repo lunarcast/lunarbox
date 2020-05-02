@@ -26,7 +26,10 @@ compileGraph toExpression graph main =
   in
     foldr
       ( \(Tuple key value) body ->
-          Let Nowhere true (VarName $ show key) value body
+          let
+            name = VarName $ show key
+          in
+            Let Nowhere name value body
       )
       (Variable Nowhere $ VarName $ show main)
       $ catMaybes

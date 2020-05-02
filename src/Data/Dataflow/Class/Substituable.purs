@@ -30,11 +30,13 @@ class Substituable a where
 
 instance typeSubst :: Substituable Type where
   apply _ t@(TConstant _) = t
-  apply (Substitution s) t@(TVarariable a) = (Map.lookup a s) # fromMaybe t
+  apply (Substitution s) t@(TVariable _ a) = (Map.lookup a s) # fromMaybe t
   apply s (TArrow t1 t2) = apply s t1 `TArrow` apply s t2
-  ftv (TConstant _) = Set.empty
-  ftv (TVarariable a) = Set.singleton a
   ftv (TArrow t1 t2) = ftv t1 `Set.union` ftv t2
+  ftv (TConstant _) = Set.empty
+  ftv (TVariable generalize a)
+    | generalize = Set.singleton a
+    | otherwise = Set.empty
 
 instance schemeSubst :: Substituable Scheme where
   apply (Substitution substitution) (Forall quantifiers t) = Forall quantifiers $ apply newScheme t

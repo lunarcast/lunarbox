@@ -13,6 +13,7 @@ module Lunarbox.Data.Editor.Project
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Lens (Lens', Traversal', _Just, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Record (prop)
@@ -39,6 +40,10 @@ newtype Project
   }
 
 derive instance newtypeProject :: Newtype Project _
+
+derive newtype instance encodeJsonProject :: EncodeJson Project
+
+derive newtype instance decodeJsonProject :: DecodeJson Project
 
 _ProjectFunctions :: Lens' Project (G.Graph FunctionName DataflowFunction)
 _ProjectFunctions = newtypeIso <<< prop (SProxy :: _ "functions")

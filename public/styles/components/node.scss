@@ -1,12 +1,18 @@
 @import "../theme.scss";
 
-.node.selected {
-  border: 10px solid red;
+svg .node {
+  cursor: grab;
 }
 
 .node-input,
 .node-connection {
   transition: stroke-width $transition-time;
+}
+
+.node-connection,
+.node-input,
+.node-output {
+  cursor: pointer;
 }
 
 .node-input:hover,

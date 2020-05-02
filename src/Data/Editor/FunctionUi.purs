@@ -5,7 +5,7 @@ module Lunarbox.Data.Editor.FunctionUi
   ) where
 
 import Data.Maybe (Maybe)
-import Halogen.HTML (HTML)
+import Halogen.HTML (ComponentHTML)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 
 type FunctionUiActions a
@@ -17,5 +17,5 @@ type FunctionUiInputs
     }
 
 -- Functions can have custom ui under them
-type FunctionUi h a
-  = FunctionUiInputs -> FunctionUiActions a -> HTML h a
+type FunctionUi a s m
+  = FunctionUiInputs -> FunctionUiActions a -> ComponentHTML a s m

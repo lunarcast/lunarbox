@@ -1,4 +1,4 @@
-module Lunarbox.Data.Dataflow.Native.Function (pipe, identity', const') where
+module Lunarbox.Data.Dataflow.Native.Function (functionNodes) where
 
 import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
@@ -8,14 +8,18 @@ import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Prelude (const, identity, ($))
+import Prelude (const, identity, ($), (>>>))
+
+-- All the function related nodes from Prelude
+functionNodes :: forall a s m. Array (NativeConfig a s m)
+functionNodes = [ pipe, const', identity', compose, flip' ]
 
 typePipe :: Scheme
 typePipe =
-  Forall [ input, output ] $ TArrow (TVarariable input)
+  Forall [ input, output ] $ TArrow (TVariable true input)
     $ TArrow
-        (TArrow (TVarariable input) (TVarariable output))
-        (TVarariable output)
+        (TArrow (TVariable true input) (TVariable true output))
+        (TVariable true output)
   where
   input = TVarName "i"
 
@@ -26,7 +30,7 @@ evalPipe input (Function function) = function input
 
 evalPipe _ _ = Null
 
-pipe :: forall h a. NativeConfig h a
+pipe :: forall a s m. NativeConfig a s m
 pipe =
   NativeConfig
     { name: FunctionName "pipe"
@@ -40,11 +44,11 @@ pipe =
     }
 
 typeIdentity :: Scheme
-typeIdentity = Forall [ input ] $ TArrow (TVarariable input) (TVarariable input)
+typeIdentity = Forall [ input ] $ TArrow (TVariable true input) (TVariable true input)
   where
   input = TVarName "i"
 
-identity' :: forall h a. NativeConfig h a
+identity' :: forall a s m. NativeConfig a s m
 identity' =
   NativeConfig
     { name: FunctionName "identity"
@@ -57,13 +61,13 @@ identity' =
     }
 
 typeConst :: Scheme
-typeConst = Forall [ input, ignore ] $ TArrow (TVarariable input) $ TArrow (TVarariable ignore) (TVarariable input)
+typeConst = Forall [ input, ignore ] $ TArrow (TVariable true input) $ TArrow (TVariable true ignore) (TVariable true input)
   where
   input = TVarName "input"
 
   ignore = TVarName "ignore"
 
-const' :: forall h a. NativeConfig h a
+const' :: forall a s m. NativeConfig a s m
 const' =
   NativeConfig
     { name: FunctionName "const"
@@ -72,6 +76,74 @@ const' =
       internal
         [ { name: "constant value" }
         , { name: "ignored value" }
+        ]
+    , component: Nothing
+    }
+
+typeCompose :: Scheme
+typeCompose = Forall [ a, b, c ] $ TArrow (TArrow typeA typeB) $ TArrow (TArrow typeB typeC) $ TArrow typeA typeC
+  where
+  a = TVarName "t0"
+
+  b = TVarName "t1"
+
+  c = TVarName "t2"
+
+  typeA = TVariable true a
+
+  typeB = TVariable true b
+
+  typeC = TVariable true c
+
+evalCompose :: RuntimeValue -> RuntimeValue -> RuntimeValue
+evalCompose (Function first) (Function second) = Function $ first >>> second
+
+evalCompose _ _ = Null
+
+compose :: forall a s m. NativeConfig a s m
+compose =
+  NativeConfig
+    { name: FunctionName "compose"
+    , expression: (NativeExpression typeCompose $ binaryFunction evalCompose)
+    , functionData:
+      internal
+        [ { name: "first function" }
+        , { name: "second function" }
+        ]
+    , component: Nothing
+    }
+
+typeFlip :: Scheme
+typeFlip = Forall [ a, b, c ] $ TArrow (TArrow typeA $ TArrow typeB typeC) $ TArrow typeB $ TArrow typeA typeC
+  where
+  a = TVarName "t0"
+
+  b = TVarName "t1"
+
+  c = TVarName "t2"
+
+  typeA = TVariable true a
+
+  typeB = TVariable true b
+
+  typeC = TVariable true c
+
+evalFlip :: RuntimeValue -> RuntimeValue
+evalFlip (Function function) =
+  binaryFunction \first second -> case function second of
+    Function inner -> inner first
+    _ -> Null
+
+evalFlip _ = Null
+
+flip' :: forall a s m. NativeConfig a s m
+flip' =
+  NativeConfig
+    { name: FunctionName "flip"
+    , expression: (NativeExpression typeFlip $ Function evalFlip)
+    , functionData:
+      internal
+        [ { name: "function" }
         ]
     , component: Nothing
     }

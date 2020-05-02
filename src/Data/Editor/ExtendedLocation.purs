@@ -8,7 +8,11 @@ module Lunarbox.Data.Editor.ExtendedLocation
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
+import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
 import Data.Default (class Default, def)
+import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (Expression, nullExpr)
@@ -22,6 +26,14 @@ data ExtendedLocation l l'
 derive instance eqExtendedLocation :: (Eq l, Eq l') => Eq (ExtendedLocation l l')
 
 derive instance ordExtendedLocation :: (Ord l, Ord l') => Ord (ExtendedLocation l l')
+
+derive instance genericExtendedLocation :: Generic (ExtendedLocation l l') _
+
+instance encodeJsonExtendedLocation :: (EncodeJson l, EncodeJson l') => EncodeJson (ExtendedLocation l l') where
+  encodeJson = genericEncodeJson
+
+instance decodeJsonExtendedLocation :: (DecodeJson l, DecodeJson l') => DecodeJson (ExtendedLocation l l') where
+  decodeJson = genericDecodeJson
 
 instance defaultExtendedLocation :: Default (ExtendedLocation l l') where
   def = Nowhere

@@ -16,7 +16,7 @@ isRecursive subst t = subst `Set.member` ftv t
 -- Bind a variable to something else in a substitution
 bindVariable :: forall l. TVarName -> Type -> Solve l Substitution
 bindVariable a t
-  | t == TVarariable a = pure mempty
+  | t == TVariable false a || t == TVariable true a = pure mempty
   | isRecursive a t = throwTypeError $ RecursiveType a t
   | otherwise = pure $ Substitution $ Map.singleton a t
 
@@ -24,9 +24,15 @@ unify :: forall l. Type -> Type -> Solve l Substitution
 unify t t'
   | t == t' = pure mempty
 
-unify (TVarariable v) t = bindVariable v t
+unify t@(TVariable false _) (TVariable true v) = bindVariable v t
 
-unify t (TVarariable v) = bindVariable v t
+unify (TVariable true v) t@(TVariable false _) = bindVariable v t
+
+unify t (TVariable false v) = bindVariable v t
+
+unify (TVariable _ v) t = bindVariable v t
+
+unify t (TVariable _ v) = bindVariable v t
 
 unify (TArrow f t) (TArrow f' t') = unifyMany (f : t : Nil) (f' : t' : Nil)
 

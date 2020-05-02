@@ -12,6 +12,8 @@ import Routing.Duplex.Parser (RouteError)
 data Route
   = Home
   | Playground
+  | Login
+  | Register
   | Settings
 
 derive instance eqRoute :: Eq Route
@@ -30,6 +32,8 @@ routingCodec =
     $ sum
         { "Home": noArgs
         , "Settings": "settings" / noArgs
+        , "Login": "login" / noArgs
+        , "Register": "register" / noArgs
         , "Playground": "playground" / noArgs
         }
 

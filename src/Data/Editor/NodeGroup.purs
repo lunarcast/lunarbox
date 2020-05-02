@@ -8,6 +8,7 @@ module Lunarbox.Data.Editor.NodeGroup
   ) where
 
 import Prelude
+import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.List (List, foldr, (:), (\\))
@@ -29,13 +30,17 @@ newtype NodeGroup
   , output :: NodeId
   }
 
--- Take a graph of nodes and return a list of nodes sorted in topological order
-orderNodes :: NodeGroup -> List NodeId
-orderNodes (NodeGroup function) = topologicalSort function.nodes
-
 derive instance newtypeNodeGroup :: Newtype NodeGroup _
 
 derive newtype instance showNodeGroup :: Show NodeGroup
+
+derive newtype instance encodeJsonNodeGroup :: EncodeJson NodeGroup
+
+derive newtype instance decodeJsonNodeGroup :: DecodeJson NodeGroup
+
+-- Take a graph of nodes and return a list of nodes sorted in topological order
+orderNodes :: NodeGroup -> List NodeId
+orderNodes (NodeGroup function) = topologicalSort function.nodes
 
 compileNodeGroup :: NodeGroup -> Expression NodeOrPinLocation
 compileNodeGroup group@(NodeGroup { nodes, output, inputs }) =

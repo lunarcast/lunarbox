@@ -1,10 +1,12 @@
 module Lunarbox.Svg.Attributes
   ( strokeWidth
+  , fontWeight
   , arc
   , chord
   , transparent
   , strokeDashArray
   , strokeLinecap
+  , colorsAreEqual
   , Linecap(..)
   ) where
 
@@ -12,11 +14,11 @@ import Prelude
 import Core (attr)
 import Data.String (joinWith)
 import Data.Typelevel.Num (d0, d1)
-import Data.Vec (vec2, (!!))
+import Data.Vec ((!!))
 import Halogen.HTML (AttrName(..), IProp)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..), length)
-import Lunarbox.Data.Vector (Vec2)
-import Math (Radians, cos, pi, sin)
+import Lunarbox.Data.Math (polarToCartesian)
+import Math (Radians, pi)
 import Svg.Attributes (Color(..), Command(..))
 import Svg.Attributes as SA
 import Unsafe.Coerce (unsafeCoerce)
@@ -29,6 +31,10 @@ strokeWidth = unsafeCoerce SA.strokeWidth
 -- The halogen-svg lib doesn't support this so I had to make my own
 strokeDashArray :: forall r i. Array Number -> IProp ( stroke :: String | r ) i
 strokeDashArray = unsafeCoerce $ attr (AttrName "stroke-dasharray") <<< joinWith ","
+
+-- The lib doesn't have this one either...
+fontWeight :: forall r i. String -> IProp r i
+fontWeight = unsafeCoerce $ attr (AttrName "font-weight")
 
 -- stroke linecaps for svg
 data Linecap
@@ -44,9 +50,6 @@ instance showLinecap :: Show Linecap where
 -- Same reason I have this as strokeDashArray
 strokeLinecap :: forall r i. Linecap -> IProp ( stroke :: String | r ) i
 strokeLinecap = unsafeCoerce <<< attr (AttrName "stroke-linecap") <<< show
-
-polarToCartesian :: Number -> Radians -> Vec2 Number
-polarToCartesian radius angle = (radius * _) <$> vec2 (cos angle) (sin angle)
 
 arcLength :: Radians -> Radians -> Radians
 arcLength start end = length $ Arc start end unit
@@ -85,3 +88,11 @@ chord radius startAngle endAngle =
 -- Transparent color
 transparent :: Color
 transparent = RGBA 0 0 0 0.0
+
+-- Thres no Eq instance for colors so I made a helper
+colorsAreEqual :: Color -> Color -> Boolean
+colorsAreEqual (RGBA r g b a) (RGBA r' g' b' a') = r == r' && g == g' && b == b' && a == a'
+
+colorsAreEqual (RGB r g b) (RGB r' g' b') = r == r' && g == g' && b == b'
+
+colorsAreEqual _ _ = false

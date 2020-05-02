@@ -33,7 +33,7 @@ describe currentFunction (Project { functions }) =
           && not isExternal
           && is _VisualFunction function
 
-      isUsable = not isCurrent && isJust currentFunction
+      isUsable = isJust currentFunction
     in
       Just { isUsable, isEditable }
 

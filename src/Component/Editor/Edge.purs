@@ -15,6 +15,7 @@ import Halogen.HTML.Events (onClick)
 import Lunarbox.Data.Editor.Constants (connectionsWidth)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (strokeDashArray, strokeWidth)
+import Math (floor)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -38,10 +39,10 @@ renderEdge = curry $ HH.memoized (\(Tuple a _) (Tuple b _) -> a.from == b.from &
 renderEdge' :: forall s a m. Input -> Actions a -> ComponentHTML a s m
 renderEdge' { from, to, color, dotted, className } { handleClick } =
   SE.line
-    $ [ SA.x1 $ from !! d0
-      , SA.y1 $ from !! d1
-      , SA.x2 $ to !! d0
-      , SA.y2 $ to !! d1
+    $ [ SA.x1 $ floor $ from !! d0
+      , SA.y1 $ floor $ from !! d1
+      , SA.x2 $ floor $ to !! d0
+      , SA.y2 $ floor $ to !! d1
       , SA.stroke $ Just color
       , onClick $ const handleClick
       , strokeWidth connectionsWidth

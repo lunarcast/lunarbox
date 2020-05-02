@@ -3,6 +3,7 @@ module Lunarbox.Capability.Editor.Type
   , typeToColor
   , generateTypeMap
   , prettify
+  , combineColors
   ) where
 
 import Prelude
@@ -12,14 +13,14 @@ import Data.Array as Array
 import Data.Either (Either(..), note)
 import Data.Enum (enumFromTo)
 import Data.Lens (view)
+import Data.List (List(..))
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Set as Set
 import Data.String.CodeUnits as String
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
+import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply)
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.Location (Location)
@@ -76,7 +77,7 @@ pinLocations functionData node = (OutputPin <$ guard (hasOutput node)) <> inputP
 generateColor :: Pin -> Type -> Either ColoringError Color
 generateColor currentLocation pinType = do
   color <- case pinType of
-    TVarariable name' -> Right $ RGB shade shade shade
+    TVariable _ name' -> Right $ RGB shade shade shade
       where
       shade = seededInt (show name') 100 255
     TArrow from to -> combineColors <$> generateColor currentLocation from <*> generateColor currentLocation to
@@ -100,20 +101,28 @@ alphabet = String.singleton <$> enumFromTo 'a' 'z'
 alphabetSize :: Int
 alphabetSize = Array.length alphabet
 
+-- Same as ftv but also returns nont-generalizable variables
+variables :: Type -> List TVarName
+variables (TConstant _) = Nil
+
+variables (TVariable _ name) = pure name
+
+variables (TArrow from to) = variables from <> variables to
+
 -- Prettify variable names in types. Should only be used for pretty printing
 prettify :: Type -> Type
 prettify type' =
   let
-    free = Set.toUnfoldable $ ftv type'
+    free = variables type'
 
-    freeCount = Array.length free
+    freeCount = List.length free
 
     subst =
       Substitution $ Map.fromFoldable
-        $ Array.mapWithIndex
+        $ List.mapWithIndex
             ( \index name ->
                 Tuple name
-                  $ TVarariable
+                  $ TVariable true
                       let
                         char =
                           TVarName

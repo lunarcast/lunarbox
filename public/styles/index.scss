@@ -3,16 +3,18 @@
 // Pages
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
+@import "./pages/login.scss";
 
 // Components
 @import "./components/tooltip.scss";
 @import "./components/switch.scss";
+@import "./components/node-input.scss";
 
 // Libraries
 @import "normalize.css";
 
-// we don't want the user to drag stuff
 * {
+  // we don't want the user to drag stuff
   -webkit-user-drag: none;
 }
 
@@ -30,7 +32,40 @@ img,
   overflow: hidden;
 }
 
-// default font on everything
 :root {
+  // default font on everything
   font-family: fonts.$montserrat;
+}
+
+// Remove arrows from number inputs
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+// Custom scrollbar
+
+* {
+  scrollbar-color: $primary-bright;
+  scrollbar-width: 1rem;
+
+  &::-webkit-scrollbar {
+    width: 1rem;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $very-dark;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: $primary-bright;
+  }
 }

@@ -17,7 +17,7 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
-import Halogen.HTML (HTML, IProp)
+import Halogen.HTML (HTML, IProp, ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
@@ -27,7 +27,7 @@ import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, scaleConnectionPreview)
+import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
@@ -38,7 +38,7 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Math (normalizeAngle)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
-import Math (cos, pi, sin)
+import Math (cos, floor, pi, sin)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -50,10 +50,10 @@ data SelectionStatus
   | OutputSelected
   | NothingSelected
 
-type Input h a
+type Input a s m
   = { nodeData :: NodeData
     , node :: Node
-    , labels :: Array (HTML h a)
+    , labels :: Array (ComponentHTML a s m)
     , functionData :: FunctionData
     , colorMap :: Map Pin SA.Color
     , hasOutput :: Boolean
@@ -61,7 +61,7 @@ type Input h a
     , selectionStatus :: SelectionStatus
     , mousePosition :: Vec2 Number
     , value :: Maybe RuntimeValue
-    , ui :: Maybe (FunctionUi h a)
+    , ui :: Maybe (FunctionUi a s m)
     }
 
 type Actions a
@@ -100,7 +100,7 @@ scaleConnection id position
   | id == mouseId = scaleConnectionPreview <$> position
   | otherwise = position
 
-renderNode :: forall h a. Input h a -> Actions a -> HTML h a
+renderNode :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
 renderNode { nodeData: nodeData
 , functionData
 , labels
@@ -120,13 +120,14 @@ renderNode { nodeData: nodeData
 } =
   SE.g
     [ SA.transform [ SA.Translate (centerPosition !! d0) (centerPosition !! d1) ]
+    , SA.class_ "node"
     , allowMoving
     ]
     $ [ overlays maxRadius labels
       ]
     <> valueSvg
-    <> uiSvg
     <> arcs
+    <> uiSvg
     <> [ movementHandler
       , output
           hasOutput
@@ -148,7 +149,7 @@ renderNode { nodeData: nodeData
     fromMaybe transparent
       $ Map.lookup OutputPin colorMap
 
-  centerPosition = view _NodeDataPosition nodeData
+  centerPosition = floor <$> view _NodeDataPosition nodeData
 
   (Tuple nodeDataWithMouse nodeWithMouse) = case selectionStatus of
     InputSelected index -> Tuple nodeDataMap' node'
@@ -225,7 +226,7 @@ renderNode { nodeData: nodeData
                         radius = nodeRadius + (toNumber layer) * inputLayerOffset
 
                         -- Position of the middle of this arc
-                        inputPosition = vec2 (cos angle * radius) (sin angle * radius)
+                        inputPosition = (_ * radius) <$> vec2 (cos angle) (sin angle)
 
                         -- The color of the input arc
                         inputColor = fromMaybe transparent $ Map.lookup (InputPin index) colorMap
@@ -240,10 +241,16 @@ renderNode { nodeData: nodeData
                               targetPosition = view _NodeDataPosition targetData
 
                               isMouse = nodeId == mouseId
+
+                              originalPosition = scaleConnection nodeId $ targetPosition - centerPosition
                             pure
                               $ renderEdge
                                   { from: inputPosition
-                                  , to: scaleConnection nodeId $ targetPosition - centerPosition
+                                  , to:
+                                    if isMouse then
+                                      originalPosition
+                                    else
+                                      originalPosition - ((_ * outputRadius) <$> vec2 (cos angle) (sin angle))
                                   , color
                                   , dotted: isMouse
                                   , className: Just "node-connection"

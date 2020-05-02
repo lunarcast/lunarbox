@@ -1,0 +1,30 @@
+@import "../theme.scss";
+
+.node-input {
+  border: none;
+  outline: none;
+  border-bottom: 3px solid transparent;
+
+  background: transparent;
+  color: $on-dark-pale;
+
+  transition: filter $transition-time;
+  filter: none;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+  overflow: hidden;
+
+  &:focus {
+    filter: brightness(1.5);
+  }
+
+  &.number {
+    border-bottom-color: rgb(35, 78, 196);
+  }
+
+  &.string {
+    border-bottom-color: rgb(97, 196, 35);
+  }
+}

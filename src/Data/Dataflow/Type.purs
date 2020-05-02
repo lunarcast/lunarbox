@@ -12,6 +12,8 @@ module Lunarbox.Data.Dataflow.Type
 import Prelude
 import Data.List (List(..), (:))
 import Data.Newtype (class Newtype, unwrap)
+import Lunarbox.Data.Char (arrow)
+import Lunarbox.Data.String (spaced)
 
 newtype TVarName
   = TVarName String
@@ -29,8 +31,8 @@ instance tvarShow :: Show TVarName where
 
 data Type
   = TConstant String
+  | TVariable Boolean TVarName
   | TArrow Type Type
-  | TVarariable TVarName
 
 -- Primitive types
 typeNumber :: Type
@@ -71,7 +73,7 @@ instance typeShow :: Show Type where
   show = printType false
 
 printType :: Boolean -> Type -> String
-printType _ (TVarariable v) = show v
+printType _ (TVariable _ v) = show v
 
 printType _ (TConstant s) = s
 
@@ -83,4 +85,4 @@ printType p (TArrow from to) = if p then "(" <> result <> ")" else result
 
   prefix = printType isArrow from
 
-  result = prefix <> " -> " <> show to
+  result = prefix <> spaced arrow <> show to

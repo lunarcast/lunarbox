@@ -8,29 +8,38 @@ import Prelude
 import Data.Maybe (Maybe(..), fromMaybe)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Editor.Type (typeToColor)
+import Lunarbox.Component.HighlightedText (bold)
 import Lunarbox.Component.HighlightedText as HT
+import Lunarbox.Data.Char (arrow)
 import Lunarbox.Data.Dataflow.Type (Type(..))
+import Lunarbox.Data.String (spaced)
 import Lunarbox.Math.SeededRandom (seededInt)
+import Lunarbox.Svg.Attributes (fontWeight)
 import Lunarbox.Svg.Element (tspan)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 
 -- A type which is syntax highlighted
-highlightedType :: forall h a. (Array (HH.HTML h a) -> HH.HTML h a) -> (Color -> HH.HTML h a -> HH.HTML h a) -> Color -> Type -> HH.HTML h a
-highlightedType container highlight defaultColor = case _ of
+highlightedType ::
+  forall h a.
+  (Array (HH.HTML h a) -> HH.HTML h a) ->
+  (HH.HTML h a -> HH.HTML h a) ->
+  (Color -> HH.HTML h a -> HH.HTML h a) ->
+  Color -> Type -> HH.HTML h a
+highlightedType container bold highlight defaultColor = case _ of
   TArrow from to ->
     container
       [ if isArrow then container [ HH.text "(", result, HH.text ")" ] else result
-      , HH.text " -> "
-      , highlightedType container highlight defaultColor to
+      , bold $ HH.text $ spaced arrow
+      , highlightedType container bold highlight defaultColor to
       ]
     where
     isArrow = case from of
       TArrow _ _ -> true
       _ -> false
 
-    result = highlightedType container highlight defaultColor from
-  TVarariable name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
+    result = highlightedType container bold highlight defaultColor from
+  TVariable _ name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
     where
     shade = seededInt (show name') 100 255
   other -> highlight color $ HH.text $ show other
@@ -38,9 +47,9 @@ highlightedType container highlight defaultColor = case _ of
     color = fromMaybe defaultColor $ typeToColor other
 
 highlightTypeToHTML :: forall h a. Color -> Type -> HH.HTML h a
-highlightTypeToHTML = highlightedType HH.span_ HT.highlight
+highlightTypeToHTML = highlightedType HH.span_ bold HT.highlight
 
 highlightTypeToSvg :: forall h a. Color -> Type -> HH.HTML h a
 highlightTypeToSvg =
-  highlightedType (tspan []) \color ->
+  highlightedType (tspan []) (tspan [ fontWeight "bold" ] <<< pure) \color ->
     tspan [ SA.fill $ Just color ] <<< pure
