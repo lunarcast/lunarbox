@@ -7,7 +7,7 @@ import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -25,4 +25,6 @@ centeredText color =
 
 -- render a value visually
 renderRuntimeValue :: forall h a. SA.Color -> RuntimeValue -> HTML h a
-renderRuntimeValue color = centeredText color <<< show
+renderRuntimeValue color = case _ of
+  Null -> HH.text ""
+  value -> centeredText color $ show value
