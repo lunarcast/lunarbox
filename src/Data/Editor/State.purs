@@ -8,6 +8,7 @@ import Data.Array as Array
 import Data.Default (def)
 import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
+import Data.Filterable (filter)
 import Data.Foldable (foldMap, foldr, for_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
@@ -46,7 +47,7 @@ import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes)
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
@@ -341,7 +342,7 @@ deleteNode functionName id state =
   if isOutput then
     state
   else
-    withoutNodeRefs $ removeNodeData $ removeNode state
+    withoutInput $ withoutNodeRefs $ removeNodeData $ removeNode state
   where
   node = join $ preview (_atNode functionName id) state
 
@@ -361,6 +362,8 @@ deleteNode functionName id state =
   removeNode = over (_nodes functionName) $ G.delete id
 
   removeNodeData = set (_atNodeData functionName id) Nothing
+
+  withoutInput = over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id == _)
 
 -- Delete all selected nodes
 deleteSelection :: forall a s m. State a s m -> State a s m

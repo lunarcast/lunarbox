@@ -19,6 +19,8 @@ import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExp
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
+import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
+import Lunarbox.Data.Dataflow.Type (typeString)
 
 -- Gets a value from the current environment
 getVariable :: forall l. Ord l => String -> Interpreter l RuntimeValue
@@ -29,6 +31,10 @@ getVariable name = do
 -- Perform an action in an environment with an extra variable
 withTerm :: forall l. Ord l => String -> RuntimeValue -> Interpreter l ~> Interpreter l
 withTerm name value = local $ over _termEnv $ TermEnvironment.insert name value
+
+-- Wrap a runtime value in an expression
+makeNative :: forall l. Ord l => Default l => RuntimeValue -> Expression l
+makeNative = Native def <<< NativeExpression (Forall [] typeString)
 
 -- Interpret an expression into a runtimeValue
 interpret :: forall l. Ord l => Default l => Expression l -> Interpreter l RuntimeValue
@@ -48,6 +54,8 @@ interpret expression = do
         Variable _ name -> getVariable $ show name
         Lambda _ argumentName body -> do
           env <- ask
+          -- This is here to generate data for node uis
+          void $ withTerm (show argumentName) Null $ interpret body
           pure $ Function
             $ \argument ->
                 fst

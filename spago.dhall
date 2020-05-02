@@ -16,6 +16,7 @@ You can edit this file as you like.
   , "data-default"
   , "debug"
   , "effect"
+  , "filterable"
   , "generics-rep"
   , "halogen"
   , "halogen-css"
