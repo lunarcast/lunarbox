@@ -1,3 +1,60 @@
+# [1.12.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.11.0...v1.12.0) (2020-05-02)
+
+
+### Bug Fixes
+
+* fixed a giant bug in the type inference algorithm - now generaliation works properly ([8c2287a](https://github.com/Mateiadrielrafael/lunarbox/commit/8c2287aba2d8aa0903c3c4c363834e771d03b4a5))
+* fixed page reloading on any form ([ddb3dfd](https://github.com/Mateiadrielrafael/lunarbox/commit/ddb3dfdb10ae34c17dc542b04e77a553786543f4))
+* fixed purescript code not starting on load ([3c13fba](https://github.com/Mateiadrielrafael/lunarbox/commit/3c13fba5504035784219c2f4266b021b49634a08))
+* fixed type-inference for let-bindings ([2aff9a8](https://github.com/Mateiadrielrafael/lunarbox/commit/2aff9a8eae9aac65d1520239f0edc1a453ed5146))
+* no longer display nulls ([04d9cbb](https://github.com/Mateiadrielrafael/lunarbox/commit/04d9cbb0e1162dacb2f16c188b8a93e9526a8834))
+* now the connection offset to the result doesn't apply on the mouse as well ([c26b927](https://github.com/Mateiadrielrafael/lunarbox/commit/c26b927c710ba7c86fef817ccc9e1e159d92acd1))
+* the editor now resizes properly ([6ffdf73](https://github.com/Mateiadrielrafael/lunarbox/commit/6ffdf73f94f25d77e03572d3a596f1984ea63322))
+
+
+### Features
+
+* added a basic camera structure ([7d628c2](https://github.com/Mateiadrielrafael/lunarbox/commit/7d628c299ddf79f5fd077d18b1ab1393d890f40d))
+* adding inputs ([49c0206](https://github.com/Mateiadrielrafael/lunarbox/commit/49c0206bacf796f20112499ad2ffb1e4f99f51c6))
+* basic cameras ([5a25864](https://github.com/Mateiadrielrafael/lunarbox/commit/5a25864769f6480c16527b25f3ef15b84f7709a6))
+* basic json encoding / decoding ([59c7477](https://github.com/Mateiadrielrafael/lunarbox/commit/59c7477cd114d665d7a117c486c73028966e7e6f))
+* better validation for passwords ([aa32738](https://github.com/Mateiadrielrafael/lunarbox/commit/aa327387d2ed5ea139d81a34c5c93653188d70b9))
+* currying ([d6fabec](https://github.com/Mateiadrielrafael/lunarbox/commit/d6fabec0bae61eb6998791b9694f7075b84cb4e7))
+* custom inputs ([6145448](https://github.com/Mateiadrielrafael/lunarbox/commit/61454487d88a56ccb31033af7c6a41ecea22e1b2))
+* do not navigate to a login or register form when logged in ([692eec6](https://github.com/Mateiadrielrafael/lunarbox/commit/692eec62b70b24c401ea2a8f8ff597bf56703d40))
+* fixed some routing problems and created more:( ([138419f](https://github.com/Mateiadrielrafael/lunarbox/commit/138419f5c3c5d155e6f0bd1a164bb64f12c5b5fe))
+* interpret some stuff as fixpoints ([037361f](https://github.com/Mateiadrielrafael/lunarbox/commit/037361f591144032b5c2b990e4434c35fb479388))
+* logging in ([ae5b50b](https://github.com/Mateiadrielrafael/lunarbox/commit/ae5b50b06c870d6df26b9548aeb4b824a87bb1ad))
+* logging in with the actual api ([4187da3](https://github.com/Mateiadrielrafael/lunarbox/commit/4187da3030e351358d09883854c71ebf4e585303))
+* login form ([9d78177](https://github.com/Mateiadrielrafael/lunarbox/commit/9d78177bd62227a69b0ecfcbdb31d2af68a410ba))
+* more function based nodes and fixed some visual bugs ([893bc94](https://github.com/Mateiadrielrafael/lunarbox/commit/893bc94e0b6f8026984a0e2ff428a24fff6dd4f9))
+* nodes are added to the center of the screen ([a584cdb](https://github.com/Mateiadrielrafael/lunarbox/commit/a584cdb35bcaa61dfab1f9fb14675a4961e1229e))
+* not showing the expression on top of nodes anymore ([e0beddc](https://github.com/Mateiadrielrafael/lunarbox/commit/e0beddc1ba210472a2e5e5a827c9c395583efb10))
+* now you can see the entire type on top of ndoes, not only the output ([99773aa](https://github.com/Mateiadrielrafael/lunarbox/commit/99773aae01c3c92fba83b1cb0361e5c5aa95edec))
+* number helpers ([23f10a3](https://github.com/Mateiadrielrafael/lunarbox/commit/23f10a3d8fb70b3d9c6e5bd5efe16030876b6bc8))
+* number node ([cd0937d](https://github.com/Mateiadrielrafael/lunarbox/commit/cd0937d6451920e16781c6a5fe4f6291439eee1a))
+* pannig ([944383c](https://github.com/Mateiadrielrafael/lunarbox/commit/944383c80c4ee44bb1d82eec1a1b26b2202b4624))
+* pushing nodes on top when dragging ([3fd3f96](https://github.com/Mateiadrielrafael/lunarbox/commit/3fd3f96824adcb67c4467ab4aeaf7bd6f3619ad3))
+* register form ([82577c2](https://github.com/Mateiadrielrafael/lunarbox/commit/82577c2e1ea4b5d75a2a25251896e3ca38a462fa))
+* saving of runtime overwrites ([993203d](https://github.com/Mateiadrielrafael/lunarbox/commit/993203d9b822857e6577362e993aa410fc2a97f2))
+* showing types using arrows ([ae7eaef](https://github.com/Mateiadrielrafael/lunarbox/commit/ae7eaef1e18ebed041414e1f75826d6bd2c8d005))
+* some logic for logging in ([9333b9d](https://github.com/Mateiadrielrafael/lunarbox/commit/9333b9dc27aafa754016f49009c87c8a4ecb9515))
+* string helpers ([4ea7244](https://github.com/Mateiadrielrafael/lunarbox/commit/4ea7244e884f7c460fb96cbe32d3188d5aa80e1e))
+* string node ([dbe2d96](https://github.com/Mateiadrielrafael/lunarbox/commit/dbe2d9672e92e79966668b2e88dcd4c680192158))
+* styled number nodes ([9be4a89](https://github.com/Mateiadrielrafael/lunarbox/commit/9be4a895f18a38181b7274b6cc0066439dbafb48))
+* styled scrollbars and adding inputs ([da9182d](https://github.com/Mateiadrielrafael/lunarbox/commit/da9182d93e3ccc9605a0d5da1ca7e5a372aa4b28))
+* the entry file is now written in typescript ([186eedf](https://github.com/Mateiadrielrafael/lunarbox/commit/186eedf236edeb1f2b34095997eea5bf500522b7))
+* trim node ([2699c62](https://github.com/Mateiadrielrafael/lunarbox/commit/2699c623ab9a750f07d06478fb8894fec40fc257))
+* use the right cursor for nodes and stuff ([88062d0](https://github.com/Mateiadrielrafael/lunarbox/commit/88062d028f2d578e2b3ec1e72d5673aa03bd55ee))
+* very basic login form ([e055281](https://github.com/Mateiadrielrafael/lunarbox/commit/e0552817d0d3d5499f51c3dbb2be764d6d6778de))
+* very basic user stuff ([9c52ca3](https://github.com/Mateiadrielrafael/lunarbox/commit/9c52ca3e99e83a93d78627d935773a0c9c73149f))
+* zooming ([640b8f2](https://github.com/Mateiadrielrafael/lunarbox/commit/640b8f25fc0edd69d40414c2b2ffaeddf676e349))
+
+
+### Performance Improvements
+
+* floor everything ([7a7f7f4](https://github.com/Mateiadrielrafael/lunarbox/commit/7a7f7f468ca9b17d50b27c730a6ae2697730c9f9))
+
 # [1.11.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.10.0...v1.11.0) (2020-04-28)
 
 
