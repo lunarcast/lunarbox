@@ -1,17 +1,65 @@
 @import "../../theme.scss";
 
-#editor > #panel > #panel-container > #nodes {
+#add-node-container > #create-input > button {
+  flex-grow: 1;
+
+  background: $primary;
+  color: white;
+
+  border: none;
+  outline: none;
+
+  width: 100%;
+  font-size: 1.5rem;
+
+  padding: 0.6rem;
+  margin-bottom: 1rem;
+
+  transition: filter $transition-time;
+
+  &:hover {
+    filter: brightness(1.4);
+  }
+}
+
+#add-node-container {
   display: flex;
   flex-direction: column;
-  margin: 1rem;
-  height: 83vh;
 
+  height: 100vh;
+
+  #title {
+    margin: 0.5rem;
+  }
+}
+
+#add-node-container > #nodes {
+  $border: 4px solid $primary-bright;
+
+  border-bottom: $border;
+  border-top: $border;
+
+  display: flex;
+  flex-direction: column;
+
+  margin-bottom: 1rem;
+
+  height: 100%;
   overflow-y: auto;
 
   .node {
     display: flex;
+
+    background: $primary-dark;
+
+    padding: 0.5rem;
     margin-bottom: 1rem;
-    height: 100%;
+
+    transition: filter $transition-time;
+
+    &:hover {
+      filter: brightness(1.6);
+    }
 
     #node-data {
       display: flex;

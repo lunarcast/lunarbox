@@ -31,10 +31,10 @@ import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Utils (container)
+import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
-import Lunarbox.Control.Monad.Effect (print, printString)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
@@ -296,7 +296,7 @@ component =
             handleTreeOutput
         ]
     Add ->
-      container "panel-container"
+      container "add-node-container"
         [ container "title" [ HH.text "Add node" ]
         , lazy2 AddC.add { project, currentFunction, functionData, typeMap, inputCountMap }
             { edit: Just <<< SelectFunction <<< Just
@@ -304,7 +304,10 @@ component =
             , changeInputCount: (Just <<< _) <<< ChangeInputCount
             }
         , container "create-input"
-            [ HH.button [ onClick $ const $ Just $ CreateNode $ FunctionName "input" ]
+            [ HH.button
+                [ className "unselectable"
+                , onClick $ const $ Just $ CreateNode $ FunctionName "input"
+                ]
                 [ HH.text "Create input node"
                 ]
             ]

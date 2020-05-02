@@ -50,3 +50,22 @@ input::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+// Custom scrollbar
+
+* {
+  scrollbar-color: $primary-bright;
+  scrollbar-width: 1rem;
+
+  &::-webkit-scrollbar {
+    width: 1rem;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $very-dark;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: $primary-bright;
+  }
+}
