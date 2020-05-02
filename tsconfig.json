@@ -6,8 +6,8 @@
     "downlevelIteration": true,
     "strictNullChecks": true,
     "strictBindCallApply": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "importHelpers": true
   },
   "include": ["src"]
 }

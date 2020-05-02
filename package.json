@@ -13,7 +13,8 @@
   "dependencies": {
     "mousetrap-ts": "^1.0.0",
     "normalize.css": "^8.0.1",
-    "seedrandom": "^3.0.5"
+    "seedrandom": "^3.0.5",
+    "tslib": "^1.11.1"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^5.0.0",
