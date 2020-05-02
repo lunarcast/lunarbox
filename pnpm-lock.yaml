@@ -2,6 +2,7 @@ dependencies:
   mousetrap-ts: 1.0.0
   normalize.css: 8.0.1
   seedrandom: 3.0.5
+  tslib: 1.11.1
 devDependencies:
   '@semantic-release/changelog': 5.0.0_semantic-release@17.0.4
   '@semantic-release/git': 9.0.0_semantic-release@17.0.4
@@ -7685,7 +7686,6 @@ packages:
     resolution:
       integrity: sha512-Hb94C/+QRIgjVZlJyiWwouYUF+siNJHJHknyspaOcZ+OQAIdFG/UrdQVXw/0B8Z3No34xkUXZJpOTy9alOWdVQ==
   /tslib/1.11.1:
-    dev: true
     resolution:
       integrity: sha512-aZW88SY8kQbU7gpV19lN24LtXh/yD4ZZg6qieAJDDg+YBsJcSmLGK9QpnUjAKVG/xefmvJGd1WUmfpT/g6AJGA==
   /tty-browserify/0.0.0:
@@ -8271,4 +8271,5 @@ specifiers:
   seedrandom: ^3.0.5
   semantic-release: ^17.0.4
   terser: ^4.6.7
+  tslib: ^1.11.1
   typescript: ^3.8.3
