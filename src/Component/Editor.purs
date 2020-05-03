@@ -240,7 +240,7 @@ component =
         location = DeepLocation id $ InputPin index
 
         shouldConnect = isNothing $ find (_ == location) unconnectableList
-      when shouldConnect $ modify_ $ makeUnconnetacbleList <<< tryConnecting <<< setTo
+      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
     SelectOutput id -> do
       unconnectableList <- gets $ view _unconnectablePins
       let
@@ -249,7 +249,7 @@ component =
         location = DeepLocation id OutputPin
 
         shouldConnect = isNothing $ find (_ == location) unconnectableList
-      when shouldConnect $ modify_ $ makeUnconnetacbleList <<< tryConnecting <<< setFrom
+      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setFrom
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do

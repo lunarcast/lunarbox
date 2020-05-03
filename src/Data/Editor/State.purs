@@ -257,7 +257,7 @@ makeUnconnetacbleList state = case view _partialFrom state of
   Just from -> generateUnconnectableInputs from state
   Nothing -> case view _partialTo state of
     Just to -> generateUnconnectableOutputs to state
-    Nothing -> state
+    Nothing -> set _unconnectablePins mempty state
 
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m

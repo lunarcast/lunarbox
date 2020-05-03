@@ -15,20 +15,22 @@ svg .node {
   cursor: pointer;
 }
 
-.node-input:hover,
-.node-connection:hover {
+.node-input:hover:not(.unconnectable),
+.node-connection {
   stroke-width: 9px;
 }
 
 .node-input.unconnectable,
 .node-output.unconnectable {
   stroke-opacity: 0.3;
+  fill-opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .node-output {
   transition: transform $transition-time;
-}
 
-.node-output:hover {
-  transform: scale(1.3);
+  &:hover:not(.unconnectable) {
+    transform: scale(1.3);
+  }
 }

@@ -19,7 +19,6 @@ import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
 import Halogen.HTML (HTML, IProp, ComponentHTML)
-import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Capability.Editor.Node.Arc as Arc
@@ -27,6 +26,7 @@ import Lunarbox.Component.Editor.Edge (renderEdge)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
+import Lunarbox.Component.Utils (whenElem)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
@@ -75,13 +75,11 @@ type Actions a
     }
 
 output :: forall r a. Boolean -> Maybe a -> Color -> HTML r a
-output false _ _ = HH.text ""
-
-output true selectOutput color =
+output unconnectable selectOutput color =
   SE.circle
     [ SA.r 10.0
     , SA.fill $ Just color
-    , SA.class_ "node-output"
+    , SA.class_ $ "node-output" <> if unconnectable then " unconnectable" else ""
     , onClick $ const selectOutput
     ]
 
@@ -132,10 +130,12 @@ renderNode { nodeData: nodeData
     <> arcs
     <> uiSvg
     <> [ movementHandler
-      , output
-          hasOutput
-          selectOutput
-          outputColor
+      , whenElem hasOutput
+          $ \_ ->
+              output
+                (OutputPin `Set.member` unconnectablePins)
+                selectOutput
+                outputColor
       ]
     <> outputPartialEdge
   where
