@@ -33,7 +33,7 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeString)
 import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
-import Lunarbox.Data.Editor.Constants (clampZoom, scrollStep)
+import Lunarbox.Data.Editor.Constants (scrollStep)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -208,6 +208,6 @@ scene state@{ nodeData, camera, scale, lastMousePosition
       , toViewBox scale camera
       , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
       , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onWheel \e -> zoom $ clampZoom $ pow scrollStep $ signum $ deltaY e
+      , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
       , onMouseUp $ const mouseUp
       ]

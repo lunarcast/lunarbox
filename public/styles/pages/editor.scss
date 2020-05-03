@@ -81,6 +81,8 @@
   #title {
     padding: 0.5rem;
     font-size: 2rem;
+
+    user-select: none;
     font-family: fonts.$montserrat;
   }
 }
