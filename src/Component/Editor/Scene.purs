@@ -18,6 +18,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Ord (signum)
+import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
@@ -69,6 +70,7 @@ type Input a s m
     , functionUis :: Map FunctionName (FunctionUi a s m)
     , camera :: Camera
     , scale :: Vec2 Number
+    , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     }
 
 type Actions a
@@ -120,6 +122,7 @@ createNodeComponent { functionName
 , nodeData: nodeDataMap
 , valueMap
 , functionUis
+, unconnectablePins
 } { selectNode, selectInput, selectOutput, removeConnection, setValue } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
@@ -151,6 +154,12 @@ createNodeComponent { functionName
           guard $ locationId == id
           pure $ Tuple locationPin type'
 
+    localUnconnectablePins =
+      flip Set.mapMaybe unconnectablePins \location' -> do
+        locationId <- preview _ExtendedLocation location'
+        guard $ locationId == id
+        preview _LocationExtension location'
+
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   functionType <-
     if is _ComplexNode node then
@@ -179,6 +188,7 @@ createNodeComponent { functionName
         , mousePosition: lastMousePosition
         , value: Map.lookup location $ unwrap valueMap
         , ui: Map.lookup name functionUis
+        , unconnectablePins: localUnconnectablePins
         }
         { select: selectNode id
         , selectInput: selectInput id

@@ -1,17 +1,11 @@
 import "./styles/index.scss";
+import { main } from "../output/Main";
 
 const production = process.env.NODE_ENV === "production";
+const start = main(production);
 
-if (production) {
-  import("../output/prod-bundle");
-} else {
-  import("../output/Main").then(({ main }) => {
-    console.log("Loaded purescript code");
-
-    main();
-  });
-
-  if (module.hot) {
-    module.hot.accept(() => location.reload(true));
-  }
+if (!production && module.hot) {
+  module.hot.accept(() => location.reload(true));
 }
+
+start();

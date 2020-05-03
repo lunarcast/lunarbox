@@ -20,6 +20,11 @@ svg .node {
   stroke-width: 9px;
 }
 
+.node-input.unconnectable,
+.node-output.unconnectable {
+  stroke-opacity: 0.3;
+}
+
 .node-output {
   transition: transform $transition-time;
 }

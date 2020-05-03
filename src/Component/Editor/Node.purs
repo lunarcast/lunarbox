@@ -14,6 +14,7 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
@@ -62,6 +63,7 @@ type Input a s m
     , mousePosition :: Vec2 Number
     , value :: Maybe RuntimeValue
     , ui :: Maybe (FunctionUi a s m)
+    , unconnectablePins :: Set.Set Pin
     }
 
 type Actions a
@@ -112,6 +114,7 @@ renderNode { nodeData: nodeData
 , mousePosition
 , value
 , ui
+, unconnectablePins
 } { select
 , selectOutput
 , selectInput
@@ -231,6 +234,9 @@ renderNode { nodeData: nodeData
                         -- The color of the input arc
                         inputColor = fromMaybe transparent $ Map.lookup (InputPin index) colorMap
 
+                        -- If this is true we make the user know he cannect this pin
+                        unconnectable = InputPin index `Set.member` unconnectablePins
+
                         -- The edge to render
                         edge =
                           maybe mempty pure do
@@ -268,6 +274,7 @@ renderNode { nodeData: nodeData
                                 arcSpacing
                             , radius
                             , color: inputColor
+                            , unconnectable
                             }
                             $ selectInput index
                       in

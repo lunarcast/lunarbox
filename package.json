@@ -5,7 +5,7 @@
     "dev": "parcel public/index.html --port 8080",
     "prebuild": "rm -rf dist",
     "bundle:purescript": "spago bundle-app -t output/prod-bundle.js",
-    "build": "tsc && pnpm run bundle:purescript && parcel build public/index.html && cp _redirects dist",
+    "build": "tsc && spago build && parcel build public/index.html && cp _redirects dist",
     "semantic-release": "semantic-release",
     "test": "spago test"
   },

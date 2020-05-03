@@ -48,7 +48,7 @@ import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes)
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
@@ -97,13 +97,16 @@ type State a s m
     , sceneScale :: Vec2 Number
     , addedNodes :: Int
     , inputCountMap :: Map FunctionName Int
+    , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     }
 
 -- Starting state which contains nothing
 emptyState :: forall a s m. State a s m
 emptyState =
   { currentTab: Settings
+  , currentFunction: Nothing
   , nextId: 0
+  , addedNodes: 0
   , panelIsOpen: false
   , typeMap: mempty
   , colorMap: mempty
@@ -113,13 +116,12 @@ emptyState =
   , functionUis: mempty
   , cameras: mempty
   , nodeData: mempty
+  , inputCountMap: mempty
+  , unconnectablePins: mempty
   , partialConnection: def
   , sceneScale: zero
-  , expression: nothing
-  , currentFunction: Nothing
   , lastMousePosition: zero
-  , addedNodes: 0
-  , inputCountMap: mempty
+  , expression: nothing
   , project: Project { main: FunctionName "main", functions: G.emptyGraph }
   }
 
@@ -196,6 +198,67 @@ getOutputType functionName id state = do
     Just index -> (inputs currentFunctionType) `List.index` index
     Nothing -> Map.lookup (DeepLocation functionName $ DeepLocation id OutputPin) typeMap
 
+-- Get all the input pins in the current function
+currentInputSet :: forall a s m. State a s m -> Set.Set (Tuple NodeId Int)
+currentInputSet state =
+  let
+    nodeGroup = fromMaybe G.emptyGraph $ preview _currentNodes state
+  in
+    Set.fromFoldable
+      $ ( \(Tuple id node) ->
+            let
+              inputs = view _nodeInputs node
+            in
+              List.mapWithIndex (\index -> const $ Tuple id index) inputs
+        )
+      =<< G.toUnfoldable nodeGroup
+
+-- Ger a list of all the outputs
+currentOutputList :: forall a s m. State a s m -> Set.Set NodeId
+currentOutputList state =
+  let
+    nodes = fromMaybe G.emptyGraph $ preview _currentNodes state
+
+    output = preview (_currentNodeGroup <<< _Just <<< _NodeGroupOutput) state
+
+    keys = G.keys nodes
+  in
+    case output of
+      Just id -> Set.difference keys $ Set.singleton id
+      Nothing -> keys
+
+-- Generate the list of inputs can't be connected 
+generateUnconnectableInputs :: forall a s m. NodeId -> State a s m -> State a s m
+generateUnconnectableInputs output state =
+  let
+    inputs = currentInputSet state
+
+    unconnectableInputs = Set.filter (not <<< flip (canConnect output) state) inputs
+
+    locations = (\(Tuple nodeId index) -> DeepLocation nodeId $ InputPin index) `Set.map` unconnectableInputs
+  in
+    set _unconnectablePins locations state
+
+-- Generates a list of outputs which can't be connected
+generateUnconnectableOutputs :: forall a s m. Tuple NodeId Int -> State a s m -> State a s m
+generateUnconnectableOutputs input state =
+  let
+    outputs = currentOutputList state
+
+    unconnectableOutputs = Set.filter (\outputId -> not $ canConnect outputId input state) outputs
+
+    locations = (\outputId -> DeepLocation outputId OutputPin) `Set.map` unconnectableOutputs
+  in
+    set _unconnectablePins locations state
+
+-- Make a list with everything which cannot be connected
+makeUnconnetacbleList :: forall a s m. State a s m -> State a s m
+makeUnconnetacbleList state = case view _partialFrom state of
+  Just from -> generateUnconnectableInputs from state
+  Nothing -> case view _partialTo state of
+    Just to -> generateUnconnectableOutputs to state
+    Nothing -> state
+
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
 compile state@{ project, expression, typeMap, valueMap } =
@@ -235,7 +298,9 @@ compile state@{ project, expression, typeMap, valueMap } =
         state
         visualFunctions
   in
-    evaluate $ state' { expression = expression', typeMap = typeMap' }
+    evaluate
+      $ makeUnconnetacbleList
+      $ state' { expression = expression', typeMap = typeMap' }
 
 -- Evaluate the current expression and write into the value map
 evaluate :: forall a s m. State a s m -> State a s m
@@ -303,7 +368,7 @@ tryConnecting state =
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
-setCurrentFunction = set _currentFunction
+setCurrentFunction name = makeUnconnetacbleList <<< set _currentFunction name
 
 -- Creates a function, adds an output node and set it as the current edited function
 initializeFunction :: forall a s m. FunctionName -> State a s m -> State a s m
@@ -590,3 +655,6 @@ _currentCamera =
           currentFunction <- view _currentFunction state
           pure $ set (_camera currentFunction) (Just value) state
     )
+
+_unconnectablePins :: forall a s m. Lens' (State a s m) (Set.Set (ExtendedLocation NodeId Pin))
+_unconnectablePins = prop (SProxy :: _ "unconnectablePins")

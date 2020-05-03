@@ -18,15 +18,16 @@ type Input a
     , spacing :: Number
     , arc :: Arc a
     , color :: Color
+    , unconnectable :: Boolean
     }
 
 input :: forall h a i. Input i -> Maybe a -> HTML h a
-input { radius, spacing, arc: Arc start end _, color } selectInput =
+input { radius, spacing, arc: Arc start end _, color, unconnectable } selectInput =
   SE.path
     [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
     , SA.fill $ Just transparent
     , SA.stroke $ Just color
-    , SA.class_ "node-input"
+    , SA.class_ $ "node-input" <> if unconnectable then " unconnectable" else ""
     , strokeWidth arcWidth
     , strokeLinecap Butt
     , onClick $ const selectInput

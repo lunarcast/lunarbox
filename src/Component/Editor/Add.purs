@@ -63,8 +63,9 @@ nodeInput inputCount typeMap name functionData =
   , node
   , functionData
   , labels: mempty
-  , hasOutput: hasOutput node
+  , unconnectablePins: mempty
   , nodeDataMap: mempty
+  , hasOutput: hasOutput node
   , selectionStatus: NothingSelected
   , mousePosition: zero
   , colorMap:

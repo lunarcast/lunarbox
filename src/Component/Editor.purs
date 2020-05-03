@@ -10,11 +10,11 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Either (Either(..))
-import Data.Foldable (foldr, for_)
+import Data.Foldable (find, foldr, for_)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
@@ -39,13 +39,15 @@ import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, canConnect, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
@@ -231,25 +233,23 @@ component =
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
-      state <- get
+      unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
 
-        shouldConnect =
-          fromMaybe true do
-            output <- view _partialFrom state
-            pure $ canConnect output (Tuple id index) state
-      when shouldConnect $ modify_ $ tryConnecting <<< setTo
+        location = DeepLocation id $ InputPin index
+
+        shouldConnect = isNothing $ find (_ == location) unconnectableList
+      when shouldConnect $ modify_ $ makeUnconnetacbleList <<< tryConnecting <<< setTo
     SelectOutput id -> do
-      state <- get
+      unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id
 
-        shouldConnect =
-          fromMaybe true do
-            input <- view _partialTo state
-            pure $ canConnect id input state
-      when shouldConnect $ modify_ $ tryConnecting <<< setFrom
+        location = DeepLocation id OutputPin
+
+        shouldConnect = isNothing $ find (_ == location) unconnectableList
+      when shouldConnect $ modify_ $ makeUnconnetacbleList <<< tryConnecting <<< setFrom
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do
@@ -339,6 +339,7 @@ component =
   , valueMap
   , functionUis
   , sceneScale
+  , unconnectablePins
   } =
     fromMaybe
       emptyEditor do
@@ -347,7 +348,8 @@ component =
         preview (_projectNodeGroup currentFunction) project
       pure
         $ lazy2 Scene.scene
-            { project
+            { unconnectablePins
+            , project
             , typeMap
             , lastMousePosition
             , functionData
