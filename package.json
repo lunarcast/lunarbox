@@ -1,11 +1,10 @@
 {
   "version": "0.0.0-development",
   "scripts": {
-    "prepare:purescript": "rm -rf output/bundle.js && hygen bundle prepare",
     "build:purescript": "spago build",
-    "dev": "pnpm run prepare:purescript && parcel public/index.html --port 8080",
+    "dev": "parcel public/index.html --port 8080",
     "prebuild": "rm -rf dist",
-    "bundle:purescript": "cross-env NODE_ENV=production pnpm run prepare:purescript && spago bundle-app -t output/prod-bundle.js",
+    "bundle:purescript": "spago bundle-app -t output/prod-bundle.js",
     "build": "tsc && pnpm run bundle:purescript && parcel build public/index.html && cp _redirects dist",
     "semantic-release": "semantic-release",
     "test": "spago test"

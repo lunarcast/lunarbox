@@ -30,6 +30,7 @@ import Halogen (HalogenM, get, liftEffect, modify_)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
+import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
@@ -182,6 +183,19 @@ createNode name = do
         when (not isInput) $ modify_ $ over _functions $ G.insertEdge name currentFunction
         modify_ $ compile
 
+-- Get the type of the output a node (Also works for input pins)
+getOutputType :: forall a s m. FunctionName -> NodeId -> State a s m -> Maybe Type
+getOutputType functionName id state = do
+  let
+    typeMap = view _typeMap state
+  nodeGroup <- preview (_nodeGroup functionName) state
+  currentFunctionType <- Map.lookup (Location functionName) typeMap
+  let
+    inputIndex = List.findIndex (_ == id) $ view _NodeGroupInputs nodeGroup
+  case inputIndex of
+    Just index -> (inputs currentFunctionType) `List.index` index
+    Nothing -> Map.lookup (DeepLocation functionName $ DeepLocation id OutputPin) typeMap
+
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
 compile state@{ project, expression, typeMap, valueMap } =
@@ -240,13 +254,26 @@ evaluate state = set _valueMap valueMap state
     snd $ runInterpreter context
       $ interpret expression
 
+-- Check if 2 pins can be connected
+canConnect :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> Boolean
+canConnect from (Tuple toId toIndex) state =
+  fromMaybe false do
+    let
+      typeMap = view _typeMap state
+    currentFunction <- view _currentFunction state
+    fromType <- getOutputType currentFunction from state
+    toType <- Map.lookup (DeepLocation currentFunction $ DeepLocation toId $ InputPin toIndex) typeMap
+    guard $ canUnify toType fromType
+    pure true
+
 -- Tries connecting the pins the user selected
 tryConnecting :: forall a s m. State a s m -> State a s m
 tryConnecting state =
   fromMaybe state do
+    let
+      typeMap = view _typeMap state
     from <- view _partialFrom state
     Tuple toId toIndex <- view _partialTo state
-    currentNodeGroup <- preview _currentNodeGroup state
     currentFunction <- view _currentFunction state
     let
       previousConnection =

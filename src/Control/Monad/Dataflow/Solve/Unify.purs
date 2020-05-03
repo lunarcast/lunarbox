@@ -1,10 +1,15 @@
-module Lunarbox.Control.Monad.Dataflow.Solve.Unify (unify, unifyMany) where
+module Lunarbox.Control.Monad.Dataflow.Solve.Unify
+  ( unify
+  , unifyMany
+  , canUnify
+  ) where
 
 import Prelude
+import Data.Either (isRight)
 import Data.List (List(..), (:))
 import Data.Map as Map
 import Data.Set as Set
-import Lunarbox.Control.Monad.Dataflow.Solve (Solve, throwTypeError)
+import Lunarbox.Control.Monad.Dataflow.Solve (Solve, SolveContext(..), runSolve, throwTypeError)
 import Lunarbox.Data.Dataflow.Class.Substituable (class Substituable, Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Type (TVarName, Type(..))
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
@@ -47,3 +52,7 @@ unifyMany (t : ts) (t' : ts') = do
   pure (substitution' <> substitution)
 
 unifyMany types types' = throwTypeError $ DifferentLength types types'
+
+-- Check if it's possible to unify 2 types without erroring out
+canUnify :: Type -> Type -> Boolean
+canUnify type' = isRight <<< runSolve (SolveContext { location: unit }) <<< unify type'
