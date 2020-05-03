@@ -9,12 +9,15 @@ import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Int (toNumber)
 import Data.Lens (set, view)
+import Data.Lens.Index (ix)
+import Data.Lens.Record (prop)
 import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
+import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
@@ -29,7 +32,7 @@ import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
 import Lunarbox.Component.Utils (whenElem)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
@@ -275,6 +278,7 @@ renderNode { nodeData: nodeData
                             , radius
                             , color: inputColor
                             , unconnectable
+                            , tooltip: view (_FunctionDataInputs <<< ix index <<< prop (SProxy :: _ "name")) functionData
                             }
                             $ selectInput index
                       in

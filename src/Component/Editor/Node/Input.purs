@@ -5,6 +5,7 @@ module Lunarbox.Component.Editor.Node.Input
 import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML (HTML)
+import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Data.Editor.Constants (arcWidth)
@@ -19,16 +20,20 @@ type Input a
     , arc :: Arc a
     , color :: Color
     , unconnectable :: Boolean
+    , tooltip :: String
     }
 
 input :: forall h a i. Input i -> Maybe a -> HTML h a
-input { radius, spacing, arc: Arc start end _, color, unconnectable } selectInput =
-  SE.path
-    [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
-    , SA.fill $ Just transparent
-    , SA.stroke $ Just color
-    , SA.class_ $ "node-input" <> if unconnectable then " unconnectable" else ""
-    , strokeWidth arcWidth
-    , strokeLinecap Butt
-    , onClick $ const selectInput
+input { radius, spacing, tooltip, arc: Arc start end _, color, unconnectable } selectInput =
+  SE.g []
+    [ SE.title [] [ HH.text tooltip ]
+    , SE.path
+        [ SA.d $ Abs <$> arc radius (start + spacing) (end - spacing)
+        , SA.fill $ Just transparent
+        , SA.stroke $ Just color
+        , SA.class_ $ "node-input" <> if unconnectable then " unconnectable" else ""
+        , strokeWidth arcWidth
+        , strokeLinecap Butt
+        , onClick $ const selectInput
+        ]
     ]
