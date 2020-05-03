@@ -325,6 +325,8 @@ canConnect from (Tuple toId toIndex) state =
   fromMaybe false do
     let
       typeMap = view _typeMap state
+    nodes <- preview _currentNodes state
+    guard $ not $ G.wouldCreateCycle from toId nodes
     currentFunction <- view _currentFunction state
     fromType <- getOutputType currentFunction from state
     toType <- Map.lookup (DeepLocation currentFunction $ DeepLocation toId $ InputPin toIndex) typeMap

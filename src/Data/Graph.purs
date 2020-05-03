@@ -1,21 +1,4 @@
-module Lunarbox.Data.Graph
-  ( Graph(..)
-  , toMap
-  , singleton
-  , insert
-  , lookup
-  , delete
-  , keys
-  , vertices
-  , toUnfoldable
-  , insertEdge
-  , topologicalSort
-  , edges
-  , removeEdge
-  , parents
-  , emptyGraph
-  , _Graph
-  ) where
+module Lunarbox.Data.Graph where
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
@@ -25,7 +8,7 @@ import Data.Array as Foldable
 import Data.Bifunctor (lmap, rmap)
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Graph as CG
-import Data.Lens (Traversal', lens, traversed, wander)
+import Data.Lens (lens, wander)
 import Data.Lens.At (class At)
 import Data.Lens.Index (class Index)
 import Data.List (List)
@@ -137,6 +120,25 @@ edges (Graph map) = Array.toUnfoldable edgeArray
     Map.toUnfoldable map
       >>= (\(Tuple from (Tuple _ to)) -> Tuple from <$> Set.toUnfoldable to)
 
+-- Get all children of a key
+children :: forall k v. Ord k => k -> Graph k v -> Set k
+children k (Graph g) = maybe mempty (Set.fromFoldable <<< snd) <<< Map.lookup k $ g
+
+-- Checks if given key is part of a cycle.
+isInCycle :: forall k v. Ord k => k -> Graph k v -> Boolean
+isInCycle k' g = go mempty k'
+  where
+  go seen k = case Tuple (dd == mempty) (k `Set.member` seen) of
+    Tuple true _ -> false
+    Tuple _ true -> k == k'
+    Tuple false false -> Foldable.any (go (Set.insert k seen)) dd
+    where
+    dd = children k g
+
+-- Checks if there any cycles in graph.
+isCyclic :: forall k v. Ord k => Graph k v -> Boolean
+isCyclic g = Foldable.any (flip isInCycle g) <<< keys $ g
+
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k
 topologicalSort = CG.topologicalSort <<< CG.fromMap <<< unwrap
@@ -145,5 +147,6 @@ topologicalSort = CG.topologicalSort <<< CG.fromMap <<< unwrap
 parents :: forall k v. Ord k => k -> Graph k v -> Set k
 parents k (Graph graph) = Map.keys <<< Map.filter (Foldable.elem k <<< snd) $ graph
 
-_Graph :: forall k v. Ord k => Traversal' (Graph k v) v
-_Graph = traversed
+-- Check if adding an edge would create a cycle
+wouldCreateCycle :: forall k v. Ord k => k -> k -> Graph k v -> Boolean
+wouldCreateCycle from to = isCyclic <<< insertEdge from to
