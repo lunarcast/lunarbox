@@ -6,7 +6,7 @@
     "dev": "pnpm run prepare:purescript && parcel public/index.html --port 8080",
     "prebuild": "rm -rf dist",
     "bundle:purescript": "cross-env NODE_ENV=production pnpm run prepare:purescript && spago bundle-app -t output/prod-bundle.js",
-    "build": "tsc && pnpm run bundle:purescript && parcel build public/index.html",
+    "build": "tsc && pnpm run bundle:purescript && parcel build public/index.html && cp _redirects dist",
     "semantic-release": "semantic-release",
     "test": "spago test"
   },
