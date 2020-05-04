@@ -12,7 +12,6 @@ import Data.Tuple (Tuple)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Editor.Camera (Camera)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
@@ -25,14 +24,13 @@ type StatePermanentData
   = { project :: Project
     , nextId :: Int
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
-    , functionData :: Map FunctionName FunctionData
     , cameras :: Map FunctionName Camera
     , runtimeOverwrites :: ValueMap Location
     }
 
 -- Encoding and decoding
 stateToJson :: forall a s m. State a s m -> Json
-stateToJson { project, nextId, nodeData, functionData, cameras, runtimeOverwrites, example, name } =
+stateToJson { project, nextId, nodeData, cameras, runtimeOverwrites, example, name } =
   encodeJson
     { name
     , example
@@ -40,7 +38,6 @@ stateToJson { project, nextId, nodeData, functionData, cameras, runtimeOverwrite
       { project
       , nextId
       , nodeData
-      , functionData
       , cameras
       , runtimeOverwrites
       }

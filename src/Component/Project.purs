@@ -1,16 +1,19 @@
 module Lunarbox.Component.Project (component) where
 
 import Prelude
-import Control.Monad.Reader (class MonadAsk)
-import Control.Monad.State (get, modify_)
-import Data.Lens (Lens', set)
+import Control.Monad.Reader (class MonadAsk, class MonadReader)
+import Control.Monad.State (gets, modify_)
+import Data.Either (Either(..))
+import Data.Lens (Lens', set, view)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
+import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval)
+import Halogen.HTML (slot)
 import Halogen.HTML as HH
-import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject)
+import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Config (Config)
 import Lunarbox.Data.ProjectId (ProjectId)
@@ -25,19 +28,33 @@ type State m
 _projectData :: forall m. Lens' (State m) (RemoteData String (Editor.EditorState m))
 _projectData = prop (SProxy :: _ "projectData")
 
-data Action
+_id :: forall m. Lens' (State m) ProjectId
+_id = prop (SProxy :: _ "id")
+
+data Action m
   = Init
+  | Save (Editor.EditorState m)
 
 type Output
   = Void
 
-type ChildSlots
-  = ( editor :: Slot Editor.Query Void Unit )
+type ChildSlots m
+  = ( editor :: forall query. Slot query (Editor.Output m) Unit )
 
-component :: forall m q. MonadEffect m => MonadAsk Config m => ManageProjects m => Component HH.HTML q (State m) Output m
+component ::
+  forall m q.
+  MonadEffect m =>
+  MonadAff m =>
+  MonadAsk Config m =>
+  MonadReader Config m =>
+  ManageProjects m =>
+  Component HH.HTML q ProjectId Output m
 component =
   mkComponent
-    { initialState: identity
+    { initialState:
+      { id: _
+      , projectData: NotAsked
+      }
     , render
     , eval:
       mkEval
@@ -47,15 +64,26 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (State m) Action ChildSlots Output m Unit
+  handleAction :: Action m -> HalogenM (State m) (Action m) (ChildSlots m) Output m Unit
   handleAction = case _ of
     Init -> do
-      { projectData, id } <- get
-      case projectData of
-        Failure _ -> pure unit
-        Success _ -> pure unit
-        _ -> do
-          response <- getProject id
-          modify_ $ set _projectData $ fromEither response
+      id <- gets $ view _id
+      response <- getProject id
+      modify_ $ set _projectData $ fromEither response
+    Save state -> do
+      response <- saveProject state
+      case response of
+        Left error -> modify_ $ set _projectData $ Failure error
+        _ -> pure unit
 
-  render _ = HH.text "unimplemented"
+  handleEditorOutput :: Editor.Output m -> Maybe (Action m)
+  handleEditorOutput = case _ of
+    Editor.Save state -> Just $ Save state
+
+  loading = HH.text "loading"
+
+  render { projectData } = case projectData of
+    NotAsked -> loading
+    Loading -> loading
+    Failure text -> HH.text $ "An error occured " <> text
+    Success state -> slot (SProxy :: _ "editor") unit Editor.component state handleEditorOutput

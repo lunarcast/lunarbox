@@ -1,9 +1,9 @@
 module Lunarbox.Component.Editor
   ( component
   , Action(..)
+  , Output(..)
   , EditorState
   , ChildSlots
-  , Query
   ) where
 
 import Prelude
@@ -11,7 +11,6 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
-import Data.Either (Either(..))
 import Data.Foldable (find, foldr, for_)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
@@ -23,7 +22,7 @@ import Data.Tuple (Tuple(..), uncurry)
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, fork, mkComponent, mkEval, query, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, fork, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
@@ -38,6 +37,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
+import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
@@ -47,13 +47,12 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Web.Event.Event (EventType(..))
+import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.Window (document) as Web
@@ -83,8 +82,8 @@ data Action
   | TogglePanel
   | ChangeInputCount FunctionName Int
 
-data Query a
-  = Void
+data Output m
+  = Save (EditorState m)
 
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
@@ -114,10 +113,10 @@ createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query (EditorState m) Void m
+component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML q (EditorState m) (Output m) m
 component =
   mkComponent
-    { initialState: identity
+    { initialState: compile <<< loadPrelude <<< identity
     , render
     , eval:
       mkEval
@@ -127,7 +126,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots Void m Unit
+  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots (Output m) m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window
@@ -139,7 +138,7 @@ component =
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
-          KET.keyup
+          KET.keydown
           (HTMLDocument.toEventTarget document)
           (map (HandleKey sid) <<< KE.fromEvent)
       -- Registr resize events
@@ -154,18 +153,11 @@ component =
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> do
         handleAction TogglePanel
-      | KE.ctrlKey event && KE.key event == "Enter" -> do
+      | KE.ctrlKey event && KE.key event == "s" -> do
+        liftEffect $ preventDefault $ KE.toEvent event
+        liftEffect $ stopPropagation $ KE.toEvent event
         state <- get
-        let
-          json = stateToJson state
-
-          result = jsonToState json
-        state' <- case result of
-          Left err -> do
-            printString err
-            pure state
-          Right state'' -> pure state''
-        put state'
+        raise $ Save state
       | otherwise -> pure unit
     CreateNode name -> do
       modify_ $ execState $ createNode name

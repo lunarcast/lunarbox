@@ -2,6 +2,7 @@ module Lunarbox.AppM where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
+import Data.Argonaut (stringify)
 import Data.Either (Either(..))
 import Data.Lens (view)
 import Effect.Aff (Aff)
@@ -14,6 +15,8 @@ import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute)
+import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (emptyState)
 import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.Route (routingCodec)
@@ -60,6 +63,9 @@ instance manageUserAppM :: ManageUser AppM where
 instance manageProjectsAppM :: ManageProjects AppM where
   createProject state = pure $ Right $ ProjectId "mock"
   getProject id = pure $ Right emptyState
+  saveProject state = do
+    printString $ "Saving " <> stringify (stateToJson state)
+    pure $ Right unit
   getProjects =
     pure
       $ Right

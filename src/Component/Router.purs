@@ -1,4 +1,4 @@
-module Lunarbox.Component.Router where
+module Lunarbox.Component.Router (component, Query(..)) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader, asks)
@@ -9,15 +9,15 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
-import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.HOC.Connect (WithCurrentUser)
 import Lunarbox.Component.HOC.Connect as Connect
 import Lunarbox.Component.Login as Login
+import Lunarbox.Component.Project as ProjectC
 import Lunarbox.Component.Projects as ProjectsC
 import Lunarbox.Component.Register as Register
 import Lunarbox.Component.Utils (OpaqueSlot)
@@ -42,11 +42,11 @@ data Action
   | NavigateTo Route
 
 type ChildSlots
-  = ( editor :: Slot Editor.Query Void Unit
-    , settings :: OpaqueSlot Unit
+  = ( settings :: OpaqueSlot Unit
     , login :: OpaqueSlot Unit
     , register :: OpaqueSlot Unit
     , "projects" :: OpaqueSlot Unit
+    , "project" :: OpaqueSlot Unit
     )
 
 type ComponentM
@@ -117,9 +117,9 @@ component =
     route
       <#> case _ of
           Home -> home { navigate: Just <<< NavigateTo }
-          Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
           Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
           Projects -> HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
+          Project id -> HH.slot (SProxy :: _ "project") unit ProjectC.component id absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound
