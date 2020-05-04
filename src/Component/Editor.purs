@@ -1,6 +1,8 @@
 module Lunarbox.Component.Editor
   ( component
   , Action(..)
+  , EditorState
+  , ChildSlots
   , Query
   ) where
 
@@ -36,7 +38,6 @@ import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Expression (printSource)
-import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
@@ -47,7 +48,7 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
@@ -89,6 +90,10 @@ type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
     )
 
+-- Shorthand for manually passing the types of the actions and child slots
+type EditorState m
+  = State Action ChildSlots m
+
 -- Actions to run the scene component with
 sceneActions :: Scene.Actions Action
 sceneActions =
@@ -104,15 +109,15 @@ sceneActions =
   }
 
 -- This is a helper monad which just generates an id
-createId :: forall m. HalogenM (State Action ChildSlots m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
+createId :: forall m. HalogenM (EditorState m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
 createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
+component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query (EditorState m) Void m
 component =
   mkComponent
-    { initialState: const $ initializeFunction (FunctionName "main") $ loadPrelude emptyState
+    { initialState: identity
     , render
     , eval:
       mkEval
@@ -122,7 +127,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (State Action ChildSlots m) Action ChildSlots Void m Unit
+  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots Void m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window

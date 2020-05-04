@@ -105,29 +105,30 @@ type State a s m
 -- Starting state which contains nothing
 emptyState :: forall a s m. State a s m
 emptyState =
-  { currentTab: Settings
-  , currentFunction: Nothing
-  , nextId: 0
-  , addedNodes: 0
-  , panelIsOpen: false
-  , typeMap: mempty
-  , colorMap: mempty
-  , functionData: mempty
-  , valueMap: mempty
-  , runtimeOverwrites: mempty
-  , functionUis: mempty
-  , cameras: mempty
-  , nodeData: mempty
-  , inputCountMap: mempty
-  , unconnectablePins: mempty
-  , partialConnection: def
-  , sceneScale: zero
-  , lastMousePosition: zero
-  , expression: nothing
-  , project: Project { main: FunctionName "main", functions: G.emptyGraph }
-  , name: "Unnamed project"
-  , example: false
-  }
+  initializeFunction (FunctionName "main")
+    { currentTab: Settings
+    , currentFunction: Nothing
+    , nextId: 0
+    , addedNodes: 0
+    , panelIsOpen: false
+    , typeMap: mempty
+    , colorMap: mempty
+    , functionData: mempty
+    , valueMap: mempty
+    , runtimeOverwrites: mempty
+    , functionUis: mempty
+    , cameras: mempty
+    , nodeData: mempty
+    , inputCountMap: mempty
+    , unconnectablePins: mempty
+    , partialConnection: def
+    , sceneScale: zero
+    , lastMousePosition: zero
+    , expression: nothing
+    , project: Project { main: FunctionName "main", functions: G.emptyGraph }
+    , name: "Unnamed project"
+    , example: false
+    }
 
 -- Helpers
 -- Generate an id and icncrease the inner counter in the state

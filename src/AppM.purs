@@ -14,6 +14,7 @@ import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute)
+import Lunarbox.Data.Editor.State (emptyState)
 import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.Route (routingCodec)
 import Routing.Duplex (print)
@@ -57,6 +58,8 @@ instance manageUserAppM :: ManageUser AppM where
   getCurrentUser = mkRequest Request.profile
 
 instance manageProjectsAppM :: ManageProjects AppM where
+  createProject state = pure $ Right $ ProjectId "mock"
+  getProject id = pure $ Right emptyState
   getProjects =
     pure
       $ Right
@@ -79,126 +82,6 @@ instance manageProjectsAppM :: ManageProjects AppM where
             ]
           , projects:
             [ { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            , { id: ProjectId "1"
               , name: "test project"
               , functionCount: 2
               , nodeCount: 23

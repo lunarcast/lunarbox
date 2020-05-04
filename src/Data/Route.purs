@@ -47,5 +47,6 @@ routingCodec =
 projectId :: RouteDuplex' String -> RouteDuplex' ProjectId
 projectId = as unwrap (Right <<< ProjectId)
 
+-- Prase a string into a Route
 parseRoute :: String -> Either RouteError Route
 parseRoute = parse routingCodec
