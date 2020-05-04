@@ -98,6 +98,8 @@ type State a s m
     , addedNodes :: Int
     , inputCountMap :: Map FunctionName Int
     , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
+    , name :: String
+    , example :: Boolean
     }
 
 -- Starting state which contains nothing
@@ -123,6 +125,8 @@ emptyState =
   , lastMousePosition: zero
   , expression: nothing
   , project: Project { main: FunctionName "main", functions: G.emptyGraph }
+  , name: "Unnamed project"
+  , example: false
   }
 
 -- Helpers

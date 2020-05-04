@@ -1,11 +1,11 @@
 module Lunarbox.Data.Editor.Save
-  ( PermanentState
+  ( StatePermanentData
   , stateToJson
   , jsonToState
   ) where
 
 import Prelude
-import Data.Argonaut (Json, decodeJson, encodeJson)
+import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Either (Either)
 import Data.Map (Map)
 import Data.Tuple (Tuple)
@@ -21,31 +21,40 @@ import Lunarbox.Data.Editor.Project (Project)
 import Lunarbox.Data.Editor.State (State, compile, emptyState)
 import Record as Record
 
-type PermanentState r
-  = ( project :: Project
+type StatePermanentData
+  = { project :: Project
     , nextId :: Int
     , nodeData :: Map (Tuple FunctionName NodeId) NodeData
     , functionData :: Map FunctionName FunctionData
     , cameras :: Map FunctionName Camera
     , runtimeOverwrites :: ValueMap Location
-    | r
-    )
+    }
 
 -- Encoding and decoding
-stateToJson :: forall r. { | PermanentState r } -> Json
-stateToJson { project, nextId, nodeData, functionData, cameras, runtimeOverwrites } =
+stateToJson :: forall a s m. State a s m -> Json
+stateToJson { project, nextId, nodeData, functionData, cameras, runtimeOverwrites, example, name } =
   encodeJson
-    { project
-    , nextId
-    , nodeData
-    , functionData
-    , cameras
-    , runtimeOverwrites
+    { name
+    , example
+    , saveData:
+      { project
+      , nextId
+      , nodeData
+      , functionData
+      , cameras
+      , runtimeOverwrites
+      }
     }
 
 jsonToState :: forall a s m. Json -> Either String (State a s m)
 jsonToState json = do
-  obj :: { | PermanentState () } <- decodeJson json
+  obj <- decodeJson json
+  name :: String <- obj .: "name"
+  example :: Boolean <- obj .: "example"
+  saveData :: StatePermanentData <- obj .: "saveData"
   let
-    baseState = Record.merge obj emptyState
+    recivedData = Record.merge { name, example } saveData
+
+    baseState :: State a s m
+    baseState = Record.merge recivedData emptyState
   pure $ compile $ loadPrelude baseState
