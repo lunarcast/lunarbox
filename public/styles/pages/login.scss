@@ -3,31 +3,12 @@
 @import "../theme.scss";
 
 #form-page {
-  display: flex;
-  height: 100%;
-
   * {
     padding-left: 0;
   }
 
-  #form-left {
+  .right {
     @include utils.center;
-
-    width: 30vw;
-    background: $primary-dark;
-  }
-
-  #form-right {
-    @include utils.center;
-
-    background: $primary;
-    flex-grow: 1;
-  }
-}
-
-@media only screen and (max-width: 1000px) {
-  #form-page #form-left {
-    display: none;
   }
 }
 
