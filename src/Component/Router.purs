@@ -24,6 +24,7 @@ import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Config (Config, _locationState)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Profile (Profile)
+import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Route (Route(..), parseRoute)
 import Lunarbox.Page.Home (home)
 import Record as Record
@@ -46,7 +47,7 @@ type ChildSlots
     , login :: OpaqueSlot Unit
     , register :: OpaqueSlot Unit
     , "projects" :: OpaqueSlot Unit
-    , "project" :: OpaqueSlot Unit
+    , "project" :: OpaqueSlot ProjectId
     )
 
 type ComponentM
@@ -120,6 +121,6 @@ component =
           Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
           Projects -> HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
-          Project id -> HH.slot (SProxy :: _ "project") unit ProjectC.component id absurd
+          Project id -> HH.slot (SProxy :: _ "project") id ProjectC.component id absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound

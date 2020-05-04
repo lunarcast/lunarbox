@@ -19,10 +19,9 @@ import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Effect.Aff (Milliseconds(..), delay)
-import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, fork, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
@@ -163,13 +162,8 @@ component =
       modify_ $ execState $ createNode name
     TogglePanel -> do
       modify_ $ over _panelIsOpen not
-      -- We do not want to block the rendering until the animation ends so we create a new "thread"
-      void
-        $ fork do
-            -- Wait for the css animation to end
-            liftAff $ delay $ Milliseconds 220.0
-            -- Do the adjusting
-            adjustSceneScale
+      -- Since this modifies the scale of the scene we also update that
+      adjustSceneScale
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       if (oldTab == newTab) then

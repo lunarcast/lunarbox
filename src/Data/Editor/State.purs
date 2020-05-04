@@ -6,10 +6,9 @@ import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
 import Data.Default (def)
-import Data.Editor.Foreign.SceneBoundingBox (getSceneBoundingBox)
 import Data.Either (Either(..))
 import Data.Filterable (filter)
-import Data.Foldable (foldMap, foldr, for_)
+import Data.Foldable (foldMap, foldr, for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
@@ -22,11 +21,12 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd)
 import Data.Unfoldable (replicate)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
-import Halogen (HalogenM, get, liftEffect, modify_)
+import Halogen (HalogenM, RefLabel(..), get, getHTMLElementRef, liftEffect, modify_)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
@@ -40,6 +40,7 @@ import Lunarbox.Data.Editor.Camera as Camera
 import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
+import Lunarbox.Data.Editor.Foreign.NodeBoundingdBox (nodeBoundingBox)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
@@ -57,7 +58,8 @@ import Lunarbox.Data.Math (polarToCartesian)
 import Lunarbox.Data.Vector (Vec2)
 import Math (pow)
 import Svg.Attributes (Color)
-import Web.HTML.HTMLElement (DOMRect)
+import Web.DOM.Node as WebNode
+import Web.HTML.HTMLElement (DOMRect, toNode)
 
 data Tab
   = Settings
@@ -428,12 +430,19 @@ setRelativeMousePosition { top, left } position = set _lastMousePosition sceneCo
   where
   sceneCoordinates = position - vec2 left top
 
+-- Get the domRect representation of the bounding box of the scene element
+getSceneBoundingBox :: forall q i o a s m. MonadEffect m => HalogenM (State a s m) q i o m (Maybe DOMRect)
+getSceneBoundingBox = do
+  elem <- getHTMLElementRef sceneRef
+  sceneNode <- traverse (liftEffect <<< WebNode.firstChild <<< toNode) elem
+  pure $ nodeBoundingBox <$> join sceneNode
+
 -- Helper to update the mouse position of the svg scene
 getSceneMousePosition :: forall q i o a s m. MonadEffect m => Vec2 Number -> HalogenM (State a s m) q i o m (State a s m)
 getSceneMousePosition position = do
   state <- get
-  bounds <- liftEffect getSceneBoundingBox
-  pure $ setRelativeMousePosition bounds position state
+  maybeBounds <- getSceneBoundingBox
+  pure $ maybe state (\bounds -> setRelativeMousePosition bounds position state) maybeBounds
 
 -- Deletes a node form a given function
 deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
@@ -497,11 +506,13 @@ resetNodeOffset = set _addedNodes 0
 setScale :: forall a s m. DOMRect -> State a s m -> State a s m
 setScale { height, width } = resetNodeOffset <<< (set _sceneScale $ vec2 width height)
 
+-- Ref to access the scene svg
+sceneRef :: RefLabel
+sceneRef = RefLabel "scene"
+
 -- Adjusts the scale based on the scene I get in ts
 adjustSceneScale :: forall q i o m a s. MonadEffect m => HalogenM (State a s m) q i o m Unit
-adjustSceneScale = do
-  domRect <- liftEffect getSceneBoundingBox
-  modify_ $ setScale domRect
+adjustSceneScale = getSceneBoundingBox >>= traverse_ (modify_ <<< setScale)
 
 -- Pan the current camera in  screen coordinates
 pan :: forall a s m. Vec2 Number -> State a s m -> State a s m

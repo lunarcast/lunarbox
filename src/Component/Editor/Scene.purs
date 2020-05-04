@@ -26,6 +26,7 @@ import Data.Vec (vec2, (!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
+import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
 import Lunarbox.Component.Editor.Node (renderNode)
@@ -47,6 +48,7 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (_NodeGroupInputs)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode, _projectNodeGroup)
+import Lunarbox.Data.Editor.State (sceneRef)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
@@ -211,13 +213,15 @@ scene state@{ nodeData, camera, scale, lastMousePosition
   nodeHtml = sequence $ (createNodeComponent state' actions <$> sortedNodes :: Array (Either _ _))
 
   success =
-    SE.svg
-      [ SA.width $ scale !! d0
-      , SA.height $ scale !! d1
-      , SA.id "scene"
-      , toViewBox scale camera
-      , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
-      , onMouseUp $ const mouseUp
-      ]
+    HH.div [ HP.ref sceneRef ]
+      <<< pure
+      <<< SE.svg
+          [ SA.width $ scale !! d0
+          , SA.height $ scale !! d1
+          , SA.id "scene"
+          , toViewBox scale camera
+          , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+          , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+          , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
+          , onMouseUp $ const mouseUp
+          ]
