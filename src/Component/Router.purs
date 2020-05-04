@@ -17,6 +17,7 @@ import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.HOC.Connect (WithCurrentUser)
 import Lunarbox.Component.HOC.Connect as Connect
 import Lunarbox.Component.Login as Login
+import Lunarbox.Component.Projects as ProjectsC
 import Lunarbox.Component.Register as Register
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Config (Config, _locationState)
@@ -44,6 +45,7 @@ type ChildSlots
     , settings :: OpaqueSlot Unit
     , login :: OpaqueSlot Unit
     , register :: OpaqueSlot Unit
+    , "projects" :: OpaqueSlot Unit
     )
 
 type ComponentM
@@ -116,5 +118,6 @@ component =
           Playground -> HH.slot (SProxy :: _ "editor") unit Editor.component {} absurd
           Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
+          Projects -> HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound
