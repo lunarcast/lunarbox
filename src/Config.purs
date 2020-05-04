@@ -70,7 +70,7 @@ _pushStateInterface :: Lens' Config PushStateInterface
 _pushStateInterface = newtypeIso <<< prop (SProxy :: _ "pushStateInterface")
 
 _changeRoute :: Lens' Config (Foreign -> String -> Effect Unit)
-_changeRoute = _pushStateInterface <<< prop (SProxy :: _ "replaceState")
+_changeRoute = _pushStateInterface <<< prop (SProxy :: _ "pushState")
 
 _locationState :: Lens' Config (Effect LocationState)
 _locationState = _pushStateInterface <<< prop (SProxy :: _ "locationState")

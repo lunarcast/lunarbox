@@ -17,6 +17,7 @@ You can edit this file as you like.
   , "debug"
   , "effect"
   , "filterable"
+  , "fuzzy"
   , "generics-rep"
   , "halogen"
   , "halogen-css"
