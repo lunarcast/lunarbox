@@ -2,6 +2,10 @@
 
 svg .node {
   cursor: grab;
+
+  input {
+    cursor: text;
+  }
 }
 
 .node-input,
