@@ -65,7 +65,6 @@ data Tab
   = Settings
   | Add
   | Tree
-  | Problems
 
 derive instance eqTab :: Eq Tab
 
@@ -77,7 +76,6 @@ tabIcon = case _ of
   Settings -> "settings"
   Add -> "add"
   Tree -> "account_tree"
-  Problems -> "error"
 
 type State a s m
   = { currentTab :: Tab
@@ -102,6 +100,7 @@ type State a s m
     , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     , name :: String
     , isExample :: Boolean
+    , isAdmin :: Boolean
     }
 
 -- Starting state which contains nothing
@@ -130,6 +129,7 @@ emptyState =
     , project: Project { main: FunctionName "main", functions: G.emptyGraph }
     , name: "Unnamed project"
     , isExample: false
+    , isAdmin: false
     }
 
 -- Helpers
@@ -682,3 +682,6 @@ _name = prop (SProxy :: _ "name")
 
 _isExample :: forall a s m. Lens' (State a s m) Boolean
 _isExample = prop (SProxy :: _ "isExample")
+
+_isAdmin :: forall a s m. Lens' (State a s m) Boolean
+_isAdmin = prop (SProxy :: _ "isAdmin")

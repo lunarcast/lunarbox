@@ -39,8 +39,8 @@ data Query a
 
 data Action
   = Initialize
-  | Receive { | WithCurrentUser () }
   | NavigateTo Route
+  | Receive { | WithCurrentUser () }
 
 type ChildSlots
   = ( settings :: OpaqueSlot Unit
@@ -121,6 +121,6 @@ component =
           Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
           Projects -> HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
-          Project id -> HH.slot (SProxy :: _ "project") id ProjectC.component id absurd
+          Project id -> HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound

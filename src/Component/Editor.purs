@@ -33,7 +33,7 @@ import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
-import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
 import Lunarbox.Control.Monad.Effect (printString)
@@ -48,7 +48,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
@@ -255,7 +255,10 @@ component =
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
     SetName name -> modify_ $ set _name name
-    SetExample isExample -> modify_ $ set _isExample isExample
+    SetExample isExample -> do
+      -- We only allow editing the example status when we are an admine
+      isAdmin <- gets $ view _isAdmin
+      when isAdmin $ modify_ $ set _isExample isExample
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -275,13 +278,12 @@ component =
     [ icon Settings
     , icon Add
     , icon Tree
-    , icon Problems
     ]
     where
     icon = sidebarIcon currentTab
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin } = case currentTab of
     Settings ->
       container "settings"
         [ container "title" [ HH.text "Project settings" ]
@@ -294,12 +296,13 @@ component =
                 , onValueInput $ Just <<< SetName
                 ]
             ]
-        , HH.div [ className "project-setting" ]
-            [ HH.div [ className "setting-label" ] [ HH.text "Example:" ]
-            , HH.div [ className "setting-switch-input" ]
-                [ switch { checked: isExample, round: true } (Just <<< SetExample)
-                ]
-            ]
+        , whenElem isAdmin \_ ->
+            HH.div [ className "project-setting" ]
+              [ HH.div [ className "setting-label" ] [ HH.text "Example:" ]
+              , HH.div [ className "setting-switch-input" ]
+                  [ switch { checked: isExample, round: true } (Just <<< SetExample)
+                  ]
+              ]
         ]
     Tree ->
       container
@@ -334,7 +337,6 @@ component =
                 ]
             ]
         ]
-    _ -> HH.text "not implemented"
 
   scene :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   scene { project
