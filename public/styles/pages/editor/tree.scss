@@ -12,6 +12,7 @@
 
     #title {
       flex-grow: 1;
+      border: none;
     }
 
     .material-icons {
@@ -20,7 +21,6 @@
       cursor: pointer;
     }
 
-    padding-bottom: 1rem;
     margin-bottom: 1rem;
     border-bottom: solid 1px $disabled;
   }

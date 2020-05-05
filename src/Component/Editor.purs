@@ -24,13 +24,15 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick)
+import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
+import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
+import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
@@ -46,7 +48,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
@@ -80,6 +82,8 @@ data Action
   | AdjustSceneScale
   | TogglePanel
   | ChangeInputCount FunctionName Int
+  | SetName String
+  | SetExample Boolean
 
 data Output m
   = Save (EditorState m)
@@ -250,6 +254,8 @@ component =
       modify_ $ over _currentCamera $ zoomOn mousePosition amount
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
+    SetName name -> modify_ $ set _name name
+    SetExample isExample -> modify_ $ set _isExample isExample
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -261,10 +267,8 @@ component =
       [ classes $ ClassName <$> [ "sidebar-icon" ] <> (guard isActive $> "active")
       , onClick $ const $ Just $ ChangeTab current
       ]
-      [ icon iconName ]
+      [ icon $ tabIcon current ]
     where
-    iconName = tabIcon current
-
     isActive = current == activeTab
 
   tabs currentTab =
@@ -277,10 +281,25 @@ component =
     icon = sidebarIcon currentTab
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample } = case currentTab of
     Settings ->
-      container "panel-container"
+      container "settings"
         [ container "title" [ HH.text "Project settings" ]
+        , HH.div [ className "project-setting" ]
+            [ HH.div [ className "setting-label" ] [ HH.text "Name:" ]
+            , HH.input
+                [ HP.value name
+                , HP.placeholder "Project name"
+                , className "setting-text-input"
+                , onValueInput $ Just <<< SetName
+                ]
+            ]
+        , HH.div [ className "project-setting" ]
+            [ HH.div [ className "setting-label" ] [ HH.text "Example:" ]
+            , HH.div [ className "setting-switch-input" ]
+                [ switch { checked: isExample, round: true } (Just <<< SetExample)
+                ]
+            ]
         ]
     Tree ->
       container

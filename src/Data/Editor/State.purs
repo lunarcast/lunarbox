@@ -101,7 +101,7 @@ type State a s m
     , inputCountMap :: Map FunctionName Int
     , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     , name :: String
-    , example :: Boolean
+    , isExample :: Boolean
     }
 
 -- Starting state which contains nothing
@@ -129,7 +129,7 @@ emptyState =
     , expression: nothing
     , project: Project { main: FunctionName "main", functions: G.emptyGraph }
     , name: "Unnamed project"
-    , example: false
+    , isExample: false
     }
 
 -- Helpers
@@ -676,3 +676,9 @@ _currentCamera =
 
 _unconnectablePins :: forall a s m. Lens' (State a s m) (Set.Set (ExtendedLocation NodeId Pin))
 _unconnectablePins = prop (SProxy :: _ "unconnectablePins")
+
+_name :: forall a s m. Lens' (State a s m) String
+_name = prop (SProxy :: _ "name")
+
+_isExample :: forall a s m. Lens' (State a s m) Boolean
+_isExample = prop (SProxy :: _ "isExample")

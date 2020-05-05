@@ -2,12 +2,6 @@
 @use "../fonts";
 @import "../theme.scss";
 
-@import "./editor/tree.scss";
-@import "./editor/scene.scss";
-@import "./editor/add.scss";
-
-@import "../components/node.scss";
-
 #editor {
   display: flex;
   height: 100vh;
@@ -81,6 +75,9 @@
     padding: 0.5rem;
     font-size: 2rem;
 
+    padding-bottom: 1rem;
+    border-bottom: solid 1px $disabled;
+
     user-select: none;
     font-family: fonts.$montserrat;
   }
@@ -89,3 +86,47 @@
 #editor > #panel.active {
   width: 30rem;
 }
+
+.project-setting {
+  $margin: 1rem;
+
+  color: $on-primary;
+
+  margin: $margin;
+  margin-bottom: 2rem;
+
+  width: calc(100% - 2 * #{$margin});
+  display: flex;
+  align-items: center;
+
+  .setting-label {
+    margin-right: 0.5rem;
+  }
+
+  .setting-switch-input {
+    margin-left: 1rem;
+    flex-grow: 1;
+  }
+
+  .setting-text-input {
+    background: transparent;
+    color: inherit;
+
+    border: none;
+    outline: none;
+
+    margin-left: 2rem;
+    width: calc(100% - 2rem);
+    padding: 0.5rem;
+    box-sizing: border-box;
+
+    border-bottom: 3px solid $on-dark-pale;
+  }
+}
+
+// We import these at the end because some of theme overwrite some styles from this sheet
+@import "./editor/tree.scss";
+@import "./editor/scene.scss";
+@import "./editor/add.scss";
+
+@import "../components/node.scss";
