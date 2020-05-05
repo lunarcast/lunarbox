@@ -295,11 +295,12 @@ compile state@{ project, expression, typeMap, valueMap } =
             fromMaybe state'' do
               functionType <- Map.lookup (Location functionName) typeMap
               let
-                functionData =
-                  internal
-                    $ List.toUnfoldable
+                inputDocs =
+                  List.toUnfoldable
                     $ List.mapWithIndex (\index _ -> { name: "Input " <> show index })
                     $ inputs functionType
+
+                functionData = internal inputDocs { name: show functionName <> " output" }
               pure $ set (_atFunctionData functionName) (Just functionData) state''
         )
         state

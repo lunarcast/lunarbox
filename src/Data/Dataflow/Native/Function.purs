@@ -40,6 +40,7 @@ pipe =
         [ { name: "input" }
         , { name: "function" }
         ]
+        { name: "function(input)" }
     , component: Nothing
     }
 
@@ -55,8 +56,9 @@ identity' =
     , expression: (NativeExpression typeIdentity $ Function identity)
     , functionData:
       internal
-        [ { name: "input" }
+        [ { name: "x" }
         ]
+        { name: "x" }
     , component: Nothing
     }
 
@@ -77,6 +79,7 @@ const' =
         [ { name: "constant value" }
         , { name: "ignored value" }
         ]
+        { name: "constant value" }
     , component: Nothing
     }
 
@@ -110,6 +113,7 @@ compose =
         [ { name: "first function" }
         , { name: "second function" }
         ]
+        { name: "second . first" }
     , component: Nothing
     }
 
@@ -145,5 +149,6 @@ flip' =
       internal
         [ { name: "function" }
         ]
+        { name: "flipped function" }
     , component: Nothing
     }

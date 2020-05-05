@@ -10,14 +10,12 @@ import Data.Default (def)
 import Data.Int (toNumber)
 import Data.Lens (set, view)
 import Data.Lens.Index (ix)
-import Data.Lens.Record (prop)
 import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Set as Set
-import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
@@ -32,7 +30,7 @@ import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
 import Lunarbox.Component.Utils (whenElem)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, _FunctionDataOutput, _PinName)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
@@ -42,6 +40,7 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Math (normalizeAngle)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
+import Lunarbox.Svg.Element (withLabel)
 import Math (cos, floor, pi, sin)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
@@ -77,14 +76,15 @@ type Actions a
     , removeConnection :: NodeId -> Int -> Maybe a
     }
 
-output :: forall r a. Boolean -> Maybe a -> Color -> HTML r a
-output unconnectable selectOutput color =
-  SE.circle
-    [ SA.r 10.0
-    , SA.fill $ Just color
-    , SA.class_ $ "node-output" <> if unconnectable then " unconnectable" else ""
-    , onClick $ const selectOutput
-    ]
+output :: forall r a. Boolean -> String -> Maybe a -> Color -> HTML r a
+output unconnectable label selectOutput color =
+  withLabel label
+    $ SE.circle
+        [ SA.r 10.0
+        , SA.fill $ Just color
+        , SA.class_ $ "node-output" <> if unconnectable then " unconnectable" else ""
+        , onClick $ const selectOutput
+        ]
 
 constant :: forall r a. HTML r a
 constant =
@@ -137,6 +137,7 @@ renderNode { nodeData: nodeData
           $ \_ ->
               output
                 (OutputPin `Set.member` unconnectablePins)
+                (view (_FunctionDataOutput <<< _PinName) functionData)
                 selectOutput
                 outputColor
       ]
@@ -278,7 +279,7 @@ renderNode { nodeData: nodeData
                             , radius
                             , color: inputColor
                             , unconnectable
-                            , tooltip: view (_FunctionDataInputs <<< ix index <<< prop (SProxy :: _ "name")) functionData
+                            , tooltip: view (_FunctionDataInputs <<< ix index <<< _PinName) functionData
                             }
                             $ selectInput index
                       in

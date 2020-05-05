@@ -1,9 +1,5 @@
 module Lunarbox.Data.Dataflow.Native.Literal
-  ( true'
-  , false'
-  , boolean
-  , number
-  , string
+  ( literalNodes
   ) where
 
 import Prelude
@@ -26,23 +22,9 @@ import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
-true' :: forall a s m. NativeConfig a s m
-true' =
-  NativeConfig
-    { name: FunctionName "true"
-    , expression: (NativeExpression (Forall [] typeBool) $ Bool true)
-    , functionData: internal []
-    , component: Nothing
-    }
-
-false' :: forall a s m. NativeConfig a s m
-false' =
-  NativeConfig
-    { name: FunctionName "false"
-    , expression: (NativeExpression (Forall [] typeBool) $ Bool false)
-    , functionData: internal []
-    , component: Nothing
-    }
+-- All the native literal nodes
+literalNodes :: forall a s m. Array (NativeConfig a s m)
+literalNodes = [ boolean, number, string ]
 
 booleaUi ::
   forall a s m. FunctionUi a s m
@@ -60,7 +42,7 @@ boolean =
   NativeConfig
     { name: FunctionName "boolean"
     , expression: (NativeExpression (Forall [] typeBool) $ Bool false)
-    , functionData: internal []
+    , functionData: internal [] { name: "Boolean" }
     , component: Just $ HH.lazy2 booleaUi
     }
 
@@ -84,7 +66,7 @@ number =
   NativeConfig
     { name: FunctionName "number"
     , expression: (NativeExpression (Forall [] typeNumber) $ Number 0.0)
-    , functionData: internal []
+    , functionData: internal [] { name: "Number" }
     , component: Just $ HH.lazy2 numberUi
     }
 
@@ -108,6 +90,6 @@ string =
   NativeConfig
     { name: FunctionName "string"
     , expression: (NativeExpression (Forall [] typeString) $ String "lunarbox")
-    , functionData: internal []
+    , functionData: internal [] { name: "String" }
     , component: Just $ HH.lazy2 stringUI
     }

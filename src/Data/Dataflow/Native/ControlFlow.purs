@@ -1,5 +1,5 @@
 module Lunarbox.Data.Dataflow.Native.ControlFlow
-  ( if'
+  ( controlFlowNodes
   ) where
 
 import Data.Maybe (Maybe(..))
@@ -11,6 +11,10 @@ import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (const, flip, ($))
+
+-- All the native control flow nodes
+controlFlowNodes :: forall a s m. Array (NativeConfig a s m)
+controlFlowNodes = [ if' ]
 
 typeIf :: Scheme
 typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn $ TArrow typeReturn typeReturn
@@ -31,6 +35,6 @@ if' =
   NativeConfig
     { name: FunctionName "if"
     , expression: (NativeExpression typeIf $ Function evalIf)
-    , functionData: internal [ { name: "condition" }, { name: "then" }, { name: "else" } ]
+    , functionData: internal [ { name: "condition" }, { name: "then" }, { name: "else" } ] { name: "result" }
     , component: Nothing
     }
