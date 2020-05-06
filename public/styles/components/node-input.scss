@@ -16,6 +16,8 @@
   white-space: nowrap;
   overflow: hidden;
 
+  user-select: none;
+
   &:focus {
     filter: brightness(1.5);
   }

@@ -12,6 +12,7 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Foldable (find, foldr, for_)
+import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
@@ -19,6 +20,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
+import Data.Vec (vec2)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
@@ -51,7 +53,6 @@ import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
-import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
 import Web.HTML (window) as Web
@@ -61,6 +62,8 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
+import Web.UIEvent.MouseEvent (MouseEvent)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 data Action
   = Init
@@ -71,8 +74,7 @@ data Action
   | CreateNode FunctionName
   | StartFunctionCreation
   | SceneMouseUp
-  | SceneMouseDown (Vec2 Number)
-  | SceneMouseMove Int (Vec2 Number)
+  | SceneMouseMove MouseEvent
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | SelectNode NodeId
@@ -100,11 +102,10 @@ type EditorState m
 sceneActions :: Scene.Actions Action
 sceneActions =
   { mouseUp: Just SceneMouseUp
-  , mouseDown: Just <<< SceneMouseDown
   , zoom: Just <<< SceneZoom
   , selectNode: Just <<< SelectNode
   , selectOutput: Just <<< SelectOutput
-  , mouseMove: (Just <<< _) <<< SceneMouseMove
+  , mouseMove: Just <<< SceneMouseMove
   , selectInput: (Just <<< _) <<< SelectInput
   , removeConnection: (Just <<< _) <<< RemoveConnection
   , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
@@ -186,8 +187,12 @@ component =
       printString $ printSource e
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SceneMouseDown position -> getSceneMousePosition position >>= put
-    SceneMouseMove bits position -> do
+    SceneMouseMove event -> do
+      let
+        bits = MouseEvent.buttons event
+
+        position = toNumber <$> vec2 (MouseEvent.clientX event) (MouseEvent.clientY event)
+      liftEffect $ preventDefault $ MouseEvent.toEvent event
       state@{ lastMousePosition } <- get
       state' <- getSceneMousePosition position
       camera <- gets $ view _currentCamera
@@ -228,6 +233,7 @@ component =
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
+      printString "selecting input"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
@@ -237,6 +243,7 @@ component =
         shouldConnect = isNothing $ find (_ == location) unconnectableList
       when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
     SelectOutput id -> do
+      printString "selecting output"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id

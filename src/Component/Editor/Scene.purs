@@ -10,7 +10,6 @@ import Data.Array (foldr, sortBy)
 import Data.Bifunctor (bimap)
 import Data.Default (def)
 import Data.Either (Either, either, note)
-import Data.Int (toNumber)
 import Data.Lens (is, preview, view)
 import Data.List as List
 import Data.Map (Map)
@@ -22,10 +21,10 @@ import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
-import Data.Vec (vec2, (!!))
+import Data.Vec ((!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
+import Halogen.HTML.Events (onMouseMove, onMouseUp, onWheel)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
@@ -56,7 +55,7 @@ import Math (pow)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
-import Web.UIEvent.MouseEvent as ME
+import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.WheelEvent (deltaY)
 
 type Input a s m
@@ -76,10 +75,9 @@ type Input a s m
     }
 
 type Actions a
-  = { mouseMove :: Int -> Vec2 Number -> Maybe a
-    , mouseDown :: Vec2 Number -> Maybe a
-    , selectNode :: NodeId -> Maybe a
+  = { mouseMove :: MouseEvent -> Maybe a
     , mouseUp :: Maybe a
+    , selectNode :: NodeId -> Maybe a
     , zoom :: Number -> Maybe a
     , selectInput :: NodeId -> Int -> Maybe a
     , selectOutput :: NodeId -> Maybe a
@@ -201,7 +199,7 @@ createNodeComponent { functionName
 
 scene :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
 scene state@{ nodeData, camera, scale, lastMousePosition
-} actions@{ mouseMove, mouseDown, mouseUp, selectNode, zoom } = either (\err -> erroredEditor $ show err) success nodeHtml
+} actions@{ mouseMove, mouseUp, selectNode, zoom } = either (\err -> erroredEditor $ show err) success nodeHtml
   where
   sortedNodes :: Array (Tuple NodeId NodeData)
   sortedNodes =
@@ -220,8 +218,8 @@ scene state@{ nodeData, camera, scale, lastMousePosition
           , SA.height $ scale !! d1
           , SA.id "scene"
           , toViewBox scale camera
-          , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-          , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+          , onMouseMove mouseMove
+          -- , onMouseDown mouseDown
           , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
           , onMouseUp $ const mouseUp
           ]
