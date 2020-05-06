@@ -99,6 +99,7 @@
         flex-direction: column;
 
         height: 100%;
+        margin-left: 1rem;
         justify-content: space-evenly;
       }
 
@@ -123,9 +124,9 @@
 
       #node-text {
         display: flex;
+        flex-grow: 1;
         flex-direction: column;
         text-overflow: ellipsis;
-        width: calc(15rem - 100px);
 
         & > * {
           cursor: default;

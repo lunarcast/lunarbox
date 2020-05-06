@@ -271,9 +271,7 @@ component =
       -- We only allow editing the example status when we are an admine
       isAdmin <- gets $ view _isAdmin
       when isAdmin $ modify_ $ set _isExample isExample
-    SearchNodes input -> do
-      printString input
-      modify_ $ set _nodeSearchTerm input
+    SearchNodes input -> modify_ $ set _nodeSearchTerm input
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
