@@ -17,64 +17,7 @@ Proiectul a fost scis in [purescript](https://www.purescript.org/), un limbaj de
 
 ## Arhitectura
 
-Aplicatia ruleaza in monadul AppM:
-
-```haskell
-newtype AppM a
-  = AppM (ReaderT Config Aff a)
-```
-
-- Tranformerul RedaerT este necesar pentru a permite acesul de oriunde din aplicatie a unui Config global:
-
-  ```haskell
-  type UserEnv
-    = { currentUser :: Ref (Maybe Profile)
-        , userBus :: BusRW (Maybe Profile)
-        }
-
-  newtype Config
-    = Config
-    { devOptions :: DevOptions
-    , baseUrl :: BaseUrl
-    , user :: UserEnv
-    , pushStateInterface :: PushStateInterface
-    }
-  ```
-
-- Monadul Aff este necesar pentru rularea de cod asymc, cum ar fi function register
-  ```haskell
-  register :: forall m. MonadAff m => BaseUrl -> RegisterFields -> m (Either String Profile)
-  register baseUrl fields =
-    requestJson baseUrl
-        { endpoint: Register, method: Post $ Just $ encodeJson fields
-        }
-        *> profile baseUrl
-  ```
-
-Monadul AppM are instante pentru cateva typeclassuri care reprezinta capabilitati ale aplicatiei:
-
-- `ManageUser` permite lucrul cu utilizatori:
-
-  ```haskell
-  class
-      Monad m <= ManageUser m where
-
-      loginUser :: LoginFields -> m (Either String Profile)
-      registerUser :: RegisterFields -> m (Either String Profile)
-      getCurrentUser :: m (Maybe Profile)
-  ```
-
-- `ManageProjects` permite salvarea proiectelor in cloud:
-
-  ```haskell
-  class
-      Monad m <= ManageProjects m where
-
-      getProjects :: m (Either String ProjectList)
-      getProject :: forall a s m'. ProjectId -> m (Either String (State a s m'))
-      createProject :: forall a s m'. State a s m' -> m (Either String ProjectId)
-      saveProject :: forall a s m'. State a s m' -> m (Either String Unit)
-  ```
+TODO
 
 ## Portabilitate
 
