@@ -6,14 +6,17 @@ module Lunarbox.Data.Dataflow.Type
   , output
   , typeBool
   , typeString
-  , numberOfInputs
+  , typeArray
   , typeFunction
+  , numberOfInputs
+  , createTypeVariable
   ) where
 
 import Prelude
 import Data.List (List(..), (:))
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (joinWith)
+import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Char (arrow)
 import Lunarbox.Data.String (spaced)
 
@@ -47,6 +50,15 @@ typeString = TConstant "String" []
 
 typeFunction :: Type -> Type -> Type
 typeFunction from to = TConstant "Function" [ from, to ]
+
+typeArray :: Type -> Type
+typeArray content = TConstant "Array" [ content ]
+
+-- Create a variable and a type for it
+createTypeVariable :: String -> Tuple TVarName Type
+createTypeVariable name = Tuple varName $ TVariable true varName
+  where
+  varName = TVarName name
 
 -- Internal version of numberOfInputs which also takes an argument for the accumulated count
 numberOfInputs' :: Int -> Type -> Int

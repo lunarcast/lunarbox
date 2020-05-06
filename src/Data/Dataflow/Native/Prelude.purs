@@ -4,6 +4,7 @@ module Lunarbox.Data.Dataflow.Native.Prelude
   ) where
 
 import Prelude
+import Lunarbox.Data.Dataflow.Native.Array (arrayNodes)
 import Lunarbox.Data.Dataflow.Native.ControlFlow (controlFlowNodes)
 import Lunarbox.Data.Dataflow.Native.Function (functionNodes)
 import Lunarbox.Data.Dataflow.Native.Literal (literalNodes)
@@ -22,6 +23,7 @@ configs =
     <> stringNodes
     <> literalNodes
     <> controlFlowNodes
+    <> arrayNodes
 
 -- Load all the built in nodes
 loadPrelude :: forall a s m. State a s m -> State a s m

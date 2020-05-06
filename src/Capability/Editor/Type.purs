@@ -10,15 +10,14 @@ import Prelude
 import Control.MonadZero (guard)
 import Data.Array (foldMap, (!!))
 import Data.Array as Array
-import Data.Either (Either(..), note)
+import Data.Either (Either(..), isLeft, note)
 import Data.Enum (enumFromTo)
-import Data.Filterable (filterMap)
 import Data.Foldable (foldr)
 import Data.Lens (view)
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing)
 import Data.String.CodeUnits as String
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
@@ -29,7 +28,6 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, hasOutput)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Math.SeededRandom (seededInt)
-import Lunarbox.Svg.Attributes (transparent)
 import Svg.Attributes (Color(..))
 
 -- Calculates the averege of 2 ints
@@ -46,17 +44,25 @@ combineColors color (RGB r g b) = combineColors (RGBA r g b 1.0) color
 
 -- Given a color returns a type
 typeToColor :: Type -> Maybe Color
-typeToColor (TConstant _ vars) =
-  Just $ foldr combineColors transparent
-    $ filterMap identity
-    $ typeToColor
-    <$> vars
-
-typeToColor t
+typeToColor t@(TConstant _ [])
   | t == typeString = Just $ RGB 97 196 35
   | t == typeBool = Just $ RGB 193 71 53
   | t == typeNumber = Just $ RGB 35 78 196
   | otherwise = Nothing
+
+typeToColor (TConstant _ vars) =
+  foldr
+    ( \current accumulated ->
+        if isNothing accumulated then
+          current
+        else
+          combineColors <$> current <*> accumulated
+    )
+    Nothing
+    $ typeToColor
+    <$> vars
+
+typeToColor _ = Nothing
 
 -- Errors which might occur while generating a typemap
 data ColoringError
@@ -87,8 +93,18 @@ generateColor currentLocation pinType = do
     TVariable _ name' -> Right $ RGB shade shade shade
       where
       shade = seededInt (show name') 100 255
-    TConstant "Function" [ from, to ] -> combineColors <$> generateColor currentLocation from <*> generateColor currentLocation to
-    other -> note (UnableToColor other) $ typeToColor other
+    TConstant _ [] -> note (UnableToColor pinType) $ typeToColor pinType
+    TConstant _ vars ->
+      foldr
+        ( \current accumulated ->
+            if isLeft accumulated then
+              current
+            else
+              combineColors <$> current <*> accumulated
+        )
+        (Left $ UnableToColor pinType)
+        $ generateColor currentLocation
+        <$> vars
   pure color
 
 -- Createa a typeMap from a node and data about it

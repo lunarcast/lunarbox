@@ -7,7 +7,6 @@ import Prelude
 import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.Writer (tell)
 import Data.Default (class Default, def)
-import Data.Int (toNumber)
 import Data.Lens (over, set, view)
 import Data.List as List
 import Data.Map as Map
@@ -15,7 +14,7 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Tuple (fst)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv, runInterpreter)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), getLocation)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), getLocation)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
@@ -48,9 +47,7 @@ interpret expression = do
     Just overwrite -> pure overwrite
     Nothing ->
       local (set _location location) case expression of
-        Literal _ (LInt value) -> pure $ Number $ toNumber value
-        Literal _ (LBool value) -> pure $ Bool value
-        Literal _ LNull -> pure Null
+        TypedHole _ -> pure Null
         Variable _ name -> getVariable $ show name
         Lambda _ argumentName body -> do
           env <- ask
