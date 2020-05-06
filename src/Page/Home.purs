@@ -9,6 +9,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Constants (transparentLogo)
 import Lunarbox.Data.Route (Route(..))
 
 type Actions a
@@ -25,12 +26,15 @@ home :: forall a h. Input -> Actions a -> HH.HTML h a
 home { guest } { navigate, logout } =
   container "home"
     [ container "bg" []
-    , container "title-text"
-        [ container "title"
-            [ HH.text "Lunarbox"
-            ]
-        , container "description"
-            [ HH.text "Functional programming made easy"
+    , container "header"
+        [ HH.img [ HP.src transparentLogo, HP.id_ "logo" ]
+        , container "title-text"
+            [ container "title"
+                [ HH.text "Lunarbox"
+                ]
+            , container "description"
+                [ HH.text "Functional programming made easy"
+                ]
             ]
         ]
     , container "cta"

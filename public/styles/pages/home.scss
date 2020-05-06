@@ -3,15 +3,15 @@
 @use "../utils/utils";
 @import "../theme.scss";
 
-#home {
-  /* 
+/* 
   The cool thing is the tangent is calculated at compile time. 
   Thx sass, rly cool.
   */
-  $angle: -7deg;
-  $tangent: math.tan($angle);
-  $bg-height: calc(50vh + #{$tangent} * -50vw);
+$angle: -7deg;
+$tangent: math.tan($angle);
+$bg-height: calc(50vh + #{$tangent} * -50vw);
 
+#home {
   @include utils.stack;
 
   background: $primary;
@@ -29,10 +29,20 @@
     height: $bg-height;
   }
 
+  #header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: $bg-height;
+
+    #logo {
+      height: calc(#{$bg-height} - 20rem);
+    }
+  }
+
   #title-text {
     @include utils.center;
 
-    height: $bg-height;
     font-family: fonts.$oxanium;
 
     #title {
@@ -54,8 +64,9 @@
 
     #cta-text {
       color: $on-primary;
-      font-size: 3rem;
       filter: brightness(0.8);
+      max-width: 80vw;
+      text-align: center;
 
       #free {
         font-weight: bold;
@@ -67,6 +78,7 @@
       @include utils.center;
 
       flex-direction: row;
+      flex-wrap: wrap;
 
       button {
         font-family: fonts.$oxanium;
@@ -115,5 +127,24 @@
         }
       }
     }
+  }
+}
+
+#cta-text {
+  font-size: 3rem;
+}
+
+@media only screen and (max-width: 800px) {
+  #header {
+    flex-direction: column;
+  }
+
+  #cta-text {
+    font-size: 2.5rem;
+  }
+
+  #home > #header > #logo {
+    height: auto;
+    width: 20rem;
   }
 }
