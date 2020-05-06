@@ -15,6 +15,7 @@ import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
+import Data.String (joinWith)
 
 -- Representations of all possible runtime values
 data RuntimeValue
@@ -60,7 +61,7 @@ instance showRuntimeValue :: Show RuntimeValue where
     Bool value -> show value
     Number value -> show value
     String value -> show value
-    NArray inner -> show inner
+    NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
     Function value -> "Function"
 
 instance eqRuntimeValue :: Eq RuntimeValue where

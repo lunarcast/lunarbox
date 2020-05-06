@@ -10,6 +10,7 @@ module Lunarbox.Data.Dataflow.Type
   , typeFunction
   , numberOfInputs
   , createTypeVariable
+  , isArrow
   ) where
 
 import Prelude
@@ -83,6 +84,12 @@ output (TConstant "Function" [ _, outputType ]) = output outputType
 
 output type' = type'
 
+-- Returns true if the type is of a function
+isArrow :: Type -> Boolean
+isArrow = case _ of
+  TConstant "Function" _ -> true
+  _ -> false
+
 derive instance typeEq :: Eq Type
 
 instance typeShow :: Show Type where
@@ -91,13 +98,11 @@ instance typeShow :: Show Type where
 printType :: Boolean -> Type -> String
 printType _ (TVariable _ v) = show v
 
+printType _ (TConstant "Array" [ inner ]) = "[" <> printType false inner <> "]"
+
 printType p (TConstant "Function" [ from, to ]) = if p then "(" <> result <> ")" else result
   where
-  isArrow = case from of
-    TConstant "Function" _ -> true
-    _ -> false
-
-  prefix = printType isArrow from
+  prefix = printType (isArrow from) from
 
   result = prefix <> spaced arrow <> show to
 
