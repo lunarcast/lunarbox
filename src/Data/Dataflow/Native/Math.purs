@@ -8,7 +8,7 @@ import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber)
+import Lunarbox.Data.Dataflow.Type (typeFunction, typeNumber)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Math (pow)
@@ -19,7 +19,7 @@ mathNodes = [ add, substract, multiply, divide, raiseToPower ]
 
 -- Type for functions of type Number -> Number -> Number
 binaryNumberType :: Scheme
-binaryNumberType = Forall [] $ TArrow typeNumber $ TArrow typeNumber typeNumber
+binaryNumberType = Forall [] $ typeFunction typeNumber $ typeFunction typeNumber typeNumber
 
 -- Internal function used to perform the unwrapping and wrapping necessary for the binaryMathFUnction helper
 binaryMathFunction' :: (Number -> Number -> Number) -> RuntimeValue -> RuntimeValue -> RuntimeValue

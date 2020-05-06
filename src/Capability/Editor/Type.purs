@@ -8,15 +8,16 @@ module Lunarbox.Capability.Editor.Type
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array ((!!))
+import Data.Array (foldMap, (!!))
 import Data.Array as Array
-import Data.Either (Either(..), note)
+import Data.Either (Either(..), isLeft, note)
 import Data.Enum (enumFromTo)
+import Data.Foldable (foldr)
 import Data.Lens (view)
-import Data.List (List(..))
+import Data.List (List)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing)
 import Data.String.CodeUnits as String
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
@@ -43,13 +44,25 @@ combineColors color (RGB r g b) = combineColors (RGBA r g b 1.0) color
 
 -- Given a color returns a type
 typeToColor :: Type -> Maybe Color
-typeToColor (TArrow f t) = combineColors <$> typeToColor f <*> typeToColor t
-
-typeToColor t
+typeToColor t@(TConstant _ [])
   | t == typeString = Just $ RGB 97 196 35
   | t == typeBool = Just $ RGB 193 71 53
   | t == typeNumber = Just $ RGB 35 78 196
   | otherwise = Nothing
+
+typeToColor (TConstant _ vars) =
+  foldr
+    ( \current accumulated ->
+        if isNothing accumulated then
+          current
+        else
+          combineColors <$> current <*> accumulated
+    )
+    Nothing
+    $ typeToColor
+    <$> vars
+
+typeToColor _ = Nothing
 
 -- Errors which might occur while generating a typemap
 data ColoringError
@@ -80,8 +93,18 @@ generateColor currentLocation pinType = do
     TVariable _ name' -> Right $ RGB shade shade shade
       where
       shade = seededInt (show name') 100 255
-    TArrow from to -> combineColors <$> generateColor currentLocation from <*> generateColor currentLocation to
-    other -> note (UnableToColor other) $ typeToColor other
+    TConstant _ [] -> note (UnableToColor pinType) $ typeToColor pinType
+    TConstant _ vars ->
+      foldr
+        ( \current accumulated ->
+            if isLeft accumulated then
+              current
+            else
+              combineColors <$> current <*> accumulated
+        )
+        (Left $ UnableToColor pinType)
+        $ generateColor currentLocation
+        <$> vars
   pure color
 
 -- Createa a typeMap from a node and data about it
@@ -103,11 +126,11 @@ alphabetSize = Array.length alphabet
 
 -- Same as ftv but also returns nont-generalizable variables
 variables :: Type -> List TVarName
-variables (TConstant _) = Nil
+variables (TConstant "Function" [ from, to ]) = variables from <> variables to
+
+variables (TConstant _ vars) = foldMap variables vars
 
 variables (TVariable _ name) = pure name
-
-variables (TArrow from to) = variables from <> variables to
 
 -- Prettify variable names in types. Should only be used for pretty printing
 prettify :: Type -> Type

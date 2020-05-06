@@ -20,7 +20,7 @@ import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
 import Halogen.HTML (HTML, IProp, ComponentHTML)
-import Halogen.HTML.Events (onClick, onMouseDown)
+import Halogen.HTML.Events (onMouseDown, onMouseUp)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Capability.Editor.Node.Arc as Arc
 import Lunarbox.Component.Editor.Edge (renderEdge)
@@ -83,7 +83,7 @@ output unconnectable label selectOutput color =
         [ SA.r 10.0
         , SA.fill $ Just color
         , SA.class_ $ "node-output" <> if unconnectable then " unconnectable" else ""
-        , onClick $ const selectOutput
+        , onMouseUp $ const selectOutput
         ]
 
 constant :: forall r a. HTML r a
@@ -130,8 +130,8 @@ renderNode { nodeData: nodeData
     $ [ overlays maxRadius labels
       ]
     <> valueSvg
-    <> arcs
     <> uiSvg
+    <> arcs
     <> [ movementHandler
       , whenElem hasOutput
           $ \_ ->

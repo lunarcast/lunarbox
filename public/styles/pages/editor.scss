@@ -63,7 +63,6 @@
   width: 0;
   height: 100vh;
   max-height: 100vh;
-  overflow-y: hidden;
 
   box-sizing: border-box;
   display: block;
@@ -85,6 +84,7 @@
 
 #editor > #panel.active {
   width: 30rem;
+  overflow: hidden;
 }
 
 .project-setting {

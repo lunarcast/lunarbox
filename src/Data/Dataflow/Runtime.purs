@@ -15,12 +15,14 @@ import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
+import Data.String (joinWith)
 
 -- Representations of all possible runtime values
 data RuntimeValue
   = Number Number
   | String String
   | Bool Boolean
+  | NArray (Array RuntimeValue)
   | Null
   | Function (RuntimeValue -> RuntimeValue)
 
@@ -30,6 +32,7 @@ instance encodeJsonRuntimeValue :: EncodeJson RuntimeValue where
   encodeJson (Number inner) = "type" := "number" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (String inner) = "type" := "string" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (Bool inner) = "type" := "boolean" ~> "value" := inner ~> jsonEmptyObject
+  encodeJson (NArray inner) = "type" := "array" ~> "value" := inner ~> jsonEmptyObject
   encodeJson _ = "type" := "null" ~> jsonEmptyObject
 
 instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
@@ -46,6 +49,9 @@ instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
       "boolean" -> do
         value <- obj .: "value"
         pure $ Bool value
+      "array" -> do
+        value <- obj .: "value"
+        pure value
       "null" -> pure $ Null
       _ -> Left $ "Cannot parse runtime value of type " <> type'
 
@@ -55,14 +61,23 @@ instance showRuntimeValue :: Show RuntimeValue where
     Bool value -> show value
     Number value -> show value
     String value -> show value
+    NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
     Function value -> "Function"
 
 instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Number n) (Number n') = n == n'
   eq (String s) (String s') = s == s'
   eq (Bool v) (Bool v') = v == v'
+  eq (NArray array) (NArray array') = array == array'
   eq Null Null = true
   eq _ _ = false
+
+instance ordRuntimeValue :: Ord RuntimeValue where
+  compare (Number n) (Number n') = compare n n'
+  compare (String s) (String s') = compare s s'
+  compare (Bool v) (Bool v') = compare v v'
+  compare (NArray array) (NArray array') = compare array array'
+  compare _ _ = EQ
 
 -- helper to ease the creation of binary functions
 binaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue

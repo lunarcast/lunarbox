@@ -5,6 +5,7 @@ module Lunarbox.Control.Monad.Dataflow.Solve.Unify
   ) where
 
 import Prelude
+import Data.Array as Array
 import Data.Either (isRight)
 import Data.List (List(..), (:))
 import Data.Map as Map
@@ -39,7 +40,8 @@ unify (TVariable _ v) t = bindVariable v t
 
 unify t (TVariable _ v) = bindVariable v t
 
-unify (TArrow f t) (TArrow f' t') = unifyMany (f : t : Nil) (f' : t' : Nil)
+unify (TConstant name vars) (TConstant name' vars')
+  | name == name' = unifyMany (Array.toUnfoldable vars) (Array.toUnfoldable vars')
 
 unify t1 t2 = throwTypeError $ TypeMissmatch t1 t2
 

@@ -1,7 +1,7 @@
 module Lunarbox.Data.Dataflow.Class.Substituable where
 
 import Prelude
-import Data.Foldable (foldr)
+import Data.Foldable (foldMap, foldr)
 import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -29,11 +29,9 @@ class Substituable a where
   ftv :: a -> Set.Set TVarName
 
 instance typeSubst :: Substituable Type where
-  apply _ t@(TConstant _) = t
+  apply substitution t@(TConstant name vars) = TConstant name $ apply substitution <$> vars
   apply (Substitution s) t@(TVariable _ a) = (Map.lookup a s) # fromMaybe t
-  apply s (TArrow t1 t2) = apply s t1 `TArrow` apply s t2
-  ftv (TArrow t1 t2) = ftv t1 `Set.union` ftv t2
-  ftv (TConstant _) = Set.empty
+  ftv (TConstant name vars) = foldMap ftv vars
   ftv (TVariable generalize a)
     | generalize = Set.singleton a
     | otherwise = Set.empty

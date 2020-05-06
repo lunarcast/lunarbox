@@ -5,7 +5,7 @@ module Lunarbox.Component.Editor.Node.Input
 import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML (HTML)
-import Halogen.HTML.Events (onClick)
+import Halogen.HTML.Events (onMouseUp)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Data.Editor.Constants (arcWidth)
 import Lunarbox.Svg.Attributes (Linecap(..), arc, strokeLinecap, strokeWidth, transparent)
@@ -33,5 +33,5 @@ input { radius, spacing, tooltip, arc: Arc start end _, color, unconnectable } s
         , SA.class_ $ "node-input" <> if unconnectable then " unconnectable" else ""
         , strokeWidth arcWidth
         , strokeLinecap Butt
-        , onClick $ const selectInput
+        , onMouseUp $ const selectInput
         ]

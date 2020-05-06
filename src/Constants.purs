@@ -1,7 +1,4 @@
-module Lunarbox.Constants
-  ( logo
-  , logoWithText
-  ) where
+module Lunarbox.Constants where
 
 -- THe logo for lunarbox
 logo :: String
@@ -9,3 +6,9 @@ logo = "https://cdn.discordapp.com/attachments/494734149978947584/70534960826757
 
 logoWithText :: String
 logoWithText = "https://cdn.discordapp.com/attachments/494734149978947584/705352232006320138/unknown.png"
+
+transparentLogoWithText :: String
+transparentLogoWithText = "https://cdn.discordapp.com/attachments/485859146558865408/707597859138043964/Screensasdfahot_1.png"
+
+transparentLogo :: String
+transparentLogo = "https://cdn.discordapp.com/attachments/485859146558865408/707598681401983046/asdf.png"

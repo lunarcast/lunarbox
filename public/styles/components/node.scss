@@ -20,7 +20,7 @@ svg .node {
 }
 
 .node-input:hover:not(.unconnectable),
-.node-connection {
+.node-connection:hover {
   stroke-width: 9px;
 }
 

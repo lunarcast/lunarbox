@@ -12,6 +12,7 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Foldable (find, foldr, for_)
+import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
@@ -19,10 +20,11 @@ import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
+import Data.Vec (vec2)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
-import Halogen.HTML (lazy2)
+import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
@@ -48,10 +50,9 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
-import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
 import Web.HTML (window) as Web
@@ -61,6 +62,8 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
+import Web.UIEvent.MouseEvent (MouseEvent)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 data Action
   = Init
@@ -71,8 +74,7 @@ data Action
   | CreateNode FunctionName
   | StartFunctionCreation
   | SceneMouseUp
-  | SceneMouseDown (Vec2 Number)
-  | SceneMouseMove Int (Vec2 Number)
+  | SceneMouseMove MouseEvent
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | SelectNode NodeId
@@ -84,6 +86,7 @@ data Action
   | ChangeInputCount FunctionName Int
   | SetName String
   | SetExample Boolean
+  | SearchNodes String
 
 data Output m
   = Save (EditorState m)
@@ -100,15 +103,18 @@ type EditorState m
 sceneActions :: Scene.Actions Action
 sceneActions =
   { mouseUp: Just SceneMouseUp
-  , mouseDown: Just <<< SceneMouseDown
   , zoom: Just <<< SceneZoom
   , selectNode: Just <<< SelectNode
   , selectOutput: Just <<< SelectOutput
-  , mouseMove: (Just <<< _) <<< SceneMouseMove
+  , mouseMove: Just <<< SceneMouseMove
   , selectInput: (Just <<< _) <<< SelectInput
   , removeConnection: (Just <<< _) <<< RemoveConnection
   , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
   }
+
+-- Create a scene with the set of actions above
+createScene :: forall m. Scene.Input Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
+createScene = Scene.scene sceneActions
 
 -- This is a helper monad which just generates an id
 createId :: forall m. HalogenM (EditorState m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
@@ -152,7 +158,7 @@ component =
             (const $ Just AdjustSceneScale)
     AdjustSceneScale -> adjustSceneScale
     HandleKey sid event
-      | KE.key event == "Delete" || KE.key event == "Backspace" -> do
+      | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> do
         handleAction TogglePanel
@@ -186,8 +192,12 @@ component =
       printString $ printSource e
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SceneMouseDown position -> getSceneMousePosition position >>= put
-    SceneMouseMove bits position -> do
+    SceneMouseMove event -> do
+      let
+        bits = MouseEvent.buttons event
+
+        position = toNumber <$> vec2 (MouseEvent.clientX event) (MouseEvent.clientY event)
+      liftEffect $ preventDefault $ MouseEvent.toEvent event
       state@{ lastMousePosition } <- get
       state' <- getSceneMousePosition position
       camera <- gets $ view _currentCamera
@@ -228,6 +238,7 @@ component =
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
+      printString "selecting input"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
@@ -237,6 +248,7 @@ component =
         shouldConnect = isNothing $ find (_ == location) unconnectableList
       when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
     SelectOutput id -> do
+      printString "selecting output"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id
@@ -259,6 +271,7 @@ component =
       -- We only allow editing the example status when we are an admine
       isAdmin <- gets $ view _isAdmin
       when isAdmin $ modify_ $ set _isExample isExample
+    SearchNodes input -> modify_ $ set _nodeSearchTerm input
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -283,7 +296,7 @@ component =
     icon = sidebarIcon currentTab
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin, nodeSearchTerm } = case currentTab of
     Settings ->
       container "settings"
         [ container "title" [ HH.text "Project settings" ]
@@ -323,7 +336,24 @@ component =
     Add ->
       container "add-node-container"
         [ container "title" [ HH.text "Add node" ]
-        , lazy2 AddC.add { project, currentFunction, functionData, typeMap, inputCountMap }
+        , flip lazy nodeSearchTerm \nodeSearchTerm' ->
+            container "node-search-container"
+              [ HH.input
+                  [ HP.id_ "node-search-input"
+                  , HP.placeholder "Search nodes. Eg: add, greater than..."
+                  , HP.value nodeSearchTerm'
+                  , onValueInput $ Just <<< SearchNodes
+                  ]
+              , icon "search"
+              ]
+        , lazy2 AddC.add
+            { project
+            , currentFunction
+            , functionData
+            , typeMap
+            , inputCountMap
+            , nodeSearchTerm
+            }
             { edit: Just <<< SelectFunction <<< Just
             , addNode: Just <<< CreateNode
             , changeInputCount: (Just <<< _) <<< ChangeInputCount
@@ -359,7 +389,7 @@ component =
       group <-
         preview (_projectNodeGroup currentFunction) project
       pure
-        $ lazy2 Scene.scene
+        $ createScene
             { unconnectablePins
             , project
             , typeMap
@@ -379,7 +409,6 @@ component =
                       $ Map.toUnfoldable nodeData
                   )
             }
-            sceneActions
 
   render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   render state@{ currentTab, panelIsOpen } =

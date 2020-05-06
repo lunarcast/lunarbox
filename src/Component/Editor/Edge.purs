@@ -11,7 +11,7 @@ import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick)
+import Halogen.HTML.Events (onMouseUp)
 import Lunarbox.Data.Editor.Constants (connectionsWidth)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (strokeDashArray, strokeWidth)
@@ -44,7 +44,7 @@ renderEdge' { from, to, color, dotted, className } { handleClick } =
       , SA.x2 $ floor $ to !! d0
       , SA.y2 $ floor $ to !! d1
       , SA.stroke $ Just color
-      , onClick $ const handleClick
+      , onMouseUp $ const handleClick
       , strokeWidth connectionsWidth
       ]
     <> ( guard dotted

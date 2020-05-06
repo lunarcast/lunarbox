@@ -26,25 +26,37 @@ highlightedType ::
   (HH.HTML h a -> HH.HTML h a) ->
   (Color -> HH.HTML h a -> HH.HTML h a) ->
   Color -> Type -> HH.HTML h a
-highlightedType container bold highlight defaultColor = case _ of
-  TArrow from to ->
-    container
-      [ if isArrow then container [ HH.text "(", result, HH.text ")" ] else result
-      , bold $ HH.text $ spaced arrow
-      , highlightedType container bold highlight defaultColor to
-      ]
-    where
-    isArrow = case from of
-      TArrow _ _ -> true
-      _ -> false
+highlightedType container bold highlight defaultColor =
+  let
+    -- We need to take a type apram instead of just using partail apliaction
+    -- to prevent infinite recursion
+    continue type' = highlightedType container bold highlight defaultColor type'
+  in
+    case _ of
+      TConstant "Function" [ from, to ] ->
+        container
+          [ if isArrow then container [ HH.text "(", result, HH.text ")" ] else result
+          , bold $ HH.text $ spaced arrow
+          , continue to
+          ]
+        where
+        isArrow = case from of
+          TConstant "Function" [ _, _ ] -> true
+          _ -> false
 
-    result = highlightedType container bold highlight defaultColor from
-  TVariable _ name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
-    where
-    shade = seededInt (show name') 100 255
-  other -> highlight color $ HH.text $ show other
-    where
-    color = fromMaybe defaultColor $ typeToColor other
+        result = continue from
+      TConstant "Array" [ inner ] ->
+        container
+          [ bold $ HH.text "["
+          , continue inner
+          , bold $ HH.text "]"
+          ]
+      TVariable _ name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
+        where
+        shade = seededInt (show name') 100 255
+      other -> highlight color $ HH.text $ show other
+        where
+        color = fromMaybe defaultColor $ typeToColor other
 
 highlightTypeToHTML :: forall h a. Color -> Type -> HH.HTML h a
 highlightTypeToHTML = highlightedType HH.span_ bold HT.highlight

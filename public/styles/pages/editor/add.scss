@@ -1,3 +1,4 @@
+@use "../../utils/utils";
 @import "../../theme.scss";
 
 #add-node-container > #create-input > button {
@@ -20,6 +21,28 @@
   &:hover {
     filter: brightness(1.4);
   }
+}
+
+#add-node-container #node-search-container {
+  display: flex;
+  align-items: center;
+
+  margin: 1rem;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+#add-node-container #node-search-container #node-search-input {
+  @include utils.base-input;
+  flex-grow: 1;
+
+  margin: 0.6rem;
+  margin-right: 1rem;
+  margin-left: 0;
+
+  font-size: 1.3rem;
+
+  color: $on-primary;
 }
 
 #add-node-container {
@@ -76,6 +99,7 @@
         flex-direction: column;
 
         height: 100%;
+        margin-left: 1rem;
         justify-content: space-evenly;
       }
 
@@ -100,9 +124,9 @@
 
       #node-text {
         display: flex;
+        flex-grow: 1;
         flex-direction: column;
         text-overflow: ellipsis;
-        width: calc(15rem - 100px);
 
         & > * {
           cursor: default;

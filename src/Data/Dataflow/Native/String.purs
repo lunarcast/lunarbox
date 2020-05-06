@@ -11,7 +11,7 @@ import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber, typeString)
+import Lunarbox.Data.Dataflow.Type (typeFunction, typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 
@@ -35,7 +35,7 @@ stringLength :: forall a s m. NativeConfig a s m
 stringLength =
   NativeConfig
     { name: FunctionName "length"
-    , expression: NativeExpression (Forall [] $ TArrow typeString typeNumber) $ Function evalLength
+    , expression: NativeExpression (Forall [] $ typeFunction typeString typeNumber) $ Function evalLength
     , functionData: internal [ { name: "string" } ] { name: "length" }
     , component: Nothing
     }
@@ -49,7 +49,7 @@ concatStrings :: forall a s m. NativeConfig a s m
 concatStrings =
   NativeConfig
     { name: FunctionName "concat"
-    , expression: NativeExpression (Forall [] $ TArrow typeString $ TArrow typeString typeString) $ binaryFunction evalConcat
+    , expression: NativeExpression (Forall [] $ typeFunction typeString $ typeFunction typeString typeString) $ binaryFunction evalConcat
     , functionData: internal [ { name: "first string" }, { name: "second strings" } ] { name: "a ++ b" }
     , component: Nothing
     }
@@ -61,7 +61,7 @@ reverseString :: forall a s m. NativeConfig a s m
 reverseString =
   NativeConfig
     { name: FunctionName "reverse"
-    , expression: NativeExpression (Forall [] $ TArrow typeString typeString) evalReverse
+    , expression: NativeExpression (Forall [] $ typeFunction typeString typeString) evalReverse
     , functionData: internal [ { name: "string" } ] { name: "reversed string" }
     , component: Nothing
     }
@@ -70,7 +70,7 @@ trimString :: forall a s m. NativeConfig a s m
 trimString =
   NativeConfig
     { name: FunctionName "trim"
-    , expression: NativeExpression (Forall [] $ TArrow typeString typeString) $ stringUnary String.trim
+    , expression: NativeExpression (Forall [] $ typeFunction typeString typeString) $ stringUnary String.trim
     , functionData: internal [ { name: "string" } ] { name: "trimmed string" }
     , component: Nothing
     }

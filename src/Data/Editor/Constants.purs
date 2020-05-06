@@ -30,7 +30,7 @@ connectionsWidth = 5.0
 
 -- THis is required so the preview doesn't catch all the events
 scaleConnectionPreview :: Number -> Number
-scaleConnectionPreview = (_ / 1.01)
+scaleConnectionPreview = (_ / 1.02)
 
 -- Used for connection previews
 mouseId :: NodeId
