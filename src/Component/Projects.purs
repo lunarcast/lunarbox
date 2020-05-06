@@ -4,6 +4,7 @@ module Lunarbox.Component.Projects
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
+import Data.Either (Either(..))
 import Data.Lens (Lens', set)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
@@ -14,11 +15,12 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
-import Lunarbox.Capability.Resource.Project (class ManageProjects, getProjects)
+import Lunarbox.Capability.Resource.Project (class ManageProjects, createProject, getProjects)
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
+import Lunarbox.Data.Editor.State (emptyState)
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectList, ProjectData)
@@ -41,6 +43,7 @@ data Action
   = Initialize
   | OpenProject ProjectId
   | Search String
+  | CreateProject
 
 type Output
   = Void
@@ -82,6 +85,13 @@ component =
       modify_ $ set _projectList $ fromEither projectList
     Search term -> modify_ $ set _search term
     OpenProject id -> navigate $ Project id
+    CreateProject -> do
+      response <- createProject emptyState
+      -- Display a loading message
+      modify_ $ set _projectList Loading
+      case response of
+        Right id -> navigate $ Project id
+        Left err -> modify_ $ set _projectList $ Failure err
 
   loading :: forall h a. HH.HTML h a
   loading = HH.text "loading"
@@ -114,16 +124,21 @@ component =
           <$> projects
       ]
 
-  listButton :: String -> HH.HTML _ _
-  listButton name = HH.div [ className "list-button" ] [ icon name ]
+  listButton :: String -> Action -> HH.HTML _ _
+  listButton name handleClick =
+    HH.div
+      [ className "list-button"
+      , onClick $ const $ Just handleClick
+      ]
+      [ icon name ]
 
   renderProjects { projectList, search } = case projectList of
     NotAsked -> pure loading
     Loading -> pure loading
     Failure err -> pure $ HH.text $ "error " <> err
-    Success { projects, examples } ->
-      [ renderProjectList "Projects" (order projects) [ listButton "add" ]
-      , renderProjectList "Examples" (order examples) []
+    Success { userProjects, exampleProjects } ->
+      [ renderProjectList "Projects" (order userProjects) [ listButton "add" CreateProject ]
+      , renderProjectList "Examples" (order exampleProjects) []
       ]
     where
     order = sortBySearch _.name search

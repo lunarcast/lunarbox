@@ -17,7 +17,8 @@
   flex-direction: column;
   justify-content: space-evenly;
 
-  min-width: 70%;
+  min-width: 50vw;
+  max-width: 80vw;
 
   #title-row {
     display: flex;
@@ -34,6 +35,9 @@
 
       font-size: 1.5rem;
       height: 3rem;
+      * {
+        margin-left: 1rem;
+      }
 
       #message-normal {
         color: $on-dark-pale;
@@ -44,7 +48,6 @@
         color: $secondary;
         transition: filter $transition-time;
 
-        margin-left: 1rem;
         cursor: pointer;
 
         &:hover {
@@ -91,6 +94,7 @@
 
   width: 100%;
   padding: 1rem;
+  box-sizing: border-box;
 
   outline: none;
   border: none;

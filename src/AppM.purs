@@ -2,27 +2,30 @@ module Lunarbox.AppM where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
-import Data.Argonaut (stringify)
-import Data.Either (Either(..))
+import Data.Argonaut (encodeJson, stringify)
+import Data.Either (Either(..), hush)
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff.Bus as Bus
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Ref as Ref
 import Foreign (unsafeToForeign)
 import Lunarbox.Api.Endpoint (Endpoint(..))
 import Lunarbox.Api.Request (RequestMethod(..))
 import Lunarbox.Api.Request as Request
 import Lunarbox.Api.Utils (authenticate, mkRequest, withBaseUrl)
-import Lunarbox.Capability.Navigate (class Navigate)
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
-import Lunarbox.Config (Config, _changeRoute)
+import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (emptyState)
 import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.Route (routingCodec)
+import Lunarbox.Data.Route as Route
 import Routing.Duplex (print)
 
 -- Todo: better type for errors
@@ -57,54 +60,27 @@ instance navigateAppM :: Navigate AppM where
   navigate path = do
     changeRoute <- asks $ view _changeRoute
     liftEffect $ changeRoute (unsafeToForeign {}) $ print routingCodec path
-  logout = void $ (mkRequest { endpoint: Logout, method: Post Nothing } :: AppM (_ {}))
+  logout = do
+    currentUser <- asks $ view _currentUser
+    userBus <- asks $ view _userBus
+    void $ (mkRequest { endpoint: Logout, method: Get } :: AppM (_ {}))
+    liftEffect $ Ref.write Nothing currentUser
+    liftAff $ Bus.write Nothing userBus
+    navigate Route.Home
 
 instance manageUserAppM :: ManageUser AppM where
   loginUser = authenticate Request.login
   registerUser = authenticate Request.register
-  getCurrentUser = withBaseUrl Request.profile
+  getCurrentUser = hush <$> withBaseUrl Request.profile
 
 instance manageProjectsAppM :: ManageProjects AppM where
-  createProject state = pure $ Right $ ProjectId "mock"
+  createProject state = do
+    let
+      body = stateToJson state
+    r :: Either String {} <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
+    pure $ Right $ ProjectId "mock"
   getProject id = pure $ Right emptyState
   saveProject state = do
     printString $ "Saving " <> stringify (stateToJson state)
     pure $ Right unit
-  getProjects =
-    pure
-      $ Right
-          { examples:
-            [ { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            ]
-          , projects:
-            [ { id: ProjectId "1"
-              , name: "test project"
-              , functionCount: 2
-              , nodeCount: 23
-              }
-            , { id: ProjectId "2"
-              , name: "test project 2"
-              , functionCount: 12
-              , nodeCount: 235
-              }
-            , { id: ProjectId "3"
-              , name: "test project 3"
-              , functionCount: 5
-              , nodeCount: 22
-              }
-            ]
-          }
+  getProjects = mkRequest { endpoint: Projects, method: Get }

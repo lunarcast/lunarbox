@@ -13,6 +13,6 @@ type ProjectData
     }
 
 type ProjectList
-  = { examples :: Array ProjectData
-    , projects :: Array ProjectData
+  = { exampleProjects :: Array ProjectData
+    , userProjects :: Array ProjectData
     }

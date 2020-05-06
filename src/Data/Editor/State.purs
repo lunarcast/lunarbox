@@ -529,6 +529,10 @@ sceneCenter state = toWorldCoordinates camera $ (_ / 2.0) <$> scale
 
   camera = view _currentCamera state
 
+-- Get the number of nodes in a state
+nodeCount :: forall a s m. State a s m -> Int
+nodeCount = Map.size <<< view _nodeData
+
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
 _inputCountMap = prop (SProxy :: _ "inputCountMap")

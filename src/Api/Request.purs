@@ -69,18 +69,21 @@ type LoginFields
   = { | AuthFieldsRep Unlifted () }
 
 login :: forall m. MonadAff m => BaseUrl -> LoginFields -> m (Either String Profile)
-login baseUrl fields =
-  requestJson baseUrl
+login baseUrl fields = requestJson baseUrl opts <#> (_ >>= decodeAt "user")
+  where
+  opts =
     { endpoint: Login, method: Post $ Just $ encodeJson fields
     }
-    *> profile baseUrl
 
 register :: forall m. MonadAff m => BaseUrl -> RegisterFields -> m (Either String Profile)
-register baseUrl fields =
-  requestJson baseUrl
-    { endpoint: Register, method: Post $ Just $ encodeJson fields
-    }
-    *> profile baseUrl
+register baseUrl fields = do
+  response <-
+    requestJson baseUrl
+      { endpoint: Register, method: Post $ Just $ encodeJson fields
+      }
+  case response of
+    Left err -> pure $ Left err
+    Right _ -> profile baseUrl
 
 -- Get the current signed in profile
 profile :: forall m. MonadAff m => BaseUrl -> m (Either String Profile)
@@ -93,10 +96,9 @@ requestJson baseUrl opts = do
   pure do
     response <- lmap printError res
     case response.status of
-      StatusCode 200 -> pure response.body
+      StatusCode code
+        | code >= 200 && code <= 299 -> pure response.body
       _ -> Left =<< decodeAt "message" response.body
 
--- | The login and registration requests share the same underlying implementation, just a different
--- | endpoint. This function can be re-used by both requests.
 requestUser :: forall m. MonadAff m => BaseUrl -> RequestOptions -> m (Either String Profile)
 requestUser baseUrl opts = requestJson baseUrl opts <#> (_ >>= decodeJson)

@@ -21,10 +21,10 @@ import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Profile (Profile)
 
 -- Log the error from an Either
-logErrors :: forall b r m. MonadEffect m => Either String b -> (b -> m r) -> m r -> m r
-logErrors input binder default = case input of
-  Right result -> binder result
-  Left error -> printString error *> default
+logErrors :: forall b m. MonadEffect m => Either String b -> m (Either String b)
+logErrors input = case input of
+  Right result -> pure input
+  Left error -> printString error *> pure input
 
 -- Helper to make a request with the baseUrl from the reader monad
 mkRequest ::
@@ -33,11 +33,11 @@ mkRequest ::
   MonadAff m =>
   MonadAsk Config m =>
   RequestOptions ->
-  m (Maybe b)
+  m (Either String b)
 mkRequest options = do
   baseUrl <- asks $ view _baseUrl
   response <- requestJson baseUrl options
-  logErrors (response >>= decodeJson) (pure <<< Just) $ pure Nothing
+  logErrors $ response >>= decodeJson
 
 -- Perform a function with the current url from the global config
 withBaseUrl ::
@@ -46,11 +46,11 @@ withBaseUrl ::
   MonadAff m =>
   MonadAsk Config m =>
   (BaseUrl -> m (Either String b)) ->
-  m (Maybe b)
+  m (Either String b)
 withBaseUrl req = do
   baseUrl <- asks $ view _baseUrl
   response <- req baseUrl
-  logErrors response (pure <<< Just) $ pure Nothing
+  logErrors response
 
 -- Helper to creating functions which request something which return a profile
 authenticate ::
