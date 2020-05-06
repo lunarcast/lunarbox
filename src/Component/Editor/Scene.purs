@@ -18,6 +18,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Ord (signum)
+import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
@@ -25,6 +26,7 @@ import Data.Vec (vec2, (!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
+import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
 import Lunarbox.Component.Editor.Node (renderNode)
@@ -33,7 +35,7 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeString)
 import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
-import Lunarbox.Data.Editor.Constants (clampZoom, scrollStep)
+import Lunarbox.Data.Editor.Constants (scrollStep)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -46,6 +48,7 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (_NodeGroupInputs)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, getSelectionStatus)
 import Lunarbox.Data.Editor.Project (Project, _atProjectNode, _projectNodeGroup)
+import Lunarbox.Data.Editor.State (sceneRef)
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (erroredEditor)
@@ -69,6 +72,7 @@ type Input a s m
     , functionUis :: Map FunctionName (FunctionUi a s m)
     , camera :: Camera
     , scale :: Vec2 Number
+    , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     }
 
 type Actions a
@@ -120,6 +124,7 @@ createNodeComponent { functionName
 , nodeData: nodeDataMap
 , valueMap
 , functionUis
+, unconnectablePins
 } { selectNode, selectInput, selectOutput, removeConnection, setValue } (Tuple id nodeData) = do
   let
     generateLocation = DeepLocation functionName
@@ -151,6 +156,12 @@ createNodeComponent { functionName
           guard $ locationId == id
           pure $ Tuple locationPin type'
 
+    localUnconnectablePins =
+      flip Set.mapMaybe unconnectablePins \location' -> do
+        locationId <- preview _ExtendedLocation location'
+        guard $ locationId == id
+        preview _LocationExtension location'
+
     nodeFunctionData = getFunctionData (\name' -> fromMaybe def $ Map.lookup name' functionData) node
   functionType <-
     if is _ComplexNode node then
@@ -179,6 +190,7 @@ createNodeComponent { functionName
         , mousePosition: lastMousePosition
         , value: Map.lookup location $ unwrap valueMap
         , ui: Map.lookup name functionUis
+        , unconnectablePins: localUnconnectablePins
         }
         { select: selectNode id
         , selectInput: selectInput id
@@ -201,13 +213,15 @@ scene state@{ nodeData, camera, scale, lastMousePosition
   nodeHtml = sequence $ (createNodeComponent state' actions <$> sortedNodes :: Array (Either _ _))
 
   success =
-    SE.svg
-      [ SA.width $ scale !! d0
-      , SA.height $ scale !! d1
-      , SA.id "scene"
-      , toViewBox scale camera
-      , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
-      , onWheel \e -> zoom $ clampZoom $ pow scrollStep $ signum $ deltaY e
-      , onMouseUp $ const mouseUp
-      ]
+    HH.div [ HP.ref sceneRef ]
+      <<< pure
+      <<< SE.svg
+          [ SA.width $ scale !! d0
+          , SA.height $ scale !! d1
+          , SA.id "scene"
+          , toViewBox scale camera
+          , onMouseMove \e -> mouseMove (ME.buttons e) $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+          , onMouseDown \e -> mouseDown $ toNumber <$> vec2 (ME.pageX e) (ME.pageY e)
+          , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
+          , onMouseUp $ const mouseUp
+          ]

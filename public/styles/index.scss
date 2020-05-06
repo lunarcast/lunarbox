@@ -4,11 +4,13 @@
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
 @import "./pages/login.scss";
+@import "./pages/projects.scss";
 
 // Components
 @import "./components/tooltip.scss";
 @import "./components/switch.scss";
 @import "./components/node-input.scss";
+@import "./components/with-logo.scss";
 
 // Libraries
 @import "normalize.css";
@@ -39,20 +41,19 @@ img,
 
 // Remove arrows from number inputs
 
-/* Chrome, Safari, Edge, Opera */
+// Chrome, Safari, Edge, Opera
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* Firefox */
+// Firefox
 input[type="number"] {
   -moz-appearance: textfield;
 }
 
 // Custom scrollbar
-
 * {
   scrollbar-color: $primary-bright;
   scrollbar-width: 1rem;

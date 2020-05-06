@@ -55,6 +55,7 @@ instance showUsername :: Show Username where
 -- The actual type for profiles
 type ProfileRep row
   = ( username :: Username
+    , isAdmin :: Boolean
     | row
     )
 

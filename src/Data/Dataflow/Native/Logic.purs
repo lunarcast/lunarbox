@@ -1,9 +1,6 @@
 module Lunarbox.Data.Dataflow.Native.Logic
   ( evalNot
-  , not'
-  , or
-  , and
-  , xor
+  , logicNodes
   ) where
 
 import Prelude
@@ -15,6 +12,10 @@ import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (Type(..), typeBool)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+
+-- All the native logic gatesish nodes
+logicNodes :: forall a s m. Array (NativeConfig a s m)
+logicNodes = [ not', or, and, xor ]
 
 -- Evaluate a not function
 evalNot :: RuntimeValue -> RuntimeValue
@@ -45,7 +46,7 @@ not' =
   NativeConfig
     { name: FunctionName "not"
     , expression: NativeExpression (Forall [] $ TArrow typeBool typeBool) $ Function evalNot
-    , functionData: internal [ { name: "input" } ]
+    , functionData: internal [ { name: "input" } ] { name: "!input" }
     , component: Nothing
     }
 
@@ -54,7 +55,7 @@ and =
   NativeConfig
     { name: FunctionName "and"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction (&&)
-    , functionData: internal binaryLogicFunctionArgs
+    , functionData: internal binaryLogicFunctionArgs { name: "a && b" }
     , component: Nothing
     }
 
@@ -63,7 +64,7 @@ or =
   NativeConfig
     { name: FunctionName "or"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction (||)
-    , functionData: internal binaryLogicFunctionArgs
+    , functionData: internal binaryLogicFunctionArgs { name: "a || b" }
     , component: Nothing
     }
 
@@ -77,6 +78,6 @@ xor =
   NativeConfig
     { name: FunctionName "xor"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction evalXor
-    , functionData: internal binaryLogicFunctionArgs
+    , functionData: internal binaryLogicFunctionArgs { name: "a & b" }
     , component: Nothing
     }

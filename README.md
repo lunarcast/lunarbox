@@ -6,28 +6,27 @@
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-![](https://img.shields.io/github/release-date/Mateiadrielrafael/lunarbox?label=Last%20release&style=for-the-badge) ![](https://img.shields.io/github/v/release/Mateiadrielrafael/lunarbox?style=for-the-badge) ![](https://img.shields.io/github/languages/top/Mateiadrielrafael/lunarbox?color=yellow&style=for-the-badge) ![](https://img.shields.io/github/workflow/status/Mateiadrielrafael/lunarbox/Test%20⛳/develop?style=for-the-badge)
-
 [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com)
 
+![](https://img.shields.io/github/release-date/Mateiadrielrafael/lunarbox?label=Last%20release&style=for-the-badge) ![](https://img.shields.io/github/v/release/Mateiadrielrafael/lunarbox?style=for-the-badge) ![](https://img.shields.io/github/languages/top/Mateiadrielrafael/lunarbox?color=yellow&style=for-the-badge) ![](https://img.shields.io/github/workflow/status/Mateiadrielrafael/lunarbox/Test%20⛳/develop?style=for-the-badge)
+
 Tool to help beginners learn functional programming
+
+## Documentation
+
+You can find the infoeducatie documentation (written in romanian) [here](./infoeducatie/documentatie.md)
+
+> Also for infoeducatie I also made a list with everything I used which I didn't make which you can find [here](./infoeducatie/external.md)
+
+> Todo: usage guides
 
 ## Contributing
 
 Fork this repo, write some code and submit a pull request.
 
-## Tehnologies:
-
-This project is mostly made in the [purescript](https://www.purescript.org) programming language using [halogen](https://github.com/purescript-halogen/purescript-halogen) for web rendering.
-
-For installing dependencies this project uses:
-
-- [pnpm](https://pnpm.js.org) for the js dependencies
-- [spago](https://github.com/purescript/spago) for the purescript dependencies
-
-For the compilation this project uses [parcel](https://parceljs.org) to bundle the js, [scss](https://sass-lang.com) and the assets and [spago](https://github.com/purescript/spago) to compile the purescript.
-
 ## Installing locally
+
+This guide assumes you have purescript and spago alreay installed.
 
 ### Installing the dependencies
 
@@ -40,7 +39,7 @@ pnpm install
 Then build all the purescript stuff with:
 
 ```sh
-pnpx spago build
+spago build
 ```
 
 > Note: this project uses [pnpm](https://pnpm.js.org), pull requests using npm or yarn will be ignored
@@ -51,6 +50,14 @@ To start the dev server use the `dev` command:
 
 ```sh
 pnpm run dev
+```
+
+### Building for production
+
+To generate a production build run:
+
+```sh
+pnpm run build
 ```
 
 ## Code generation
@@ -71,6 +78,8 @@ This will create an empty halogen component in `src/Component/Foo/Bar.purs` whic
 
 > Note: you can add the -p flag at the end to generate a page instead (lives in `src/Page` and has the module name prefixed with `Lunarbox.Page`)
 
+> Note 2: you can also use the render-function action when you want to build a render-function which takes some Input and some Actions as it's parameters
+
 ### Creating modules
 
 To create a simple purescript module use can use the `module` action from the `purescript` generator:
@@ -80,10 +89,6 @@ hygen purescript module Foo.Bar
 ```
 
 This will create an empty halogen component in `src/Foo/Bar.purs` which lives in a module called `Lunarbox.Foo.Bar` which has a single import to `Prelude`.
-
-## Strucure & architecture
-
-TODO
 
 ## Contributors ✨
 

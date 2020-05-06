@@ -13,6 +13,7 @@ import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Math (pow)
 
+-- ALl the math native nodes
 mathNodes :: forall a s m. Array (NativeConfig a s m)
 mathNodes = [ add, substract, multiply, divide, raiseToPower ]
 
@@ -40,7 +41,7 @@ add =
   NativeConfig
     { name: FunctionName "add"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (+))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ]
+    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "sum" }
     , component: Nothing
     }
 
@@ -49,7 +50,7 @@ substract =
   NativeConfig
     { name: FunctionName "substract"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (-))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ]
+    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "difference" }
     , component: Nothing
     }
 
@@ -58,7 +59,7 @@ multiply =
   NativeConfig
     { name: FunctionName "multiply"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (*))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ]
+    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "product" }
     , component: Nothing
     }
 
@@ -67,7 +68,7 @@ divide =
   NativeConfig
     { name: FunctionName "divide"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (/))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ]
+    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "quotient" }
     , component: Nothing
     }
 
@@ -76,6 +77,6 @@ raiseToPower =
   NativeConfig
     { name: FunctionName "raise to power"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction pow)
-    , functionData: internal [ { name: "base" }, { name: "exponend" } ]
+    , functionData: internal [ { name: "base" }, { name: "exponend" } ] { name: "base^exponent" }
     , component: Nothing
     }

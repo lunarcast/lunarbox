@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Lunarbox.Api.Endpoint (Endpoint(..), endpointCodec)
-import Lunarbox.Data.Profile (Email, Profile, Username(..))
+import Lunarbox.Data.Profile (Email, Profile, Username)
 import Lunarbox.Data.Utils (decodeAt)
 import Routing.Duplex (print)
 
@@ -69,20 +69,18 @@ type LoginFields
   = { | AuthFieldsRep Unlifted () }
 
 login :: forall m. MonadAff m => BaseUrl -> LoginFields -> m (Either String Profile)
-login baseUrl fields = response $> Right { username: Username "wait for bg to fix this" }
-  where
-  response =
-    requestJson baseUrl
-      { endpoint: Login, method: Post $ Just $ encodeJson fields
-      }
+login baseUrl fields =
+  requestJson baseUrl
+    { endpoint: Login, method: Post $ Just $ encodeJson fields
+    }
+    *> profile baseUrl
 
 register :: forall m. MonadAff m => BaseUrl -> RegisterFields -> m (Either String Profile)
-register baseUrl fields = response $> Right { username: fields.username }
-  where
-  response =
-    requestJson baseUrl
-      { endpoint: Register, method: Post $ Just $ encodeJson fields
-      }
+register baseUrl fields =
+  requestJson baseUrl
+    { endpoint: Register, method: Post $ Just $ encodeJson fields
+    }
+    *> profile baseUrl
 
 -- Get the current signed in profile
 profile :: forall m. MonadAff m => BaseUrl -> m (Either String Profile)

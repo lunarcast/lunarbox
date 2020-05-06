@@ -1,0 +1,129 @@
+@use "../utils/utils";
+
+@import "../theme.scss";
+
+#projects-container .left {
+  filter: contrast(105%) brightness(0.9);
+}
+
+#projects {
+  background: darken($color: $primary, $amount: 4);
+
+  padding: 1rem;
+  box-sizing: border-box;
+  height: 100vh;
+
+  #project-search {
+    display: flex;
+    align-items: center;
+
+    #search-spacing {
+      flex-grow: 1;
+    }
+  }
+
+  #project-search > input {
+    border: none;
+    outline: none;
+
+    background: $very-dark;
+    color: $on-dark-pale;
+    transition: filter $transition-time;
+
+    padding: 0.5rem;
+
+    &:hover {
+      filter: brightness(1.7);
+    }
+  }
+
+  #project-lists {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: calc(100% - 2rem);
+
+    #project-list {
+      margin: 0.5rem;
+      padding: 0.5rem;
+
+      margin-left: 0;
+
+      max-height: 100%;
+      overflow: hidden;
+
+      #list-header {
+        display: flex;
+        width: 100%;
+
+        * {
+          font-size: 1.5rem;
+          margin: 0.4rem;
+
+          color: $on-primary;
+        }
+
+        .list-button {
+          cursor: pointer;
+          transition: filter $transition-time, transform $transition-time;
+
+          &:hover {
+            filter: brightness(1.3);
+            transform: scale(1.3);
+          }
+        }
+
+        #list-title {
+          flex-grow: 1;
+          cursor: normal;
+        }
+      }
+
+      #list-items {
+        display: flex;
+        flex-direction: column;
+        height: calc(100% - 2rem);
+        overflow: auto;
+
+        .project {
+          display: flex;
+          user-select: none;
+          cursor: pointer;
+
+          margin: 0.4rem;
+
+          padding: 1rem;
+          box-sizing: border-box;
+
+          color: $on-primary;
+          background: $primary-dark;
+
+          .project-name {
+            flex-grow: 1;
+            text-transform: capitalize;
+            font-size: 1.4rem;
+          }
+
+          .project-data {
+            display: flex;
+
+            .function-count,
+            .node-count {
+              margin-right: 1rem;
+
+              .material-icons {
+                margin-right: 0.2rem;
+                font-size: 1rem;
+              }
+            }
+          }
+
+          transition: filter $transition-time;
+
+          &:hover {
+            filter: brightness(1.2);
+          }
+        }
+      }
+    }
+  }
+}

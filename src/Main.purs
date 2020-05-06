@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import Prelude
 import Data.Either (Either(..))
@@ -26,13 +26,17 @@ devUrl = BaseUrl "http://localhost:8090"
 prodUrl :: BaseUrl
 prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com/api/"
 
-main :: Effect Unit
-main =
+main :: Boolean -> Effect Unit
+main production =
   runHalogenAff do
     -- Url to make requests to
     let
       baseUrl :: BaseUrl
-      baseUrl = devUrl
+      baseUrl =
+        if production then
+          prodUrl
+        else
+          devUrl
     -- Ref for the current user
     currentUser <- liftEffect $ Ref.new Nothing
     -- Bus to store the current user profile

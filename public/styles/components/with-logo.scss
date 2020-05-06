@@ -1,0 +1,31 @@
+@use "../utils/utils";
+
+@import "../theme.scss";
+
+.with-logo {
+  display: grid;
+  grid-template-columns: 30% auto;
+  height: 100vh;
+  overflow: hidden;
+
+  .left {
+    @include utils.center;
+    height: 100vh;
+
+    background: $primary-dark;
+  }
+
+  .right {
+    background: $primary;
+  }
+}
+
+@media only screen and (max-width: 1000px) {
+  .with-logo {
+    grid-template-columns: 1fr;
+
+    .left {
+      display: none;
+    }
+  }
+}

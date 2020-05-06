@@ -1,7 +1,9 @@
 module Lunarbox.Component.Editor
   ( component
   , Action(..)
-  , Query
+  , Output(..)
+  , EditorState
+  , ChildSlots
   ) where
 
 import Prelude
@@ -9,29 +11,29 @@ import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Default (def)
-import Data.Either (Either(..))
-import Data.Foldable (foldr, for_)
+import Data.Foldable (find, foldr, for_)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Effect.Aff (Milliseconds(..), delay)
-import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, fork, mkComponent, mkEval, query, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy2)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick)
+import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
+import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Component.Switch (switch)
+import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
 import Lunarbox.Control.Monad.Effect (printString)
@@ -39,18 +41,19 @@ import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isSelected, _lastMousePosition, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, adjustSceneScale, createNode, deleteSelection, emptyState, getSceneMousePosition, initializeFunction, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Web.Event.Event (EventType(..))
+import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.Window (document) as Web
@@ -79,13 +82,19 @@ data Action
   | AdjustSceneScale
   | TogglePanel
   | ChangeInputCount FunctionName Int
+  | SetName String
+  | SetExample Boolean
 
-data Query a
-  = Void
+data Output m
+  = Save (EditorState m)
 
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
     )
+
+-- Shorthand for manually passing the types of the actions and child slots
+type EditorState m
+  = State Action ChildSlots m
 
 -- Actions to run the scene component with
 sceneActions :: Scene.Actions Action
@@ -102,15 +111,15 @@ sceneActions =
   }
 
 -- This is a helper monad which just generates an id
-createId :: forall m. HalogenM (State Action ChildSlots m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
+createId :: forall m. HalogenM (EditorState m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
 createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML Query {} Void m
+component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML q (EditorState m) (Output m) m
 component =
   mkComponent
-    { initialState: const $ initializeFunction (FunctionName "main") $ loadPrelude emptyState
+    { initialState: compile <<< loadPrelude <<< identity
     , render
     , eval:
       mkEval
@@ -120,7 +129,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (State Action ChildSlots m) Action ChildSlots Void m Unit
+  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots (Output m) m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window
@@ -132,7 +141,7 @@ component =
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
-          KET.keyup
+          KET.keydown
           (HTMLDocument.toEventTarget document)
           (map (HandleKey sid) <<< KE.fromEvent)
       -- Registr resize events
@@ -147,30 +156,18 @@ component =
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> do
         handleAction TogglePanel
-      | KE.ctrlKey event && KE.key event == "Enter" -> do
+      | KE.ctrlKey event && KE.key event == "s" -> do
+        liftEffect $ preventDefault $ KE.toEvent event
+        liftEffect $ stopPropagation $ KE.toEvent event
         state <- get
-        let
-          json = stateToJson state
-
-          result = jsonToState json
-        state' <- case result of
-          Left err -> do
-            printString err
-            pure state
-          Right state'' -> pure state''
-        put state'
+        raise $ Save state
       | otherwise -> pure unit
     CreateNode name -> do
       modify_ $ execState $ createNode name
     TogglePanel -> do
       modify_ $ over _panelIsOpen not
-      -- We do not want to block the rendering until the animation ends so we create a new "thread"
-      void
-        $ fork do
-            -- Wait for the css animation to end
-            liftAff $ delay $ Milliseconds 220.0
-            -- Do the adjusting
-            adjustSceneScale
+      -- Since this modifies the scale of the scene we also update that
+      adjustSceneScale
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       if (oldTab == newTab) then
@@ -231,13 +228,23 @@ component =
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
+      unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
-      modify_ $ tryConnecting <<< setTo
+
+        location = DeepLocation id $ InputPin index
+
+        shouldConnect = isNothing $ find (_ == location) unconnectableList
+      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
     SelectOutput id -> do
+      unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id
-      modify_ $ tryConnecting <<< setFrom
+
+        location = DeepLocation id OutputPin
+
+        shouldConnect = isNothing $ find (_ == location) unconnectableList
+      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setFrom
     RemoveConnection from to -> do
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do
@@ -247,6 +254,11 @@ component =
       modify_ $ over _currentCamera $ zoomOn mousePosition amount
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
+    SetName name -> modify_ $ set _name name
+    SetExample isExample -> do
+      -- We only allow editing the example status when we are an admine
+      isAdmin <- gets $ view _isAdmin
+      when isAdmin $ modify_ $ set _isExample isExample
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -258,26 +270,39 @@ component =
       [ classes $ ClassName <$> [ "sidebar-icon" ] <> (guard isActive $> "active")
       , onClick $ const $ Just $ ChangeTab current
       ]
-      [ icon iconName ]
+      [ icon $ tabIcon current ]
     where
-    iconName = tabIcon current
-
     isActive = current == activeTab
 
   tabs currentTab =
     [ icon Settings
     , icon Add
     , icon Tree
-    , icon Problems
     ]
     where
     icon = sidebarIcon currentTab
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin } = case currentTab of
     Settings ->
-      container "panel-container"
+      container "settings"
         [ container "title" [ HH.text "Project settings" ]
+        , HH.div [ className "project-setting" ]
+            [ HH.div [ className "setting-label" ] [ HH.text "Name:" ]
+            , HH.input
+                [ HP.value name
+                , HP.placeholder "Project name"
+                , className "setting-text-input"
+                , onValueInput $ Just <<< SetName
+                ]
+            ]
+        , whenElem isAdmin \_ ->
+            HH.div [ className "project-setting" ]
+              [ HH.div [ className "setting-label" ] [ HH.text "Example:" ]
+              , HH.div [ className "setting-switch-input" ]
+                  [ switch { checked: isExample, round: true } (Just <<< SetExample)
+                  ]
+              ]
         ]
     Tree ->
       container
@@ -312,7 +337,6 @@ component =
                 ]
             ]
         ]
-    _ -> HH.text "not implemented"
 
   scene :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   scene { project
@@ -327,6 +351,7 @@ component =
   , valueMap
   , functionUis
   , sceneScale
+  , unconnectablePins
   } =
     fromMaybe
       emptyEditor do
@@ -335,7 +360,8 @@ component =
         preview (_projectNodeGroup currentFunction) project
       pure
         $ lazy2 Scene.scene
-            { project
+            { unconnectablePins
+            , project
             , typeMap
             , lastMousePosition
             , functionData

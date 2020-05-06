@@ -1,8 +1,5 @@
 module Lunarbox.Data.Dataflow.Native.String
-  ( stringLength
-  , concatStrings
-  , reverseString
-  , trimString
+  ( stringNodes
   ) where
 
 import Prelude
@@ -17,6 +14,10 @@ import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (Type(..), typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+
+-- List of all the string native nodes
+stringNodes :: forall a s m. Array (NativeConfig a s m)
+stringNodes = [ stringLength, concatStrings, reverseString, trimString ]
 
 -- Helper for unary functions operating on strnigs
 stringUnary :: (String -> String) -> RuntimeValue
@@ -35,7 +36,7 @@ stringLength =
   NativeConfig
     { name: FunctionName "length"
     , expression: NativeExpression (Forall [] $ TArrow typeString typeNumber) $ Function evalLength
-    , functionData: internal [ { name: "string" } ]
+    , functionData: internal [ { name: "string" } ] { name: "length" }
     , component: Nothing
     }
 
@@ -49,7 +50,7 @@ concatStrings =
   NativeConfig
     { name: FunctionName "concat"
     , expression: NativeExpression (Forall [] $ TArrow typeString $ TArrow typeString typeString) $ binaryFunction evalConcat
-    , functionData: internal [ { name: "first string" }, { name: "second strings" } ]
+    , functionData: internal [ { name: "first string" }, { name: "second strings" } ] { name: "a ++ b" }
     , component: Nothing
     }
 
@@ -61,7 +62,7 @@ reverseString =
   NativeConfig
     { name: FunctionName "reverse"
     , expression: NativeExpression (Forall [] $ TArrow typeString typeString) evalReverse
-    , functionData: internal [ { name: "string" } ]
+    , functionData: internal [ { name: "string" } ] { name: "reversed string" }
     , component: Nothing
     }
 
@@ -70,6 +71,6 @@ trimString =
   NativeConfig
     { name: FunctionName "trim"
     , expression: NativeExpression (Forall [] $ TArrow typeString typeString) $ stringUnary String.trim
-    , functionData: internal [ { name: "string" } ]
+    , functionData: internal [ { name: "string" } ] { name: "trimmed string" }
     , component: Nothing
     }

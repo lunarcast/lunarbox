@@ -2,6 +2,8 @@ module Lunarbox.AppM where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
+import Data.Argonaut (stringify)
+import Data.Either (Either(..))
 import Data.Lens (view)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
@@ -10,8 +12,13 @@ import Foreign (unsafeToForeign)
 import Lunarbox.Api.Request as Request
 import Lunarbox.Api.Utils (authenticate, mkRequest)
 import Lunarbox.Capability.Navigate (class Navigate)
+import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute)
+import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Data.Editor.Save (stateToJson)
+import Lunarbox.Data.Editor.State (emptyState)
+import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.Route (routingCodec)
 import Routing.Duplex (print)
 
@@ -52,3 +59,48 @@ instance manageUserAppM :: ManageUser AppM where
   loginUser = authenticate Request.login
   registerUser = authenticate Request.register
   getCurrentUser = mkRequest Request.profile
+
+instance manageProjectsAppM :: ManageProjects AppM where
+  createProject state = pure $ Right $ ProjectId "mock"
+  getProject id = pure $ Right emptyState
+  saveProject state = do
+    printString $ "Saving " <> stringify (stateToJson state)
+    pure $ Right unit
+  getProjects =
+    pure
+      $ Right
+          { examples:
+            [ { id: ProjectId "1"
+              , name: "test project"
+              , functionCount: 2
+              , nodeCount: 23
+              }
+            , { id: ProjectId "2"
+              , name: "test project 2"
+              , functionCount: 12
+              , nodeCount: 235
+              }
+            , { id: ProjectId "3"
+              , name: "test project 3"
+              , functionCount: 5
+              , nodeCount: 22
+              }
+            ]
+          , projects:
+            [ { id: ProjectId "1"
+              , name: "test project"
+              , functionCount: 2
+              , nodeCount: 23
+              }
+            , { id: ProjectId "2"
+              , name: "test project 2"
+              , functionCount: 12
+              , nodeCount: 235
+              }
+            , { id: ProjectId "3"
+              , name: "test project 3"
+              , functionCount: 5
+              , nodeCount: 22
+              }
+            ]
+          }

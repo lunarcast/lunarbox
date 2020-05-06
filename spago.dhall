@@ -1,7 +1,3 @@
-{-
-Welcome to a Spago project!
-You can edit this file as you like.
--}
 { name = "lunarbox"
 , dependencies =
   [ "aff"
@@ -17,6 +13,7 @@ You can edit this file as you like.
   , "debug"
   , "effect"
   , "filterable"
+  , "fuzzy"
   , "generics-rep"
   , "halogen"
   , "halogen-css"
@@ -33,6 +30,7 @@ You can edit this file as you like.
   , "psci-support"
   , "random"
   , "record"
+  , "remotedata"
   , "routing"
   , "routing-duplex"
   , "sized-vectors"

@@ -29,7 +29,7 @@
   height: 100vh;
 
   #title {
-    margin: 0.5rem;
+    border: none;
   }
 }
 
@@ -104,7 +104,7 @@
         text-overflow: ellipsis;
         width: calc(15rem - 100px);
 
-        * {
+        & > * {
           cursor: default;
           user-select: none;
         }

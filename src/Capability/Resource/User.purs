@@ -12,12 +12,7 @@ import Halogen (HalogenM, lift)
 import Lunarbox.Api.Request (LoginFields, RegisterFields)
 import Lunarbox.Data.Profile (Profile)
 
--- | This capability represents the ability to manage users in our system. We support logging users
--- | in, and registering them, as well as reading information about various users and who follows
--- | who.
--- |
--- | We'll handle all the mechanics of making the request, decoding responses, handling errors, and
--- | so on in the implementation.
+-- This capability represents the ability to manage users in our system.
 class
   Monad m <= ManageUser m where
   loginUser :: LoginFields -> m (Either String Profile)

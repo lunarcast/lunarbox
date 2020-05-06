@@ -9,16 +9,17 @@ import Control.MonadZero (guard)
 import Data.Default (def)
 import Data.Int (toNumber)
 import Data.Lens (set, view)
+import Data.Lens.Index (ix)
 import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
 import Halogen.HTML (HTML, IProp, ComponentHTML)
-import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onMouseDown)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Capability.Editor.Node.Arc as Arc
@@ -26,9 +27,10 @@ import Lunarbox.Component.Editor.Edge (renderEdge)
 import Lunarbox.Component.Editor.Node.Input (input)
 import Lunarbox.Component.Editor.Node.Overlays (overlays)
 import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
+import Lunarbox.Component.Utils (whenElem)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
-import Lunarbox.Data.Editor.FunctionData (FunctionData)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, _FunctionDataOutput, _PinName)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
@@ -38,6 +40,7 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Math (normalizeAngle)
 import Lunarbox.Data.Vector (Vec2)
 import Lunarbox.Svg.Attributes (Linecap(..), strokeDashArray, strokeLinecap, strokeWidth, transparent)
+import Lunarbox.Svg.Element (withLabel)
 import Math (cos, floor, pi, sin)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
@@ -62,6 +65,7 @@ type Input a s m
     , mousePosition :: Vec2 Number
     , value :: Maybe RuntimeValue
     , ui :: Maybe (FunctionUi a s m)
+    , unconnectablePins :: Set.Set Pin
     }
 
 type Actions a
@@ -72,16 +76,15 @@ type Actions a
     , removeConnection :: NodeId -> Int -> Maybe a
     }
 
-output :: forall r a. Boolean -> Maybe a -> Color -> HTML r a
-output false _ _ = HH.text ""
-
-output true selectOutput color =
-  SE.circle
-    [ SA.r 10.0
-    , SA.fill $ Just color
-    , SA.class_ "node-output"
-    , onClick $ const selectOutput
-    ]
+output :: forall r a. Boolean -> String -> Maybe a -> Color -> HTML r a
+output unconnectable label selectOutput color =
+  withLabel label
+    $ SE.circle
+        [ SA.r 10.0
+        , SA.fill $ Just color
+        , SA.class_ $ "node-output" <> if unconnectable then " unconnectable" else ""
+        , onClick $ const selectOutput
+        ]
 
 constant :: forall r a. HTML r a
 constant =
@@ -112,6 +115,7 @@ renderNode { nodeData: nodeData
 , mousePosition
 , value
 , ui
+, unconnectablePins
 } { select
 , selectOutput
 , selectInput
@@ -129,10 +133,13 @@ renderNode { nodeData: nodeData
     <> arcs
     <> uiSvg
     <> [ movementHandler
-      , output
-          hasOutput
-          selectOutput
-          outputColor
+      , whenElem hasOutput
+          $ \_ ->
+              output
+                (OutputPin `Set.member` unconnectablePins)
+                (view (_FunctionDataOutput <<< _PinName) functionData)
+                selectOutput
+                outputColor
       ]
     <> outputPartialEdge
   where
@@ -231,6 +238,9 @@ renderNode { nodeData: nodeData
                         -- The color of the input arc
                         inputColor = fromMaybe transparent $ Map.lookup (InputPin index) colorMap
 
+                        -- If this is true we make the user know he cannect this pin
+                        unconnectable = InputPin index `Set.member` unconnectablePins
+
                         -- The edge to render
                         edge =
                           maybe mempty pure do
@@ -268,6 +278,8 @@ renderNode { nodeData: nodeData
                                 arcSpacing
                             , radius
                             , color: inputColor
+                            , unconnectable
+                            , tooltip: view (_FunctionDataInputs <<< ix index <<< _PinName) functionData
                             }
                             $ selectInput index
                       in

@@ -8,7 +8,7 @@ import Prelude
 import Data.Lens (is)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Lunarbox.Data.Editor.DataflowFunction (_VisualFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Project (Project(..))
@@ -33,7 +33,9 @@ describe currentFunction (Project { functions }) =
           && not isExternal
           && is _VisualFunction function
 
-      isUsable = isJust currentFunction
+      wouldCycle = maybe false (flip (G.wouldCreateCycle name) functions) currentFunction
+
+      isUsable = isJust currentFunction && not wouldCycle
     in
       Just { isUsable, isEditable }
 

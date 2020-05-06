@@ -21,6 +21,7 @@ import Data.Symbol (SProxy(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (IProp)
+import Lunarbox.Data.Editor.Constants (clampZoom)
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
 import Math (floor)
@@ -58,7 +59,7 @@ origin = view _CameraPosition
 
 -- Zoom on the origin of the __screen__ view 
 zoomOrigin :: Number -> Camera -> Camera
-zoomOrigin = over _CameraZoom <<< (*)
+zoomOrigin = over _CameraZoom <<< (clampZoom <<< _) <<< (*)
 
 -- Translate the camera using a vector in world coordinates
 pan :: Vec2 Number -> Camera -> Camera

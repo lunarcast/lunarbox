@@ -6,7 +6,9 @@ module Lunarbox.Api.Endpoint
 import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Routing.Duplex (RouteDuplex', root, segment, string, prefix)
+import Lunarbox.Data.ProjectId (ProjectId)
+import Lunarbox.Data.Route (projectId)
+import Routing.Duplex (RouteDuplex', prefix, root, segment)
 import Routing.Duplex.Generic (noArgs, sum)
 import Routing.Duplex.Generic.Syntax ((/))
 
@@ -17,7 +19,7 @@ data Endpoint
   | Profile
   | Register
   | Projects
-  | Project String
+  | Project ProjectId
 
 derive instance eqEndpoint :: Eq Endpoint
 
@@ -38,5 +40,5 @@ endpointCodec =
         , "Logout": "auth" / "lougout" / noArgs
         , "Profile": "users" / noArgs
         , "Projects": "projects" / noArgs
-        , "Project": "projects" / string segment
+        , "Project": "projects" / projectId segment
         }

@@ -1,13 +1,13 @@
 module Lunarbox.Page.FormPage (formPage) where
 
+import Prelude
 import Data.Maybe (Maybe)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Utils (container)
-import Lunarbox.Constants (logoWithText)
-import Prelude
+import Lunarbox.Component.WithLogo (withLogo)
 
 type Input h a
   = { title :: String
@@ -20,15 +20,8 @@ type Input h a
 formPage :: forall h a. Input h a -> HTML h a
 formPage { title, content, action, message, onAction } =
   container "form-page"
-    [ container "form-left"
-        [ container "logo"
-            [ HH.img
-                [ HP.src logoWithText
-                ]
-            ]
-        ]
-    , container "form-right"
-        [ container "form-container"
+    [ withLogo
+        $ container "form-container"
             [ container "title-row"
                 [ container "title" [ HH.text title ]
                 , container "message"
@@ -42,5 +35,4 @@ formPage { title, content, action, message, onAction } =
                 ]
             , content
             ]
-        ]
     ]
