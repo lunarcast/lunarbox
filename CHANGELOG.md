@@ -1,3 +1,31 @@
+# [1.13.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.12.0...v1.13.0) (2020-05-06)
+
+
+### Bug Fixes
+
+* fixed opening a second project without refreshing breaking the svg ([b347d0a](https://github.com/Mateiadrielrafael/lunarbox/commit/b347d0a0ea1e36dc50562828e9e1424dc4c554fb))
+* now the cursor is set to text on all inputs ([79e35fb](https://github.com/Mateiadrielrafael/lunarbox/commit/79e35fb87dedd5c6bec1047398a23fe39eab34f0))
+
+
+### Features
+
+* basic projects page component ([a61e83b](https://github.com/Mateiadrielrafael/lunarbox/commit/a61e83b567d5ace053f3c183ee03221ac0563b19))
+* clamped zooming ([66fce14](https://github.com/Mateiadrielrafael/lunarbox/commit/66fce1456211332c8809699adc3ff0da101c9919))
+* function level cycle prevention ([e968b90](https://github.com/Mateiadrielrafael/lunarbox/commit/e968b90b75a2b10144202eb4ba91901db01b094f))
+* in function cycle prevention ([31e811d](https://github.com/Mateiadrielrafael/lunarbox/commit/31e811d4e3f56a78a96cd73908c28fd885cb1d1e))
+* inputs names on hover ([af3afc2](https://github.com/Mateiadrielrafael/lunarbox/commit/af3afc2800028d69c002c181df6b801f9e54432e))
+* modified the editor state encoding and decoding to better fit the api ([33a3d24](https://github.com/Mateiadrielrafael/lunarbox/commit/33a3d245db48d2c3a1167c258fb0f10c9878b595))
+* only be able to connect pins of correct types ([0f519e7](https://github.com/Mateiadrielrafael/lunarbox/commit/0f519e71a35f7541c7edeee1b98aadfd580ecbca))
+* project saving ([ac79b53](https://github.com/Mateiadrielrafael/lunarbox/commit/ac79b534b90f18c9e29b98193e31c4cf887b8321))
+* project searching ([7b82511](https://github.com/Mateiadrielrafael/lunarbox/commit/7b82511d9caf1d38e28dc71ec890bf12797e7f58))
+* same for outputs ([333f72d](https://github.com/Mateiadrielrafael/lunarbox/commit/333f72d0ab1db6aacf9ebf4796a9c380206c9846))
+* see node output on hover ([545bf65](https://github.com/Mateiadrielrafael/lunarbox/commit/545bf65bdc74c5042a6d70aae26c1b7a29957c72))
+* setting the names and example status of projects ([7cbb25f](https://github.com/Mateiadrielrafael/lunarbox/commit/7cbb25ff92d1820cc23e8a4810a88cccc58793a8))
+* settings page ([8fc1b42](https://github.com/Mateiadrielrafael/lunarbox/commit/8fc1b426924b63464655b47c8db972b6703d194d))
+* some logic related to loading any Project ([601f8b7](https://github.com/Mateiadrielrafael/lunarbox/commit/601f8b7d2dcb62e87a604440142ad4a136c1643d))
+* some styling on the projects page ([c64ef9f](https://github.com/Mateiadrielrafael/lunarbox/commit/c64ef9f50e28d040ecf8e8eacc101828811761ec))
+* visually show what inputs cant be connected ([b0a8d83](https://github.com/Mateiadrielrafael/lunarbox/commit/b0a8d83bc51cff259d611bea149d2596552f0087))
+
 # [1.12.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.11.0...v1.12.0) (2020-05-02)
 
 
