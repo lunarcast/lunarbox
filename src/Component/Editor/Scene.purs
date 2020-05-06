@@ -32,7 +32,7 @@ import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeFunction, typeString)
+import Lunarbox.Data.Dataflow.Type (Type, inputs, typeFunction, typeString)
 import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
 import Lunarbox.Data.Editor.Constants (scrollStep)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
@@ -197,9 +197,12 @@ createNodeComponent { functionName
         , setValue: setValue functionName id
         }
 
-scene :: forall a s m. Input a s m -> Actions a -> ComponentHTML a s m
-scene state@{ nodeData, camera, scale, lastMousePosition
-} actions@{ mouseMove, mouseUp, selectNode, zoom } = either (\err -> erroredEditor $ show err) success nodeHtml
+scene :: forall a s m. Actions a -> Input a s m -> ComponentHTML a s m
+scene actions@{ mouseMove, mouseUp, selectNode, zoom } state@{ nodeData, camera, scale, lastMousePosition } =
+  either
+    (\err -> erroredEditor $ show err)
+    success
+    nodeHtml
   where
   sortedNodes :: Array (Tuple NodeId NodeData)
   sortedNodes =
@@ -219,7 +222,6 @@ scene state@{ nodeData, camera, scale, lastMousePosition
           , SA.id "scene"
           , toViewBox scale camera
           , onMouseMove mouseMove
-          -- , onMouseDown mouseDown
           , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
           , onMouseUp $ const mouseUp
           ]

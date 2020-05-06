@@ -4,13 +4,10 @@ module Lunarbox.Component.Projects
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
-import Data.Array as Array
-import Data.Fuzzy (matchStr)
 import Data.Lens (Lens', set)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..), fst)
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
@@ -22,6 +19,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
+import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectList, ProjectData)
 import Lunarbox.Data.Route (Route(..))
@@ -52,18 +50,6 @@ type ChildSlots
 
 type Input
   = {}
-
--- Order a list of project data by a search term
-sortBySearch :: String -> Array ProjectData -> Array ProjectData
-sortBySearch search projects =
-  if search == "" then
-    projects
-  else
-    fst <$> sorted
-  where
-  withMatches = (\project@{ name } -> Tuple project $ matchStr true search name) <$> projects
-
-  sorted = Array.sortBy (\(Tuple _ match) (Tuple _ match') -> compare match match') withMatches
 
 component ::
   forall m q.
@@ -140,7 +126,7 @@ component =
       , renderProjectList "Examples" (order examples) []
       ]
     where
-    order = sortBySearch search
+    order = sortBySearch _.name search
 
   render state@{ search } =
     container "projects-container"

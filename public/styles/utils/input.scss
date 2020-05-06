@@ -1,0 +1,6 @@
+// Very basic styles for most inputs
+@mixin base-input {
+  background: transparent;
+  outline: none;
+  border: none;
+}

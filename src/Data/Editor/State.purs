@@ -101,6 +101,7 @@ type State a s m
     , name :: String
     , isExample :: Boolean
     , isAdmin :: Boolean
+    , nodeSearchTerm :: String
     }
 
 -- Starting state which contains nothing
@@ -130,6 +131,7 @@ emptyState =
     , name: "Unnamed project"
     , isExample: false
     , isAdmin: false
+    , nodeSearchTerm: ""
     }
 
 -- Helpers
@@ -686,3 +688,6 @@ _isExample = prop (SProxy :: _ "isExample")
 
 _isAdmin :: forall a s m. Lens' (State a s m) Boolean
 _isAdmin = prop (SProxy :: _ "isAdmin")
+
+_nodeSearchTerm :: forall a s m. Lens' (State a s m) String
+_nodeSearchTerm = prop (SProxy :: _ "nodeSearchTerm")

@@ -12,7 +12,7 @@ import Data.Lens (view)
 import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (replicate)
 import Halogen (ClassName(..))
 import Halogen.HTML as HH
@@ -34,6 +34,7 @@ import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
+import Lunarbox.Data.Ord (sortBySearch)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -44,6 +45,7 @@ type Input
     , functionData :: Map.Map FunctionName FunctionData
     , typeMap :: Map.Map Location Type
     , inputCountMap :: Map.Map FunctionName Int
+    , nodeSearchTerm :: String
     }
 
 type Actions a
@@ -149,7 +151,7 @@ makeNode { edit, addNode, changeInputCount } { isUsable, isEditable } name typeM
   inputCount = fromMaybe maxInputs $ Map.lookup name inputCountMap
 
 add :: forall a s m. Input -> Actions a -> HH.ComponentHTML a s m
-add { project, currentFunction, functionData, typeMap, inputCountMap } actions =
+add { project, currentFunction, functionData, typeMap, inputCountMap, nodeSearchTerm } actions =
   container "nodes"
     $ ( \(Tuple name descriptor) ->
           let
@@ -157,6 +159,7 @@ add { project, currentFunction, functionData, typeMap, inputCountMap } actions =
           in
             makeNode actions descriptor name typeMap inputCountMap functionData'
       )
-    <$> ( Map.toUnfoldable
-          $ describe currentFunction project
-      )
+    <$> sortBySearch (show <<< fst) nodeSearchTerm
+        ( Map.toUnfoldable
+            $ describe currentFunction project
+        )
