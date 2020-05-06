@@ -15,7 +15,7 @@ import Data.Default (class Default, def)
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
-import Lunarbox.Data.Dataflow.Expression (Expression, nullExpr)
+import Lunarbox.Data.Dataflow.Expression (Expression(..))
 
 -- This represents a location which may or may not have an extra or a missing layer 
 data ExtendedLocation l l'
@@ -67,4 +67,4 @@ normalize = case _ of
   location -> location
 
 nothing :: forall l l'. Expression (ExtendedLocation l l')
-nothing = nullExpr Nowhere
+nothing = TypedHole Nowhere

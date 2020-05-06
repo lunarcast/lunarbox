@@ -1,6 +1,5 @@
 module Lunarbox.Data.Dataflow.Expression
-  ( Literal(..)
-  , NativeExpression(..)
+  ( NativeExpression(..)
   , Expression(..)
   , VarName(..)
   , functionDeclaration
@@ -18,7 +17,6 @@ module Lunarbox.Data.Dataflow.Expression
   , removeWrappers
   , wrapWith
   , wrappers
-  , nullExpr
   ) where
 
 import Prelude
@@ -44,19 +42,6 @@ instance showVarName :: Show VarName where
 
 derive instance newtypeVarName :: Newtype VarName _
 
--- Theses are literal values with primitive values
-data Literal
-  = LInt Int
-  | LBool Boolean
-  | LNull
-
-derive instance literalEq :: Eq Literal
-
-instance showLiteral :: Show Literal where
-  show (LInt i) = show i
-  show (LBool b) = show b
-  show LNull = "null"
-
 data NativeExpression
   = NativeExpression Scheme RuntimeValue
 
@@ -66,11 +51,11 @@ data Expression l
   = Variable l VarName
   | FunctionCall l (Expression l) (Expression l)
   | Lambda l VarName (Expression l)
-  | Literal l Literal
   | Let l VarName (Expression l) (Expression l)
   | FixPoint l (Expression l)
   | Chain l (List (Expression l))
   | Native l NativeExpression
+  | TypedHole l
 
 derive instance eqExpression :: Eq l => Eq (Expression l)
 
@@ -86,7 +71,7 @@ getLocation = case _ of
   Variable l _ -> l
   FunctionCall l _ _ -> l
   Lambda l _ _ -> l
-  Literal l _ -> l
+  TypedHole l -> l
   Let l _ _ _ -> l
   FixPoint l _ -> l
   Native l _ -> l
@@ -167,7 +152,7 @@ printRawExpression print expression = case expression of
   Variable _ name -> unwrap name
   FunctionCall _ f i -> print f <> " " <> print i
   Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
-  Literal _ literal -> show literal
+  TypedHole _ -> "_"
   Let _ _ _ _ -> printLet true (printRawExpression print) expression
   FixPoint _ e -> "fixpoint( " <> print e <> " )"
   Native _ (NativeExpression t _) -> "native :: " <> show t
@@ -217,7 +202,3 @@ optimize (FixPoint location body) = FixPoint location $ optimize body
 optimize (Chain location expressions) = Chain location $ optimize <$> expressions
 
 optimize expression = expression
-
--- A null literal at a custom location
-nullExpr :: forall l. l -> Expression l
-nullExpr location = Literal location LNull

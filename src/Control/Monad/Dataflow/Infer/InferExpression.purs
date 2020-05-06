@@ -20,9 +20,9 @@ import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _l
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), Literal(..), NativeExpression(..), VarName, getLocation)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
 import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 import Lunarbox.Data.Dataflow.TypeEnv as TypeEnv
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
@@ -112,8 +112,6 @@ infer expression =
       Chain location (expression' : expressions) -> do
         void $ infer expression'
         infer $ Chain location expressions
-      Literal _ LNull -> fresh false
-      Literal _ (LInt _) -> pure typeNumber
-      Literal _ (LBool _) -> pure typeBool
+      TypedHole _ -> fresh false
       Native _ (NativeExpression scheme _) -> instantiate scheme
     rememberType type'

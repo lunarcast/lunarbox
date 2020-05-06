@@ -26,7 +26,7 @@ import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), nullExpr, wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
@@ -107,7 +107,7 @@ compileNode nodes id child =
               in
                 case id' of
                   Just id'' -> Variable location $ VarName $ show id''
-                  Nothing -> nullExpr location
+                  Nothing -> TypedHole location
           )
           inputs
 
