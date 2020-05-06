@@ -72,6 +72,13 @@ instance eqRuntimeValue :: Eq RuntimeValue where
   eq Null Null = true
   eq _ _ = false
 
+instance ordRuntimeValue :: Ord RuntimeValue where
+  compare (Number n) (Number n') = compare n n'
+  compare (String s) (String s') = compare s s'
+  compare (Bool v) (Bool v') = compare v v'
+  compare (NArray array) (NArray array') = compare array array'
+  compare _ _ = EQ
+
 -- helper to ease the creation of binary functions
 binaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue
 binaryFunction f = Function $ Function <<< f
