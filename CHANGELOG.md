@@ -1,3 +1,24 @@
+# [1.14.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.13.0...v1.14.0) (2020-05-06)
+
+
+### Bug Fixes
+
+* fixed a tiny bug which made it so you had to double click to remove connections ([9a79ea6](https://github.com/Mateiadrielrafael/lunarbox/commit/9a79ea6d503eef54d22facb12f6f8a1565609270))
+* no longer require double clicking on stuff to connect it at times ([c096c97](https://github.com/Mateiadrielrafael/lunarbox/commit/c096c97fd95e62e2d8cd085fcfee6511cf7e4c9b))
+* take as much space as possible for ndoe data on the Add panel ([579e04f](https://github.com/Mateiadrielrafael/lunarbox/commit/579e04f64ddf8af4244d910530a1fd3f961bea27))
+
+
+### Features
+
+* basic arrays ([3147e40](https://github.com/Mateiadrielrafael/lunarbox/commit/3147e408ae0a568f5dad1c62318890d897ff3cfd))
+* better array printing ([3b338db](https://github.com/Mateiadrielrafael/lunarbox/commit/3b338db3d56461aebd94f22e1a60b1ce9b92317f))
+* better home page ([e22cb3f](https://github.com/Mateiadrielrafael/lunarbox/commit/e22cb3fc0d568f1845f8d250b0be1983f002793e))
+* node searching ([3fa00f3](https://github.com/Mateiadrielrafael/lunarbox/commit/3fa00f3984ebf9e7a98c23294601415579afceea))
+* nodes for comparing ([2879712](https://github.com/Mateiadrielrafael/lunarbox/commit/28797124618d57fccb905a121245ff0545e1f0de))
+* removed useless literal expressions ([2f5d480](https://github.com/Mateiadrielrafael/lunarbox/commit/2f5d48068129eff4bff50ce1c64f04b94b41dd9e))
+* require auth for some routes ([4a74cc4](https://github.com/Mateiadrielrafael/lunarbox/commit/4a74cc417161bf909d5137d7c59af58ce8eec0f2))
+* typed holes ([5efa777](https://github.com/Mateiadrielrafael/lunarbox/commit/5efa777f22a7f210fc5b0c645451f4ea1b133a01))
+
 # [1.13.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.12.0...v1.13.0) (2020-05-06)
 
 
