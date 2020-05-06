@@ -22,7 +22,7 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..))
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeFunction)
 import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 import Lunarbox.Data.Dataflow.TypeEnv as TypeEnv
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
@@ -85,12 +85,12 @@ infer expression =
       Lambda _ param body -> do
         tv <- fresh true
         t <- createClosure param (Forall [] tv) $ infer body
-        pure $ tv `TArrow` t
+        pure $ typeFunction tv t
       FunctionCall _ func input -> do
         funcType <- infer func
         inputType <- infer input
         tv <- fresh true
-        createConstraint funcType (inputType `TArrow` tv)
+        createConstraint funcType (typeFunction inputType tv)
         pure tv
       Let location name value body -> do
         env <- ask
@@ -105,7 +105,7 @@ infer expression =
       FixPoint _ body -> do
         t <- infer body
         tv <- fresh true
-        createConstraint (tv `TArrow` tv) t
+        createConstraint (typeFunction tv tv) t
         pure tv
       Chain _ Nil -> fresh true
       Chain _ (expression' : Nil) -> infer expression'

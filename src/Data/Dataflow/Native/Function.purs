@@ -16,9 +16,9 @@ functionNodes = [ pipe, const', identity', compose, flip' ]
 
 typePipe :: Scheme
 typePipe =
-  Forall [ input, output ] $ TArrow (TVariable true input)
-    $ TArrow
-        (TArrow (TVariable true input) (TVariable true output))
+  Forall [ input, output ] $ typeFunction (TVariable true input)
+    $ typeFunction
+        (typeFunction (TVariable true input) (TVariable true output))
         (TVariable true output)
   where
   input = TVarName "i"
@@ -45,7 +45,7 @@ pipe =
     }
 
 typeIdentity :: Scheme
-typeIdentity = Forall [ input ] $ TArrow (TVariable true input) (TVariable true input)
+typeIdentity = Forall [ input ] $ typeFunction (TVariable true input) (TVariable true input)
   where
   input = TVarName "i"
 
@@ -63,7 +63,7 @@ identity' =
     }
 
 typeConst :: Scheme
-typeConst = Forall [ input, ignore ] $ TArrow (TVariable true input) $ TArrow (TVariable true ignore) (TVariable true input)
+typeConst = Forall [ input, ignore ] $ typeFunction (TVariable true input) $ typeFunction (TVariable true ignore) (TVariable true input)
   where
   input = TVarName "input"
 
@@ -84,7 +84,7 @@ const' =
     }
 
 typeCompose :: Scheme
-typeCompose = Forall [ a, b, c ] $ TArrow (TArrow typeA typeB) $ TArrow (TArrow typeB typeC) $ TArrow typeA typeC
+typeCompose = Forall [ a, b, c ] $ typeFunction (typeFunction typeA typeB) $ typeFunction (typeFunction typeB typeC) $ typeFunction typeA typeC
   where
   a = TVarName "t0"
 
@@ -118,7 +118,7 @@ compose =
     }
 
 typeFlip :: Scheme
-typeFlip = Forall [ a, b, c ] $ TArrow (TArrow typeA $ TArrow typeB typeC) $ TArrow typeB $ TArrow typeA typeC
+typeFlip = Forall [ a, b, c ] $ typeFunction (typeFunction typeA $ typeFunction typeB typeC) $ typeFunction typeB $ typeFunction typeA typeC
   where
   a = TVarName "t0"
 

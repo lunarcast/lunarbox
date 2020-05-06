@@ -39,13 +39,13 @@ binaryLogicFunction = binaryFunction <<< binaryLogicFunction'
 
 -- The type for binary logic functions
 binaryLogicFunctionType :: Type
-binaryLogicFunctionType = TArrow typeBool $ TArrow typeBool typeBool
+binaryLogicFunctionType = typeFunction typeBool $ typeFunction typeBool typeBool
 
 not' :: forall a s m. NativeConfig a s m
 not' =
   NativeConfig
     { name: FunctionName "not"
-    , expression: NativeExpression (Forall [] $ TArrow typeBool typeBool) $ Function evalNot
+    , expression: NativeExpression (Forall [] $ typeFunction typeBool typeBool) $ Function evalNot
     , functionData: internal [ { name: "input" } ] { name: "!input" }
     , component: Nothing
     }

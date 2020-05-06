@@ -19,7 +19,7 @@ mathNodes = [ add, substract, multiply, divide, raiseToPower ]
 
 -- Type for functions of type Number -> Number -> Number
 binaryNumberType :: Scheme
-binaryNumberType = Forall [] $ TArrow typeNumber $ TArrow typeNumber typeNumber
+binaryNumberType = Forall [] $ typeFunction typeNumber $ typeFunction typeNumber typeNumber
 
 -- Internal function used to perform the unwrapping and wrapping necessary for the binaryMathFUnction helper
 binaryMathFunction' :: (Number -> Number -> Number) -> RuntimeValue -> RuntimeValue -> RuntimeValue

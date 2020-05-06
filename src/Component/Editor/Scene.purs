@@ -32,7 +32,7 @@ import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeString)
+import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeFunction, typeString)
 import Lunarbox.Data.Editor.Camera (Camera, toViewBox, toWorldCoordinates)
 import Lunarbox.Data.Editor.Constants (scrollStep)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, _LocationExtension)
@@ -177,7 +177,7 @@ createNodeComponent { functionName
         , nodeDataMap
         , labels:
           [ label $ highlightTypeToSvg (RGB 255 255 255) $ prettify
-              $ foldr TArrow nodeType
+              $ foldr typeFunction nodeType
               $ ( List.mapWithIndex \index type' -> fromMaybe type' $ Map.lookup (InputPin index) localTypeMap
                 )
               $ inputs functionType

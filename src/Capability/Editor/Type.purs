@@ -8,12 +8,14 @@ module Lunarbox.Capability.Editor.Type
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array ((!!))
+import Data.Array (foldMap, (!!))
 import Data.Array as Array
 import Data.Either (Either(..), note)
 import Data.Enum (enumFromTo)
+import Data.Filterable (filterMap)
+import Data.Foldable (foldr)
 import Data.Lens (view)
-import Data.List (List(..))
+import Data.List (List)
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -27,6 +29,7 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, hasOutput)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Math.SeededRandom (seededInt)
+import Lunarbox.Svg.Attributes (transparent)
 import Svg.Attributes (Color(..))
 
 -- Calculates the averege of 2 ints
@@ -43,7 +46,11 @@ combineColors color (RGB r g b) = combineColors (RGBA r g b 1.0) color
 
 -- Given a color returns a type
 typeToColor :: Type -> Maybe Color
-typeToColor (TArrow f t) = combineColors <$> typeToColor f <*> typeToColor t
+typeToColor (TConstant _ vars) =
+  Just $ foldr combineColors transparent
+    $ filterMap identity
+    $ typeToColor
+    <$> vars
 
 typeToColor t
   | t == typeString = Just $ RGB 97 196 35
@@ -80,7 +87,7 @@ generateColor currentLocation pinType = do
     TVariable _ name' -> Right $ RGB shade shade shade
       where
       shade = seededInt (show name') 100 255
-    TArrow from to -> combineColors <$> generateColor currentLocation from <*> generateColor currentLocation to
+    TConstant "Function" [ from, to ] -> combineColors <$> generateColor currentLocation from <*> generateColor currentLocation to
     other -> note (UnableToColor other) $ typeToColor other
   pure color
 
@@ -103,11 +110,11 @@ alphabetSize = Array.length alphabet
 
 -- Same as ftv but also returns nont-generalizable variables
 variables :: Type -> List TVarName
-variables (TConstant _) = Nil
+variables (TConstant "Function" [ from, to ]) = variables from <> variables to
+
+variables (TConstant _ vars) = foldMap variables vars
 
 variables (TVariable _ name) = pure name
-
-variables (TArrow from to) = variables from <> variables to
 
 -- Prettify variable names in types. Should only be used for pretty printing
 prettify :: Type -> Type

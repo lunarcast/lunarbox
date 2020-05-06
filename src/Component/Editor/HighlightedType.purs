@@ -27,7 +27,7 @@ highlightedType ::
   (Color -> HH.HTML h a -> HH.HTML h a) ->
   Color -> Type -> HH.HTML h a
 highlightedType container bold highlight defaultColor = case _ of
-  TArrow from to ->
+  TConstant "Function" [ from, to ] ->
     container
       [ if isArrow then container [ HH.text "(", result, HH.text ")" ] else result
       , bold $ HH.text $ spaced arrow
@@ -35,7 +35,7 @@ highlightedType container bold highlight defaultColor = case _ of
       ]
     where
     isArrow = case from of
-      TArrow _ _ -> true
+      TConstant "Function" [ _, _ ] -> true
       _ -> false
 
     result = highlightedType container bold highlight defaultColor from

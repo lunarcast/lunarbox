@@ -7,7 +7,7 @@ import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeFunction)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (const, flip, ($))
@@ -17,7 +17,7 @@ controlFlowNodes :: forall a s m. Array (NativeConfig a s m)
 controlFlowNodes = [ if' ]
 
 typeIf :: Scheme
-typeIf = Forall [ return ] $ TArrow typeBool $ TArrow typeReturn $ TArrow typeReturn typeReturn
+typeIf = Forall [ return ] $ typeFunction typeBool $ typeFunction typeReturn $ typeFunction typeReturn typeReturn
   where
   return = TVarName "a"
 
