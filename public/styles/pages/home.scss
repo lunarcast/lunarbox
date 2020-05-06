@@ -85,13 +85,34 @@
         filter: brightness(1.2);
       }
 
-      button#signup {
+      button#primary {
         color: white;
-        background: darken($secondary, 20%);
+        background: darken($secondary, 25%);
       }
 
-      button#login {
-        background: $bright;
+      button#secondary {
+        background: darken($bright, 15%);
+      }
+
+      button#logout {
+        background: transparent;
+        color: $disabled;
+
+        &:hover {
+          box-shadow: none;
+        }
+      }
+
+      &.user {
+        flex-direction: column;
+
+        button#logout {
+          margin: 0;
+
+          &:hover {
+            filter: brightness(1.5);
+          }
+        }
       }
     }
   }

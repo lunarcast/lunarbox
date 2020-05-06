@@ -5,13 +5,13 @@ import Control.Monad.Reader (class MonadReader, asks)
 import Data.Either (Either(..))
 import Data.Foldable (find)
 import Data.Lens (view)
-import Data.Maybe (Maybe(..), fromMaybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing)
 import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
-import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Capability.Navigate (class Navigate, logout, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Component.HOC.Connect (WithCurrentUser)
@@ -39,6 +39,7 @@ data Query a
 
 data Action
   = Initialize
+  | Logout
   | NavigateTo Route
   | Receive { | WithCurrentUser () }
 
@@ -102,7 +103,10 @@ component =
         navigate $ fromMaybe Home route
       else
         when (route /= Just destination) $ navigate destination
+    Logout -> logout
 
+  -- Handle queries from the outside world
+  -- The navigate query is called every time the url changes
   handleQuery :: forall a. Query a -> ComponentM m (Maybe a)
   handleQuery = case _ of
     Navigate destination a -> do
@@ -110,17 +114,26 @@ component =
       when (route /= Just destination) $ modify_ (_ { route = Just destination })
       pure $ Just a
 
+  -- Display the login page instead of the expected page if there is no current user; a simple
+  -- way to restrict access.
+  authorize :: Maybe Profile -> HH.ComponentHTML Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
+  authorize mbProfile html = case mbProfile of
+    Nothing -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
+    Just _ -> html
+
   notFound =
     HH.div_
       [ HH.text "404 - Page not found" ]
 
-  render { route } =
+  render { route, currentUser } =
     route
       <#> case _ of
-          Home -> home { navigate: Just <<< NavigateTo }
+          Home -> home { guest: isNothing currentUser } { navigate: Just <<< NavigateTo, logout: Just Logout }
           Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
-          Projects -> HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
-          Project id -> HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
+          Projects -> requireAuthorization $ HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
+          Project id -> requireAuthorization $ HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound
+    where
+    requireAuthorization = authorize currentUser

@@ -5,12 +5,15 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, r
 import Data.Argonaut (stringify)
 import Data.Either (Either(..))
 import Data.Lens (view)
+import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Foreign (unsafeToForeign)
+import Lunarbox.Api.Endpoint (Endpoint(..))
+import Lunarbox.Api.Request (RequestMethod(..))
 import Lunarbox.Api.Request as Request
-import Lunarbox.Api.Utils (authenticate, mkRequest)
+import Lunarbox.Api.Utils (authenticate, mkRequest, withBaseUrl)
 import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
@@ -54,11 +57,12 @@ instance navigateAppM :: Navigate AppM where
   navigate path = do
     changeRoute <- asks $ view _changeRoute
     liftEffect $ changeRoute (unsafeToForeign {}) $ print routingCodec path
+  logout = void $ (mkRequest { endpoint: Logout, method: Post Nothing } :: AppM (_ {}))
 
 instance manageUserAppM :: ManageUser AppM where
   loginUser = authenticate Request.login
   registerUser = authenticate Request.register
-  getCurrentUser = mkRequest Request.profile
+  getCurrentUser = withBaseUrl Request.profile
 
 instance manageProjectsAppM :: ManageProjects AppM where
   createProject state = pure $ Right $ ProjectId "mock"
