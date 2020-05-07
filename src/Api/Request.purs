@@ -38,7 +38,7 @@ newtype BaseUrl
 defaultRequest :: BaseUrl -> RequestOptions -> Request Json
 defaultRequest (BaseUrl baseUrl) { endpoint, method } =
   { method: Left method
-  , url: baseUrl <> print endpointCodec endpoint
+  , url: baseUrl <> print endpointCodec endpoint <> "?pretty"
   , content: RB.json <$> body
   , username: Nothing
   , password: Nothing

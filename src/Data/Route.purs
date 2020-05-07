@@ -1,11 +1,11 @@
 module Lunarbox.Data.Route where
 
 import Prelude
-import Data.Either (Either(..))
+import Data.Argonaut (decodeJson, fromString)
+import Data.Either (Either)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Newtype (unwrap)
-import Lunarbox.Data.ProjectId (ProjectId(..))
+import Lunarbox.Data.ProjectId (ProjectId)
 import Routing.Duplex (RouteDuplex', as, parse, root, segment)
 import Routing.Duplex.Generic (noArgs, sum)
 import Routing.Duplex.Generic.Syntax ((/))
@@ -45,7 +45,7 @@ routingCodec =
 
 --  This combinator transforms a codec over `String` into one that operatos on the `ProjectId` type.
 projectId :: RouteDuplex' String -> RouteDuplex' ProjectId
-projectId = as unwrap (Right <<< ProjectId)
+projectId = as show (decodeJson <<< fromString)
 
 -- Prase a string into a Route
 parseRoute :: String -> Either RouteError Route

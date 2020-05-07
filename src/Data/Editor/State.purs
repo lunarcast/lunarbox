@@ -549,6 +549,9 @@ setRuntimeValue functionName nodeId value =
         (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
         (Just value)
 
+visualFunctionCount :: forall a s m. State a s m -> Int
+visualFunctionCount = G.size <<< G.filterVertices (is _VisualFunction) <<< view _functions
+
 -- This makes the node start from the middle again
 resetNodeOffset :: forall a s m. State a s m -> State a s m
 resetNodeOffset = set _addedNodes 0

@@ -23,7 +23,7 @@ import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.State (emptyState)
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.ProjectId (ProjectId)
-import Lunarbox.Data.ProjectList (ProjectList, ProjectData)
+import Lunarbox.Data.ProjectList (ProjectList, ProjectOverview)
 import Lunarbox.Data.Route (Route(..))
 import Network.RemoteData (RemoteData(..), fromEither)
 
@@ -96,7 +96,7 @@ component =
   loading :: forall h a. HH.HTML h a
   loading = HH.text "loading"
 
-  renderProject { name, functionCount, nodeCount, id } =
+  renderProject { name, id, metadata: { functionCount, nodeCount } } =
     HH.div [ className "project", onClick $ const $ Just $ OpenProject id ]
       [ HH.div [ className "project-name" ] [ HH.text name ]
       , HH.div [ className "project-data" ]
@@ -111,7 +111,7 @@ component =
           ]
       ]
 
-  renderProjectList :: String -> Array ProjectData -> Array (HH.HTML _ _) -> HH.HTML _ _
+  renderProjectList :: String -> Array { | ProjectOverview } -> Array (HH.HTML _ _) -> HH.HTML _ _
   renderProjectList title projects buttons =
     container "project-list"
       [ container "list-header"

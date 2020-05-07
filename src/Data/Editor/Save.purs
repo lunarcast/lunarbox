@@ -9,7 +9,7 @@ import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Either (Either)
 import Data.Map (Map)
 import Data.Tuple (Tuple)
-import Lunarbox.Data.Dataflow.Native.Prelude (customFunctionCount, loadPrelude)
+import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Editor.Camera (Camera)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -17,7 +17,8 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project (Project)
-import Lunarbox.Data.Editor.State (State, compile, emptyState, nodeCount)
+import Lunarbox.Data.Editor.State (State, compile, emptyState, nodeCount, visualFunctionCount)
+import Lunarbox.Data.ProjectList (ProjectData)
 import Record as Record
 
 type StatePermanentData
@@ -29,13 +30,11 @@ type StatePermanentData
     }
 
 type Save
-  = { project :: StatePermanentData
-    , isExample :: Boolean
-    , name :: String
-    , metadata ::
-      { nodeCount :: Int
-      , functionCount :: Int
-      }
+  = { 
+    | ProjectData
+      ( project :: StatePermanentData
+      , isExample :: Boolean
+      )
     }
 
 -- Encoding and decoding
@@ -48,7 +47,7 @@ stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExa
     , isExample
     , metadata:
       { nodeCount: nodeCount state
-      , functionCount: customFunctionCount state
+      , functionCount: visualFunctionCount state
       }
     , project:
       { project

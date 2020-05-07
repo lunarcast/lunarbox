@@ -73,12 +73,15 @@ instance manageUserAppM :: ManageUser AppM where
   registerUser = authenticate Request.register
   getCurrentUser = hush <$> withBaseUrl Request.profile
 
+type ProjectIdData
+  = { project :: { id :: ProjectId } }
+
 instance manageProjectsAppM :: ManageProjects AppM where
   createProject state = do
     let
       body = stateToJson state
-    response :: Either String { id :: ProjectId } <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
-    pure $ _.id <$> response
+    response :: Either String ProjectIdData <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
+    pure $ _.project.id <$> response
   getProject id = pure $ Right emptyState
   saveProject state = do
     printString $ "Saving " <> stringify (stateToJson state)
