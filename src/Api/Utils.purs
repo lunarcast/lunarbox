@@ -3,11 +3,12 @@ module Lunarbox.Api.Utils
   , mkRequest
   , withBaseUrl
   , logErrors
+  , mkRawRequest
   ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, asks)
-import Data.Argonaut (class DecodeJson, decodeJson)
+import Data.Argonaut (class DecodeJson, Json, decodeJson)
 import Data.Either (Either(..))
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
@@ -38,6 +39,18 @@ mkRequest options = do
   baseUrl <- asks $ view _baseUrl
   response <- requestJson baseUrl options
   logErrors $ response >>= decodeJson
+
+-- Same as mkRequest but doesnt parse the json
+mkRawRequest ::
+  forall m.
+  MonadAff m =>
+  MonadAsk Config m =>
+  RequestOptions ->
+  m (Either String Json)
+mkRawRequest options = do
+  baseUrl <- asks $ view _baseUrl
+  response <- requestJson baseUrl options
+  logErrors response
 
 -- Perform a function with the current url from the global config
 withBaseUrl ::

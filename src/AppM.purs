@@ -2,8 +2,8 @@ module Lunarbox.AppM where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
-import Data.Argonaut (encodeJson, stringify)
-import Data.Either (Either(..), hush)
+import Data.Argonaut (encodeJson)
+import Data.Either (Either, hush)
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
@@ -15,14 +15,12 @@ import Foreign (unsafeToForeign)
 import Lunarbox.Api.Endpoint (Endpoint(..))
 import Lunarbox.Api.Request (RequestMethod(..))
 import Lunarbox.Api.Request as Request
-import Lunarbox.Api.Utils (authenticate, mkRequest, withBaseUrl)
+import Lunarbox.Api.Utils (authenticate, mkRawRequest, mkRequest, withBaseUrl)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
-import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (emptyState)
+import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
@@ -63,7 +61,7 @@ instance navigateAppM :: Navigate AppM where
   logout = do
     currentUser <- asks $ view _currentUser
     userBus <- asks $ view _userBus
-    void $ (mkRequest { endpoint: Logout, method: Get } :: AppM (_ {}))
+    void $ mkRawRequest { endpoint: Logout, method: Get }
     liftEffect $ Ref.write Nothing currentUser
     liftAff $ Bus.write Nothing userBus
     navigate Route.Home
@@ -82,8 +80,10 @@ instance manageProjectsAppM :: ManageProjects AppM where
       body = stateToJson state
     response :: Either String ProjectIdData <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
     pure $ _.project.id <$> response
-  getProject id = pure $ Right emptyState
+  getProject id = do
+    response <- mkRawRequest { endpoint: Project id, method: Get }
+    pure $ jsonToState =<< response
   saveProject state = do
-    printString $ "Saving " <> stringify (stateToJson state)
-    pure $ Right unit
+    response <- mkRawRequest { endpoint: Projects, method: Post $ Just $ stateToJson state }
+    pure $ unit <$ response
   getProjects = mkRequest { endpoint: Projects, method: Get }
