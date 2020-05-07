@@ -17,10 +17,11 @@ import Lunarbox.Data.Graph as G
 type NodeDescriptor
   = { isUsable :: Boolean
     , isEditable :: Boolean
+    , canBeDeleted :: Boolean
     }
 
 describe :: Maybe FunctionName -> Project -> Map FunctionName NodeDescriptor
-describe currentFunction (Project { functions }) =
+describe currentFunction (Project { functions, main }) =
   flip (Map.mapMaybeWithKey) (G.toMap functions) \name function ->
     let
       isCurrent = currentFunction == Just name
@@ -28,16 +29,20 @@ describe currentFunction (Project { functions }) =
       -- TODO: make this actually check the NodeData
       isExternal = false
 
+      isVisual = is _VisualFunction function
+
       isEditable =
         not isCurrent
           && not isExternal
-          && is _VisualFunction function
+          && isVisual
 
       wouldCycle = maybe false (flip (G.wouldCreateCycle name) functions) currentFunction
 
       isUsable = isJust currentFunction && not wouldCycle
+
+      canBeDeleted = isVisual && main /= name
     in
-      Just { isUsable, isEditable }
+      Just { isUsable, isEditable, canBeDeleted }
 
 onlyEditable :: Maybe FunctionName -> Project -> Map FunctionName NodeDescriptor
 onlyEditable c p = Map.filter (_.isEditable) $ describe c p

@@ -101,8 +101,9 @@ component =
       { route, currentUser } <- get
       if isJust currentUser && (isJust $ find (_ == destination) noAuth) then do
         navigate $ fromMaybe Home route
-      else
+      else do
         when (route /= Just destination) $ navigate destination
+        printString "here"
     Logout -> logout
 
   -- Handle queries from the outside world
@@ -129,10 +130,10 @@ component =
     route
       <#> case _ of
           Home -> home { guest: isNothing currentUser } { navigate: Just <<< NavigateTo, logout: Just Logout }
-          Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: false } absurd
+          Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: true } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
           Projects -> requireAuthorization $ HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
-          Project id -> HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
+          Project id -> requireAuthorization $ HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
           _ -> HH.text "not implemented"
       # fromMaybe notFound
     where

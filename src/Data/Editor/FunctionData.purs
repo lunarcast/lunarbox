@@ -4,10 +4,12 @@ module Lunarbox.Data.Editor.FunctionData
   , getFunctionData
   , internal
   , outputData
-  , _FunctionDataExternal
+  , displayPinDoc
   , _FunctionDataInputs
   , _FunctionDataOutput
+  , _FunctionDataExternal
   , _PinName
+  , _PinDescription
   ) where
 
 import Prelude
@@ -25,7 +27,12 @@ import Lunarbox.Data.Lens (newtypeIso)
 
 type PinDoc
   = { name :: String
+    , description :: String
     }
+
+-- Very basic function to print a pindoc out
+displayPinDoc :: PinDoc -> String
+displayPinDoc { name, description } = "Name: " <> name <> "\nDescription: " <> description
 
 newtype FunctionData
   = FunctionData
@@ -50,13 +57,13 @@ instance defaultFunctionData :: Default FunctionData where
     FunctionData
       { external: false
       , inputs: mempty
-      , output: { name: "output" }
+      , output: { name: "output", description: "the return value of a function" }
       }
 
 -- Helpers
 -- Function data for output nodes
 outputData :: FunctionData
-outputData = internal [ { name: "return value" } ] { name: "This node doesn't have an output" }
+outputData = internal [ { name: "return value", description: "The return value of a function" } ] { name: "This node doesn't have an output", description: "" }
 
 getFunctionData :: (FunctionName -> FunctionData) -> Node -> FunctionData
 getFunctionData getter = case _ of
@@ -78,6 +85,9 @@ _FunctionDataInputs = newtypeIso <<< prop (SProxy :: _ "inputs")
 
 _FunctionDataOutput :: Lens' FunctionData PinDoc
 _FunctionDataOutput = newtypeIso <<< prop (SProxy :: _ "output")
+
+_PinDescription :: Lens' PinDoc String
+_PinDescription = prop (SProxy :: _ "description")
 
 _PinName :: Lens' PinDoc String
 _PinName = prop (SProxy :: _ "name")

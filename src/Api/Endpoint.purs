@@ -37,7 +37,7 @@ endpointCodec =
     $ sum
         { "Login": "auth" / "login" / noArgs
         , "Register": "users" / noArgs
-        , "Logout": "auth" / "lougout" / noArgs
+        , "Logout": "auth" / "logout" / noArgs
         , "Profile": "users" / noArgs
         , "Projects": "projects" / noArgs
         , "Project": "projects" / projectId segment

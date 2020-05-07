@@ -36,7 +36,7 @@ stringLength =
   NativeConfig
     { name: FunctionName "length"
     , expression: NativeExpression (Forall [] $ typeFunction typeString typeNumber) $ Function evalLength
-    , functionData: internal [ { name: "string" } ] { name: "length" }
+    , functionData: internal [ { name: "string", description: "Any string" } ] { name: "length", description: "The number of characters in the given string" }
     , component: Nothing
     }
 
@@ -50,7 +50,12 @@ concatStrings =
   NativeConfig
     { name: FunctionName "concat"
     , expression: NativeExpression (Forall [] $ typeFunction typeString $ typeFunction typeString typeString) $ binaryFunction evalConcat
-    , functionData: internal [ { name: "first string" }, { name: "second strings" } ] { name: "a ++ b" }
+    , functionData:
+      internal
+        [ { name: "first string", description: "Any string" }
+        , { name: "second strings", description: "Any string" }
+        ]
+        { name: "a ++ b", description: "The result of 'glueing' the string together" }
     , component: Nothing
     }
 
@@ -62,7 +67,7 @@ reverseString =
   NativeConfig
     { name: FunctionName "reverse"
     , expression: NativeExpression (Forall [] $ typeFunction typeString typeString) evalReverse
-    , functionData: internal [ { name: "string" } ] { name: "reversed string" }
+    , functionData: internal [ { name: "string", description: "Any string" } ] { name: "reversed string", description: "The given string in reverse" }
     , component: Nothing
     }
 
@@ -71,6 +76,9 @@ trimString =
   NativeConfig
     { name: FunctionName "trim"
     , expression: NativeExpression (Forall [] $ typeFunction typeString typeString) $ stringUnary String.trim
-    , functionData: internal [ { name: "string" } ] { name: "trimmed string" }
+    , functionData:
+      internal [ { name: "string", description: "Any string" } ]
+        { name: "trimmed string", description: "The given string but without spaces at the end and at the start"
+        }
     , component: Nothing
     }

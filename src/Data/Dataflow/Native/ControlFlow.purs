@@ -35,6 +35,18 @@ if' =
   NativeConfig
     { name: FunctionName "if"
     , expression: (NativeExpression typeIf $ Function evalIf)
-    , functionData: internal [ { name: "condition" }, { name: "then" }, { name: "else" } ] { name: "result" }
+    , functionData:
+      internal
+        [ { name: "condition", description: "A boolean which decides what branch to evaluate to" }
+        , { name: "then"
+          , description: "A branch which will be chosem if the condition is true"
+          }
+        , { name: "else"
+          , description: "A branch which will be chosen if the condition is false"
+          }
+        ]
+        { name: "result"
+        , description: "Evaluates to the 'then' argument if the condition is true, else this evaludates to the 'else' argument"
+        }
     , component: Nothing
     }

@@ -9,6 +9,7 @@ module Lunarbox.Config
   , _locationState
   , _pushStateInterface
   , _changeRoute
+  , _userBus
   ) where
 
 import Prelude
@@ -62,6 +63,9 @@ _user = newtypeIso <<< prop (SProxy :: _ "user")
 
 _currentUser :: Lens' Config (Ref (Maybe Profile))
 _currentUser = _user <<< prop (SProxy :: _ "currentUser")
+
+_userBus :: Lens' Config (BusRW (Maybe Profile))
+_userBus = _user <<< prop (SProxy :: _ "userBus")
 
 _baseUrl :: Lens' Config BaseUrl
 _baseUrl = newtypeIso <<< prop (SProxy :: _ "baseUrl")

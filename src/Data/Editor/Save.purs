@@ -17,7 +17,8 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project (Project)
-import Lunarbox.Data.Editor.State (State, compile, emptyState)
+import Lunarbox.Data.Editor.State (State, compile, emptyState, nodeCount, visualFunctionCount)
+import Lunarbox.Data.ProjectList (ProjectData)
 import Record as Record
 
 type StatePermanentData
@@ -28,13 +29,27 @@ type StatePermanentData
     , runtimeOverwrites :: ValueMap Location
     }
 
+type Save
+  = { 
+    | ProjectData
+      ( project :: StatePermanentData
+      , isExample :: Boolean
+      )
+    }
+
 -- Encoding and decoding
 stateToJson :: forall a s m. State a s m -> Json
-stateToJson { project, nextId, nodeData, cameras, runtimeOverwrites, isExample, name } =
-  encodeJson
+stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExample, name } = encodeJson save
+  where
+  save :: Save
+  save =
     { name
     , isExample
-    , saveData:
+    , metadata:
+      { nodeCount: nodeCount state
+      , functionCount: visualFunctionCount state
+      }
+    , project:
       { project
       , nextId
       , nodeData
@@ -48,7 +63,7 @@ jsonToState json = do
   obj <- decodeJson json
   name :: String <- obj .: "name"
   isExample :: Boolean <- obj .: "isExample"
-  saveData :: StatePermanentData <- obj .: "saveData"
+  saveData :: StatePermanentData <- obj .: "project"
   let
     recivedData = Record.merge { name, isExample } saveData
 

@@ -10,8 +10,9 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
+import Data.Array ((!!))
 import Data.Default (def)
-import Data.Foldable (find, foldr, for_)
+import Data.Foldable (find, foldr, for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
@@ -23,13 +24,14 @@ import Data.Tuple (Tuple(..), uncurry)
 import Data.Vec (vec2)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick, onValueInput)
+import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
+import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
@@ -37,12 +39,9 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
-import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
+import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
@@ -50,13 +49,17 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
+import Web.Event.Event as Event
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
+import Web.HTML.HTMLElement (focus)
+import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.HTML.Window (document) as Web
 import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
@@ -87,6 +90,8 @@ data Action
   | SetName String
   | SetExample Boolean
   | SearchNodes String
+  | HandleAddPanelKeyPress KeyboardEvent
+  | DeleteFunction FunctionName
 
 data Output m
   = Save (EditorState m)
@@ -98,6 +103,14 @@ type ChildSlots
 -- Shorthand for manually passing the types of the actions and child slots
 type EditorState m
   = State Action ChildSlots m
+
+-- We use this to automatically focus on the correct elemtn when pressing S
+searchNodeInputRef :: RefLabel
+searchNodeInputRef = RefLabel "search node"
+
+-- We need this to only trigger events when in focus
+searchNodeClassName :: String
+searchNodeClassName = "search-node"
 
 -- Actions to run the scene component with
 sceneActions :: Scene.Actions Action
@@ -122,7 +135,7 @@ createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML q (EditorState m) (Output m) m
+component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) (Output m) m
 component =
   mkComponent
     { initialState: compile <<< loadPrelude <<< identity
@@ -143,7 +156,9 @@ component =
       -- Stuff which we need to run at the start
       handleAction AdjustSceneScale
       scale <- gets $ view _sceneScale
-      modify_ $ pan $ (_ / 2.0) <$> scale
+      currentCameraPosition <- gets $ view $ _currentCamera <<< _CameraPosition
+      -- We pan only when the state generation was done without knowing the scale of the scene
+      when (currentCameraPosition == zero) $ modify_ $ pan $ (_ / 2.0) <$> scale
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
@@ -160,14 +175,55 @@ component =
     HandleKey sid event
       | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
         modify_ deleteSelection
-      | KE.ctrlKey event && KE.key event == "b" -> do
-        handleAction TogglePanel
+      | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
+      | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
       | KE.ctrlKey event && KE.key event == "s" -> do
         liftEffect $ preventDefault $ KE.toEvent event
         liftEffect $ stopPropagation $ KE.toEvent event
         state <- get
         raise $ Save state
+      | KE.key event == "s" -> do
+        let
+          targetInput =
+            HTMLInputElement.fromEventTarget
+              =<< Event.target (KE.toEvent event)
+        when (isNothing targetInput) do
+          { currentTab, panelIsOpen } <- get
+          when (currentTab /= Add || not panelIsOpen) do
+            modify_ $ set _panelIsOpen true <<< set _currentTab Add
+            adjustSceneScale
+          liftEffect $ preventDefault $ KE.toEvent event
+          getHTMLElementRef searchNodeInputRef >>= traverse_ (liftEffect <<< focus)
       | otherwise -> pure unit
+    HandleAddPanelKeyPress event
+      | KE.key event == "Enter" -> do
+        sortedFunctions <- gets searchNode
+        currentFunction <- gets $ view _currentFunction
+        functionGraph <- gets $ view _functions
+        let
+          bestMatch = sortedFunctions !! 0
+        when (maybe false not $ wouldCreateCycle <$> bestMatch <*> currentFunction <*> pure functionGraph)
+          $ for_ bestMatch (handleAction <<< CreateNode)
+      | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
+        inputElement <- getHTMLElementRef searchNodeInputRef
+        for_ (inputElement >>= HTMLInputElement.fromHTMLElement) \elem -> do
+          state <- get
+          inputValue <- liftEffect $ HTMLInputElement.value elem
+          let
+            inputFunctionName = FunctionName inputValue
+
+            exists = functionExists inputFunctionName state
+          if inputValue /= "" && (not exists) then
+            modify_ $ initializeFunction inputFunctionName
+          else
+            if exists then
+              handleAction $ SelectFunction $ Just inputFunctionName
+            else
+              pure unit
+      | KE.ctrlKey event && KE.key event == " " -> do
+        sortedFunctions <- gets searchNode
+        handleAction $ SelectFunction $ sortedFunctions !! 0
+      | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
     CreateNode name -> do
       modify_ $ execState $ createNode name
     TogglePanel -> do
@@ -186,10 +242,6 @@ component =
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
       when (oldFunction == Nothing) adjustSceneScale
-      t <- gets $ view _typeMap
-      e <- gets $ view _expression
-      printString $ printTypeMap t
-      printString $ printSource e
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseMove event -> do
@@ -238,7 +290,6 @@ component =
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
-      printString "selecting input"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
@@ -248,7 +299,6 @@ component =
         shouldConnect = isNothing $ find (_ == location) unconnectableList
       when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
     SelectOutput id -> do
-      printString "selecting output"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id
@@ -272,6 +322,7 @@ component =
       isAdmin <- gets $ view _isAdmin
       when isAdmin $ modify_ $ set _isExample isExample
     SearchNodes input -> modify_ $ set _nodeSearchTerm input
+    DeleteFunction name -> modify_ $ deleteFunction name
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -342,6 +393,9 @@ component =
                   [ HP.id_ "node-search-input"
                   , HP.placeholder "Search nodes. Eg: add, greater than..."
                   , HP.value nodeSearchTerm'
+                  , HP.ref searchNodeInputRef
+                  , className searchNodeClassName
+                  , onKeyUp $ Just <<< HandleAddPanelKeyPress
                   , onValueInput $ Just <<< SearchNodes
                   ]
               , icon "search"
@@ -357,6 +411,7 @@ component =
             { edit: Just <<< SelectFunction <<< Just
             , addNode: Just <<< CreateNode
             , changeInputCount: (Just <<< _) <<< ChangeInputCount
+            , delete: Just <<< DeleteFunction
             }
         , container "create-input"
             [ HH.button
@@ -410,11 +465,21 @@ component =
                   )
             }
 
+  logoElement =
+    container "sidebar-logo-container"
+      [ HH.img
+          [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
+          , HP.alt "Lunarbox logo"
+          , HP.id_ "sidebar-logo"
+          ]
+      ]
+
   render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"
           $ tabs currentTab
+          <> pure logoElement
       , HH.div
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel state ]

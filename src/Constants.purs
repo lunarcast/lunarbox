@@ -11,4 +11,4 @@ transparentLogoWithText :: String
 transparentLogoWithText = "https://cdn.discordapp.com/attachments/485859146558865408/707597859138043964/Screensasdfahot_1.png"
 
 transparentLogo :: String
-transparentLogo = "https://cdn.discordapp.com/attachments/485859146558865408/707598681401983046/asdf.png"
+transparentLogo = "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"

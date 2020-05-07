@@ -30,7 +30,7 @@ import Lunarbox.Component.Editor.RuntimeValue (renderRuntimeValue)
 import Lunarbox.Component.Utils (whenElem)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Constants (arcSpacing, arcWidth, inputLayerOffset, mouseId, nodeRadius, outputRadius, scaleConnectionPreview)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, _FunctionDataOutput, _PinName)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, _FunctionDataOutput, displayPinDoc)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Node (Node(..), _nodeInput, _nodeInputs, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
@@ -137,7 +137,7 @@ renderNode { nodeData: nodeData
           $ \_ ->
               output
                 (OutputPin `Set.member` unconnectablePins)
-                (view (_FunctionDataOutput <<< _PinName) functionData)
+                (displayPinDoc $ view _FunctionDataOutput functionData)
                 selectOutput
                 outputColor
       ]
@@ -279,7 +279,7 @@ renderNode { nodeData: nodeData
                             , radius
                             , color: inputColor
                             , unconnectable
-                            , tooltip: view (_FunctionDataInputs <<< ix index <<< _PinName) functionData
+                            , tooltip: displayPinDoc $ view (_FunctionDataInputs <<< ix index) functionData
                             }
                             $ selectInput index
                       in

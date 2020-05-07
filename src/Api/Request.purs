@@ -5,7 +5,7 @@ import Affjax (Request, printError, request)
 import Affjax.RequestBody as RB
 import Affjax.ResponseFormat as RF
 import Affjax.StatusCode (StatusCode(..))
-import Data.Argonaut (Json, decodeJson, encodeJson)
+import Data.Argonaut (Json, encodeJson)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
@@ -38,7 +38,7 @@ newtype BaseUrl
 defaultRequest :: BaseUrl -> RequestOptions -> Request Json
 defaultRequest (BaseUrl baseUrl) { endpoint, method } =
   { method: Left method
-  , url: baseUrl <> print endpointCodec endpoint
+  , url: baseUrl <> print endpointCodec endpoint <> "?pretty"
   , content: RB.json <$> body
   , username: Nothing
   , password: Nothing
@@ -70,17 +70,17 @@ type LoginFields
 
 login :: forall m. MonadAff m => BaseUrl -> LoginFields -> m (Either String Profile)
 login baseUrl fields =
-  requestJson baseUrl
+  requestUser baseUrl
     { endpoint: Login, method: Post $ Just $ encodeJson fields
     }
-    *> profile baseUrl
 
 register :: forall m. MonadAff m => BaseUrl -> RegisterFields -> m (Either String Profile)
-register baseUrl fields =
-  requestJson baseUrl
-    { endpoint: Register, method: Post $ Just $ encodeJson fields
-    }
-    *> profile baseUrl
+register baseUrl fields = do
+  response <-
+    requestJson baseUrl
+      { endpoint: Register, method: Post $ Just $ encodeJson fields
+      }
+  pure $ response $> { isAdmin: false, username: fields.username }
 
 -- Get the current signed in profile
 profile :: forall m. MonadAff m => BaseUrl -> m (Either String Profile)
@@ -93,10 +93,10 @@ requestJson baseUrl opts = do
   pure do
     response <- lmap printError res
     case response.status of
-      StatusCode 200 -> pure response.body
+      StatusCode code
+        | code >= 200 && code <= 299 -> pure response.body
       _ -> Left =<< decodeAt "message" response.body
 
--- | The login and registration requests share the same underlying implementation, just a different
--- | endpoint. This function can be re-used by both requests.
+-- Helper for requests which will return the profile
 requestUser :: forall m. MonadAff m => BaseUrl -> RequestOptions -> m (Either String Profile)
-requestUser baseUrl opts = requestJson baseUrl opts <#> (_ >>= decodeJson)
+requestUser baseUrl opts = requestJson baseUrl opts <#> (_ >>= decodeAt "user")

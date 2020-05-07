@@ -37,10 +37,14 @@ pipe =
     , expression: (NativeExpression typePipe $ binaryFunction evalPipe)
     , functionData:
       internal
-        [ { name: "input" }
-        , { name: "function" }
+        [ { name: "input"
+          , description: "The argument to pass to the given function"
+          }
+        , { name: "function"
+          , description: "A function to call with the given argument"
+          }
         ]
-        { name: "function(input)" }
+        { name: "output", description: "Calls the given function with the given argument" }
     , component: Nothing
     }
 
@@ -56,9 +60,11 @@ identity' =
     , expression: (NativeExpression typeIdentity $ Function identity)
     , functionData:
       internal
-        [ { name: "x" }
+        [ { name: "x"
+          , description: "Any value"
+          }
         ]
-        { name: "x" }
+        { name: "x", description: "The given value" }
     , component: Nothing
     }
 
@@ -76,10 +82,14 @@ const' =
     , expression: (NativeExpression typeConst $ binaryFunction const)
     , functionData:
       internal
-        [ { name: "constant value" }
-        , { name: "ignored value" }
+        [ { name: "constant value"
+          , description: "A value to always return"
+          }
+        , { name: "ignored value"
+          , description: "Any value"
+          }
         ]
-        { name: "constant value" }
+        { name: "constant value", description: "The constant value passed to this function" }
     , component: Nothing
     }
 
@@ -110,10 +120,12 @@ compose =
     , expression: (NativeExpression typeCompose $ binaryFunction evalCompose)
     , functionData:
       internal
-        [ { name: "first function" }
-        , { name: "second function" }
+        [ { name: "first function"
+          , description: "A function from type A to type B"
+          }
+        , { name: "second function", description: "A function from type B and type C" }
         ]
-        { name: "second . first" }
+        { name: "second . first", description: "A function which first applies the A -> B transformation and then passed the return of that to the B -> C transformation returning a value of type C" }
     , component: Nothing
     }
 
@@ -147,8 +159,12 @@ flip' =
     , expression: (NativeExpression typeFlip $ Function evalFlip)
     , functionData:
       internal
-        [ { name: "function" }
+        [ { name: "function"
+          , description: "A function which takes 2 arguments"
+          }
         ]
-        { name: "flipped function" }
+        { name: "flipped function"
+        , description: "A function which does the same things as the input function but with the arguments flipped around"
+        }
     , component: Nothing
     }

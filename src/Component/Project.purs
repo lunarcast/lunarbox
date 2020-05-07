@@ -16,6 +16,7 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval)
 import Halogen.HTML (slot)
 import Halogen.HTML as HH
+import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.HOC.Connect as Connect
@@ -56,6 +57,7 @@ component ::
   MonadAsk Config m =>
   MonadReader Config m =>
   ManageProjects m =>
+  Navigate m =>
   Component HH.HTML q { | Input } o m
 component =
   Connect.component

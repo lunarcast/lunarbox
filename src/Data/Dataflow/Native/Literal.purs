@@ -42,7 +42,7 @@ boolean =
   NativeConfig
     { name: FunctionName "boolean"
     , expression: (NativeExpression (Forall [] typeBool) $ Bool false)
-    , functionData: internal [] { name: "Boolean" }
+    , functionData: internal [] { name: "Boolean", description: "A boolean which has the same value as the visual switch" }
     , component: Just $ HH.lazy2 booleaUi
     }
 
@@ -66,7 +66,7 @@ number =
   NativeConfig
     { name: FunctionName "number"
     , expression: (NativeExpression (Forall [] typeNumber) $ Number 0.0)
-    , functionData: internal [] { name: "Number" }
+    , functionData: internal [] { name: "Number", description: "A number which has the same value as the input box" }
     , component: Just $ HH.lazy2 numberUi
     }
 
@@ -90,6 +90,6 @@ string =
   NativeConfig
     { name: FunctionName "string"
     , expression: (NativeExpression (Forall [] typeString) $ String "lunarbox")
-    , functionData: internal [] { name: "String" }
+    , functionData: internal [] { name: "String", description: "A string which has the same value as the input textbox" }
     , component: Just $ HH.lazy2 stringUI
     }

@@ -5,11 +5,10 @@ module Lunarbox.Data.ProjectId
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Newtype (class Newtype)
 
 newtype ProjectId
-  = ProjectId String
+  = ProjectId Int
 
 derive instance eqProjectId :: Eq ProjectId
 
@@ -23,5 +22,4 @@ derive newtype instance encodeJsonProjectId :: EncodeJson ProjectId
 
 derive newtype instance decodeJsonProjectId :: DecodeJson ProjectId
 
-instance showProjectId :: Show ProjectId where
-  show = genericShow
+derive newtype instance showProjectId :: Show ProjectId

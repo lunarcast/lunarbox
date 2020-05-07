@@ -1,13 +1,13 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
-import Control.Monad.State (gets)
+import Control.Monad.State (execState, gets, put)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
 import Data.Default (def)
 import Data.Either (Either(..))
-import Data.Filterable (filter)
+import Data.Filterable (filter, filterMap)
 import Data.Foldable (foldMap, foldr, for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
@@ -19,10 +19,11 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Newtype as Newtype
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Unfoldable (replicate)
 import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
@@ -33,28 +34,30 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
+import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Editor.Camera (Camera, toWorldCoordinates)
 import Lunarbox.Data.Editor.Camera as Camera
 import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
+import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
 import Lunarbox.Data.Editor.Foreign.NodeBoundingdBox (nodeBoundingBox)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
+import Lunarbox.Data.Graph (emptyGraph)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Math (polarToCartesian)
+import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.Vector (Vec2)
 import Math (pow)
 import Svg.Attributes (Color)
@@ -299,10 +302,10 @@ compile state@{ project, expression, typeMap, valueMap } =
               let
                 inputDocs =
                   List.toUnfoldable
-                    $ List.mapWithIndex (\index _ -> { name: "Input " <> show index })
+                    $ List.mapWithIndex (\index _ -> { name: "Input " <> show index, description: "An input for a custom function" })
                     $ inputs functionType
 
-                functionData = internal inputDocs { name: show functionName <> " output" }
+                functionData = internal inputDocs { name: show functionName <> " output", description: "The output of a custom function" }
               pure $ set (_atFunctionData functionName) (Just functionData) state''
         )
         state
@@ -385,20 +388,18 @@ setCurrentFunction name = makeUnconnetacbleList <<< set _currentFunction name
 -- Creates a function, adds an output node and set it as the current edited function
 initializeFunction :: forall a s m. FunctionName -> State a s m -> State a s m
 initializeFunction name state =
-  let
-    id = NodeId $ show name <> "-output"
+  flip execState state do
+    let
+      id = NodeId $ show name <> "-output"
 
-    function = createFunction name id
-
-    state' = over _project function state
-
-    state'' = setCurrentFunction (Just name) state'
-
-    state''' = set (_atNodeData name id) (Just def) state''
-
-    state'''' = set (_atFunctionData name) (Just def) state'''
-  in
-    compile state''''
+      function = createFunction name id
+    scale <- gets $ view _sceneScale
+    modify_ $ over _project function
+    modify_ $ setCurrentFunction (Just name)
+    modify_ $ set (_atNodeData name id) (Just def)
+    modify_ $ set (_atFunctionData name) (Just def)
+    modify_ $ pan $ (_ / 2.0) <$> scale
+    modify_ compile
 
 -- Remove a conenction from the current function
 removeConnection :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> State a s m
@@ -447,34 +448,81 @@ getSceneMousePosition position = do
   maybeBounds <- getSceneBoundingBox
   pure $ maybe state (\bounds -> setRelativeMousePosition bounds position state) maybeBounds
 
+-- Counts how many times a function is used inside another function
+countFunctionRefs :: FunctionName -> G.Graph NodeId Node -> Int
+countFunctionRefs name = G.size <<< G.filterVertices ((_ == name) <<< getFunctionName)
+
 -- Deletes a node form a given function
 deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
 deleteNode functionName id state =
-  if isOutput then
-    state
-  else
-    withoutInput $ withoutNodeRefs $ removeNodeData $ removeNode state
+  flip execState state
+    $ when (not isOutput) do
+        let
+          nodes = preview (_nodes functionName) state
+
+          -- The function the node runs
+          nodeFunction = fromMaybe (FunctionName "") $ getFunctionName <$> node
+
+          -- If this is the last reference to the used function in the current function we remove the edge from the dependency graph
+          functionRefCount = countFunctionRefs nodeFunction (fromMaybe emptyGraph $ preview (_nodes functionName) state)
+        modify_
+          $ over (_nodes functionName)
+          $ map
+          $ over _nodeInputs
+          $ map \input -> if input == Just id then Nothing else input
+        modify_ $ over (_nodes functionName) $ G.delete id
+        modify_ $ set (_atNodeData functionName id) Nothing
+        modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id == _)
+        when (functionRefCount <= 1)
+          $ modify_
+          $ over _functions
+          $ G.removeEdge nodeFunction functionName
   where
   node = join $ preview (_atNode functionName id) state
 
-  -- We do not allow deleting output nodes
   isOutput = maybe false (is _OutputNode) node
 
-  nodes = preview (_nodes functionName) state
+-- Delete all the nodes runnign a certain functions inside another functions
+deleteFunctionReferences :: forall a s m. FunctionName -> FunctionName -> G.Graph NodeId Node -> State a s m -> State a s m
+deleteFunctionReferences toDelete functionName graph state =
+  foldr (deleteNode functionName) state
+    $ filterMap
+        ( \(Tuple nodeId node) ->
+            if getFunctionName node == toDelete then
+              Just nodeId
+            else
+              Nothing
+        )
+    $ (G.toUnfoldable graph :: List _)
 
-  withoutNodeRefs =
-    over (_nodes functionName) $ map $ over _nodeInputs
-      $ map \input ->
-          if input == Just id then
-            Nothing
-          else
-            input
-
-  removeNode = over (_nodes functionName) $ G.delete id
-
-  removeNodeData = set (_atNodeData functionName id) Nothing
-
-  withoutInput = over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id == _)
+-- Delete a function from the state
+deleteFunction :: forall a s m. FunctionName -> State a s m -> State a s m
+deleteFunction toDelete state =
+  flip execState state do
+    let
+      visualFunctions =
+        filterMap
+          ( \(Tuple name function) ->
+              Tuple name
+                <$> preview _VisualFunction function
+          )
+          $ ( G.toUnfoldable
+                $ view _functions state ::
+                List _
+            )
+    put
+      $ foldr
+          (\(Tuple functionName nodeGroup) -> deleteFunctionReferences toDelete functionName $ view _NodeGroupNodes nodeGroup)
+          state
+          visualFunctions
+    modify_ $ set (_atFunctionData toDelete) Nothing
+    modify_ $ set (_function toDelete) Nothing
+    modify_ $ over _nodeData $ Map.filterKeys $ (_ /= toDelete) <<< fst
+    modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< preview _ExtendedLocation
+    modify_ $ set (_camera toDelete) Nothing
+    modify_ $ set (_atInputCount toDelete) Nothing
+    when (view _currentFunction state == Just toDelete) $ modify_ $ set _currentFunction Nothing
+    modify_ compile
 
 -- Delete all selected nodes
 deleteSelection :: forall a s m. State a s m -> State a s m
@@ -500,6 +548,9 @@ setRuntimeValue functionName nodeId value =
     <<< set
         (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
         (Just value)
+
+visualFunctionCount :: forall a s m. State a s m -> Int
+visualFunctionCount = G.size <<< G.filterVertices (is _VisualFunction) <<< view _functions
 
 -- This makes the node start from the middle again
 resetNodeOffset :: forall a s m. State a s m -> State a s m
@@ -528,6 +579,22 @@ sceneCenter state = toWorldCoordinates camera $ (_ / 2.0) <$> scale
   scale = view _sceneScale state
 
   camera = view _currentCamera state
+
+-- Get the number of nodes in a state
+nodeCount :: forall a s m. State a s m -> Int
+nodeCount = Map.size <<< view _nodeData
+
+-- Search using the current search term in the state
+searchNode :: forall a s m. State a s m -> Array FunctionName
+searchNode state = sortBySearch show searchTerm nodes
+  where
+  searchTerm = view _nodeSearchTerm state
+
+  nodes = Set.toUnfoldable $ Map.keys $ view _functionData state
+
+-- Check if a function exists
+functionExists :: forall a s m. FunctionName -> State a s m -> Boolean
+functionExists name = Map.member name <<< view _functionData
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
