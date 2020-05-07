@@ -55,6 +55,7 @@ import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectF
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Math (polarToCartesian)
+import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.Vector (Vec2)
 import Math (pow)
 import Svg.Attributes (Color)
@@ -532,6 +533,14 @@ sceneCenter state = toWorldCoordinates camera $ (_ / 2.0) <$> scale
 -- Get the number of nodes in a state
 nodeCount :: forall a s m. State a s m -> Int
 nodeCount = Map.size <<< view _nodeData
+
+-- Search using the current search term in the state
+searchNode :: forall a s m. State a s m -> Array FunctionName
+searchNode state = sortBySearch show searchTerm nodes
+  where
+  searchTerm = view _nodeSearchTerm state
+
+  nodes = Set.toUnfoldable $ Map.keys $ view _functionData state
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)

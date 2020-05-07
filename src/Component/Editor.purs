@@ -10,6 +10,7 @@ import Prelude
 import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
+import Data.Array ((!!))
 import Data.Default (def)
 import Data.Foldable (find, foldr, for_)
 import Data.Int (toNumber)
@@ -26,7 +27,7 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick, onValueInput)
+import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
@@ -50,7 +51,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -61,6 +62,7 @@ import Web.HTML.Window (document) as Web
 import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
+import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
@@ -87,6 +89,7 @@ data Action
   | SetName String
   | SetExample Boolean
   | SearchNodes String
+  | HandleAddPanelKeyPress KeyboardEvent
 
 data Output m
   = Save (EditorState m)
@@ -160,13 +163,21 @@ component =
     HandleKey sid event
       | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
         modify_ deleteSelection
-      | KE.ctrlKey event && KE.key event == "b" -> do
-        handleAction TogglePanel
+      | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
+      | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
       | KE.ctrlKey event && KE.key event == "s" -> do
         liftEffect $ preventDefault $ KE.toEvent event
         liftEffect $ stopPropagation $ KE.toEvent event
         state <- get
         raise $ Save state
+      | otherwise -> pure unit
+    HandleAddPanelKeyPress event
+      | KE.key event == "Enter" -> do
+        sortedFunctions <- gets searchNode
+        for_ (sortedFunctions !! 0) (handleAction <<< CreateNode)
+      | KE.ctrlKey event && KE.key event == " " -> do
+        sortedFunctions <- gets searchNode
+        handleAction $ SelectFunction $ sortedFunctions !! 0
       | otherwise -> pure unit
     CreateNode name -> do
       modify_ $ execState $ createNode name
@@ -342,6 +353,7 @@ component =
                   [ HP.id_ "node-search-input"
                   , HP.placeholder "Search nodes. Eg: add, greater than..."
                   , HP.value nodeSearchTerm'
+                  , onKeyUp $ Just <<< HandleAddPanelKeyPress
                   , onValueInput $ Just <<< SearchNodes
                   ]
               , icon "search"
