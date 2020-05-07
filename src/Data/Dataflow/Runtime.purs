@@ -4,6 +4,7 @@ module Lunarbox.Data.Dataflow.Runtime
   , toBoolean
   , toNumber
   , toString
+  , toArray
   , _Number
   , _String
   , _Function
@@ -88,6 +89,12 @@ toBoolean :: RuntimeValue -> Boolean
 toBoolean value
   | value == Bool true = true
   | otherwise = false
+
+-- Extracts the array out of a runtime value. Returns [] if the vaule isn't an array
+toArray :: RuntimeValue -> Array RuntimeValue
+toArray (NArray inner) = inner
+
+toArray _ = []
 
 -- Extract a number from a runtime value, defaulting to 0
 toNumber :: RuntimeValue -> Number

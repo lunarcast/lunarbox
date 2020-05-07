@@ -5,7 +5,7 @@ import Affjax (Request, printError, request)
 import Affjax.RequestBody as RB
 import Affjax.ResponseFormat as RF
 import Affjax.StatusCode (StatusCode(..))
-import Data.Argonaut (Json, decodeJson, encodeJson)
+import Data.Argonaut (Json, encodeJson)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
@@ -69,9 +69,8 @@ type LoginFields
   = { | AuthFieldsRep Unlifted () }
 
 login :: forall m. MonadAff m => BaseUrl -> LoginFields -> m (Either String Profile)
-login baseUrl fields = requestJson baseUrl opts <#> (_ >>= decodeAt "user")
-  where
-  opts =
+login baseUrl fields =
+  requestUser baseUrl
     { endpoint: Login, method: Post $ Just $ encodeJson fields
     }
 
@@ -100,5 +99,6 @@ requestJson baseUrl opts = do
         | code >= 200 && code <= 299 -> pure response.body
       _ -> Left =<< decodeAt "message" response.body
 
+-- Helper for requests which will return the profile
 requestUser :: forall m. MonadAff m => BaseUrl -> RequestOptions -> m (Either String Profile)
-requestUser baseUrl opts = requestJson baseUrl opts <#> (_ >>= decodeJson)
+requestUser baseUrl opts = requestJson baseUrl opts <#> (_ >>= decodeAt "user")

@@ -11,11 +11,11 @@ import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (typeFunction, typeNumber)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Math (pow)
+import Math (pow, (%))
 
 -- ALl the math native nodes
 mathNodes :: forall a s m. Array (NativeConfig a s m)
-mathNodes = [ add, substract, multiply, divide, raiseToPower ]
+mathNodes = [ add, substract, multiply, divide, raiseToPower, modulus ]
 
 -- Type for functions of type Number -> Number -> Number
 binaryNumberType :: Scheme
@@ -31,11 +31,7 @@ binaryMathFunction' _ _ _ = Null
 binaryMathFunction :: (Number -> Number -> Number) -> RuntimeValue
 binaryMathFunction = binaryFunction <<< binaryMathFunction'
 
-addRuntimeValue :: RuntimeValue -> RuntimeValue -> RuntimeValue
-addRuntimeValue (Number n) (Number n') = Number $ n + n'
-
-addRuntimeValue _ _ = Null
-
+-- The actual math functions
 add :: forall a s m. NativeConfig a s m
 add =
   NativeConfig
@@ -78,5 +74,14 @@ raiseToPower =
     { name: FunctionName "raise to power"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction pow)
     , functionData: internal [ { name: "base" }, { name: "exponend" } ] { name: "base^exponent" }
+    , component: Nothing
+    }
+
+modulus :: forall a s m. NativeConfig a s m
+modulus =
+  NativeConfig
+    { name: FunctionName "modulus"
+    , expression: (NativeExpression binaryNumberType $ binaryMathFunction (%))
+    , functionData: internal [ { name: "left side" }, { name: "right side" } ] { name: "a % b" }
     , component: Nothing
     }
