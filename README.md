@@ -20,77 +20,11 @@ You can find the infoeducatie documentation (written in romanian) [here](./infoe
 
 > Also for infoeducatie I also made a list with everything I used which I didn't make which you can find [here](./infoeducatie/external.md)
 
-> Todo: usage guides
+> To learn how to use lunarbox check out [the wiki](https://github.com/Mateiadrielrafael/lunarbox/wiki)
 
 ## Contributing
 
-Fork this repo, write some code and submit a pull request.
-
-## Installing locally
-
-This guide assumes you have purescript and spago alreay installed.
-
-### Installing the dependencies
-
-Clone this repo. Install the dependencies with:
-
-```sh
-pnpm install
-```
-
-Then build all the purescript stuff with:
-
-```sh
-spago build
-```
-
-> Note: this project uses [pnpm](https://pnpm.js.org), pull requests using npm or yarn will be ignored
-
-### Running the dev server:
-
-To start the dev server use the `dev` command:
-
-```sh
-pnpm run dev
-```
-
-### Building for production
-
-To generate a production build run:
-
-```sh
-pnpm run build
-```
-
-## Code generation
-
-This project uses [hygen](http://www.hygen.io/) for code generation.
-
-> If you want to contribute a new generator add it to the `_templates` folder
-
-### Creating components / pages
-
-To create a component you can run:
-
-```
-pnpx hygen purescript component Foo.Bar
-```
-
-This will create an empty halogen component in `src/Component/Foo/Bar.purs` which lives in a module called `Lunarbox.Component.Foo.Bar`.
-
-> Note: you can add the -p flag at the end to generate a page instead (lives in `src/Page` and has the module name prefixed with `Lunarbox.Page`)
-
-> Note 2: you can also use the render-function action when you want to build a render-function which takes some Input and some Actions as it's parameters
-
-### Creating modules
-
-To create a simple purescript module use can use the `module` action from the `purescript` generator:
-
-```sh
-hygen purescript module Foo.Bar
-```
-
-This will create an empty halogen component in `src/Foo/Bar.purs` which lives in a module called `Lunarbox.Foo.Bar` which has a single import to `Prelude`.
+To learn how you can contribute to this project take a look at [the contribution guide](./CONTRIBUTING.md)
 
 ## Contributors ✨
 
