@@ -27,7 +27,7 @@ emptyArray =
   NativeConfig
     { name: FunctionName "empty array"
     , expression: (NativeExpression typeEmptyArray $ NArray [])
-    , functionData: internal [] { name: "array" }
+    , functionData: internal [] { name: "array", description: "An array containing no elements" }
     , component: Nothing
     }
 
@@ -47,7 +47,12 @@ cons =
   NativeConfig
     { name: FunctionName "cons"
     , expression: (NativeExpression typeCons $ binaryFunction evalCons)
-    , functionData: internal [ { name: "element" }, { name: "array" } ] { name: "array" }
+    , functionData:
+      internal
+        [ { name: "element", description: "A single element to add at the beginning of an array" }
+        , { name: "array", description: "An array to add the given element at the start of" }
+        ]
+        { name: "array", description: "The resulting array which has the first argument as the first element and everything else after that" }
     , component: Nothing
     }
 
@@ -69,7 +74,13 @@ map' =
   NativeConfig
     { name: FunctionName "map array"
     , expression: (NativeExpression typeMap $ binaryFunction evalMap)
-    , functionData: internal [ { name: "mapper" }, { name: "array" } ] { name: "array" }
+    , functionData:
+      internal
+        [ { name: "mapper", description: "A function to run on each element of an array" }
+        , { name: "array", description: "An array to run a function on each element of"
+          }
+        ]
+        { name: "array", description: "The result of running the given function on each element of the given array" }
     , component: Nothing
     }
 
@@ -89,7 +100,13 @@ filter' =
   NativeConfig
     { name: FunctionName "filter array"
     , expression: (NativeExpression typeFilter $ binaryFunction evalFilter)
-    , functionData: internal [ { name: "function" }, { name: "array" } ] { name: "filtered array" }
+    , functionData:
+      internal
+        [ { name: "function", description: "A function to decide if an element should be kept in the array or not" }
+        , { name: "array", description: "The array to filter with the given function"
+          }
+        ]
+        { name: "filtered array", description: "An array which only contains the items the given function returned true for" }
     , component: Nothing
     }
 
@@ -111,6 +128,12 @@ flatMap =
   NativeConfig
     { name: FunctionName "flatMap"
     , expression: (NativeExpression typeFlatMap $ binaryFunction evalFlatMap)
-    , functionData: internal [ { name: "function" }, { name: "array" } ] { name: "resulting array" }
+    , functionData:
+      internal
+        [ { name: "function", description: "A function which takes each element of an array and returns another array" }
+        , { name: "array", description: "The array to pass each element of to the given function"
+          }
+        ]
+        { name: "resulting array", description: "An array which contains the concatenated results of passing every element of the original array to the given function" }
     , component: Nothing
     }

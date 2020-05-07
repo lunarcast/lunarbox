@@ -10,7 +10,7 @@ import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (Type, typeBool, typeFunction)
-import Lunarbox.Data.Editor.FunctionData (internal)
+import Lunarbox.Data.Editor.FunctionData (PinDoc, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 
 -- All the native logic gatesish nodes
@@ -24,8 +24,8 @@ evalNot (Bool inner) = Bool $ not inner
 evalNot _ = Null
 
 -- Arguments for 2-inputs logic gates
-binaryLogicFunctionArgs :: Array ({ name :: String })
-binaryLogicFunctionArgs = [ { name: "first input" }, { name: "second input" } ]
+binaryLogicFunctionArgs :: Array PinDoc
+binaryLogicFunctionArgs = [ { name: "first input", description: "Any boolean" }, { name: "second input", description: "Any boolean" } ]
 
 -- Wrap a logic binary function into a binary function operating on Runtime values
 binaryLogicFunction' :: (Boolean -> Boolean -> Boolean) -> RuntimeValue -> RuntimeValue -> RuntimeValue
@@ -46,7 +46,7 @@ not' =
   NativeConfig
     { name: FunctionName "not"
     , expression: NativeExpression (Forall [] $ typeFunction typeBool typeBool) $ Function evalNot
-    , functionData: internal [ { name: "input" } ] { name: "!input" }
+    , functionData: internal [ { name: "input", description: "Any boolean" } ] { name: "!input", description: "If the input is true returns false, else returns true" }
     , component: Nothing
     }
 
@@ -55,7 +55,7 @@ and =
   NativeConfig
     { name: FunctionName "and"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction (&&)
-    , functionData: internal binaryLogicFunctionArgs { name: "a && b" }
+    , functionData: internal binaryLogicFunctionArgs { name: "a && b", description: "Returns true if both of the inputs are true" }
     , component: Nothing
     }
 
@@ -64,7 +64,7 @@ or =
   NativeConfig
     { name: FunctionName "or"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction (||)
-    , functionData: internal binaryLogicFunctionArgs { name: "a || b" }
+    , functionData: internal binaryLogicFunctionArgs { name: "a || b", description: "Returns true if at least one of the inputs is true" }
     , component: Nothing
     }
 
@@ -78,6 +78,6 @@ xor =
   NativeConfig
     { name: FunctionName "xor"
     , expression: NativeExpression (Forall [] binaryLogicFunctionType) $ binaryLogicFunction evalXor
-    , functionData: internal binaryLogicFunctionArgs { name: "a & b" }
+    , functionData: internal binaryLogicFunctionArgs { name: "a ^ b", description: "Returns true if one and only one of the inputs is true" }
     , component: Nothing
     }

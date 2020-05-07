@@ -4,12 +4,13 @@ module Lunarbox.Data.Dataflow.Native.Math
 
 import Prelude
 import Data.Maybe (Maybe(..))
+import Data.Number (isNaN)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (typeFunction, typeNumber)
-import Lunarbox.Data.Editor.FunctionData (internal)
+import Lunarbox.Data.Editor.FunctionData (PinDoc, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Math (pow, (%))
 
@@ -23,9 +24,19 @@ binaryNumberType = Forall [] $ typeFunction typeNumber $ typeFunction typeNumber
 
 -- Internal function used to perform the unwrapping and wrapping necessary for the binaryMathFUnction helper
 binaryMathFunction' :: (Number -> Number -> Number) -> RuntimeValue -> RuntimeValue -> RuntimeValue
-binaryMathFunction' function (Number first) (Number second) = Number $ function first second
+binaryMathFunction' function (Number first) (Number second) =
+  if isNaN result then
+    Null
+  else
+    Number result
+  where
+  result = function first second
 
 binaryMathFunction' _ _ _ = Null
+
+-- Documentation for an numeral value
+numberDoc :: String -> PinDoc
+numberDoc = { name: _, description: "Any number value" }
 
 -- Helper for wrapping a purescript binary math operator into a runtime value
 binaryMathFunction :: (Number -> Number -> Number) -> RuntimeValue
@@ -37,7 +48,7 @@ add =
   NativeConfig
     { name: FunctionName "add"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (+))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "sum" }
+    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments." }
     , component: Nothing
     }
 
@@ -46,7 +57,9 @@ substract =
   NativeConfig
     { name: FunctionName "substract"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (-))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "difference" }
+    , functionData:
+      internal [ numberDoc "first number", numberDoc "second number" ]
+        { name: "difference", description: "The result of substracting the second argument from the first" }
     , component: Nothing
     }
 
@@ -55,7 +68,9 @@ multiply =
   NativeConfig
     { name: FunctionName "multiply"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (*))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "product" }
+    , functionData:
+      internal [ numberDoc "first number", numberDoc "second number" ]
+        { name: "product", description: "The result of multiplying the first number with the second" }
     , component: Nothing
     }
 
@@ -64,7 +79,14 @@ divide =
   NativeConfig
     { name: FunctionName "divide"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (/))
-    , functionData: internal [ { name: "first number" }, { name: "second number" } ] { name: "quotient" }
+    , functionData:
+      internal
+        [ { name: "dividend", description: "The number to divide" }
+        , { name: "divisor", description: "The number to divide the dividend by. Cannot be 0" }
+        ]
+        { name: "quotient"
+        , description: "The result of dividng the first argument by the second"
+        }
     , component: Nothing
     }
 
@@ -73,7 +95,9 @@ raiseToPower =
   NativeConfig
     { name: FunctionName "raise to power"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction pow)
-    , functionData: internal [ { name: "base" }, { name: "exponend" } ] { name: "base^exponent" }
+    , functionData:
+      internal [ numberDoc "base", numberDoc "exponend" ]
+        { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
     , component: Nothing
     }
 
@@ -82,6 +106,11 @@ modulus =
   NativeConfig
     { name: FunctionName "modulus"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (%))
-    , functionData: internal [ { name: "left side" }, { name: "right side" } ] { name: "a % b" }
+    , functionData:
+      internal
+        [ { name: "left side", description: "The number to take the modulus from" }
+        , { name: "right side", description: "The number to divide the first input by and find the reminder" }
+        ]
+        { name: "a % b", description: "The reminder of dividing the first number to the second" }
     , component: Nothing
     }
