@@ -4,6 +4,7 @@ module Lunarbox.Data.Editor.FunctionData
   , getFunctionData
   , internal
   , outputData
+  , displayPinDoc
   , _FunctionDataInputs
   , _FunctionDataOutput
   , _FunctionDataExternal
@@ -28,6 +29,10 @@ type PinDoc
   = { name :: String
     , description :: String
     }
+
+-- Very basic function to print a pindoc out
+displayPinDoc :: PinDoc -> String
+displayPinDoc { name, description } = "Name: " <> name <> "\nDescription: " <> description
 
 newtype FunctionData
   = FunctionData

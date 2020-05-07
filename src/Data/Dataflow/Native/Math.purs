@@ -36,7 +36,7 @@ binaryMathFunction' _ _ _ = Null
 
 -- Documentation for an numeral value
 numberDoc :: String -> PinDoc
-numberDoc = { name: _, description: "Any number value" }
+numberDoc = { name: _, description: "Any numeric value" }
 
 -- Helper for wrapping a purescript binary math operator into a runtime value
 binaryMathFunction :: (Number -> Number -> Number) -> RuntimeValue

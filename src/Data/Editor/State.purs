@@ -302,10 +302,10 @@ compile state@{ project, expression, typeMap, valueMap } =
               let
                 inputDocs =
                   List.toUnfoldable
-                    $ List.mapWithIndex (\index _ -> { name: "Input " <> show index })
+                    $ List.mapWithIndex (\index _ -> { name: "Input " <> show index, description: "An input for a custom function" })
                     $ inputs functionType
 
-                functionData = internal inputDocs { name: show functionName <> " output" }
+                functionData = internal inputDocs { name: show functionName <> " output", description: "The output of a custom function" }
               pure $ set (_atFunctionData functionName) (Just functionData) state''
         )
         state
