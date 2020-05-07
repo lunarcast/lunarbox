@@ -45,13 +45,14 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, int
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs)
+import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
+import Lunarbox.Data.Graph (emptyGraph)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Math (polarToCartesian)
@@ -446,34 +447,40 @@ getSceneMousePosition position = do
   maybeBounds <- getSceneBoundingBox
   pure $ maybe state (\bounds -> setRelativeMousePosition bounds position state) maybeBounds
 
+-- Counts how many times a function is used inside another function
+countFunctionRefs :: FunctionName -> G.Graph NodeId Node -> Int
+countFunctionRefs name = G.size <<< G.filterVertices ((_ == name) <<< getFunctionName)
+
 -- Deletes a node form a given function
 deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
 deleteNode functionName id state =
-  if isOutput then
-    state
-  else
-    withoutInput $ withoutNodeRefs $ removeNodeData $ removeNode state
-  where
-  node = join $ preview (_atNode functionName id) state
+  let
+    node = join $ preview (_atNode functionName id) state
 
-  -- We do not allow deleting output nodes
-  isOutput = maybe false (is _OutputNode) node
+    isOutput = maybe false (is _OutputNode) node
+  in
+    flip execState state
+      $ when (not isOutput) do
+          let
+            nodes = preview (_nodes functionName) state
 
-  nodes = preview (_nodes functionName) state
+            -- The function the node runs
+            nodeFunction = fromMaybe (FunctionName "") $ getFunctionName <$> node
 
-  withoutNodeRefs =
-    over (_nodes functionName) $ map $ over _nodeInputs
-      $ map \input ->
-          if input == Just id then
-            Nothing
-          else
-            input
-
-  removeNode = over (_nodes functionName) $ G.delete id
-
-  removeNodeData = set (_atNodeData functionName id) Nothing
-
-  withoutInput = over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id == _)
+            -- If this is the last reference to the used function in the current function we remove the edge from the dependency graph
+            functionRefCount = countFunctionRefs nodeFunction (fromMaybe emptyGraph $ preview (_nodes functionName) state)
+          modify_
+            $ over (_nodes functionName)
+            $ map
+            $ over _nodeInputs
+            $ map \input -> if input == Just id then Nothing else input
+          modify_ $ over (_nodes functionName) $ G.delete id
+          modify_ $ set (_atNodeData functionName id) Nothing
+          modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id == _)
+          when (functionRefCount <= 1)
+            $ modify_
+            $ over _functions
+            $ G.removeEdge nodeFunction functionName
 
 -- Delete all selected nodes
 deleteSelection :: forall a s m. State a s m -> State a s m

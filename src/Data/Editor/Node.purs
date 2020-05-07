@@ -4,6 +4,7 @@ module Lunarbox.Data.Editor.Node
   , compileNode
   , hasOutput
   , getInputs
+  , getFunctionName
   , connectedInputs
   , _nodeInput
   , _ComplexNodeFunction
@@ -28,7 +29,7 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
 import Lunarbox.Data.Functor (indexed)
@@ -68,6 +69,13 @@ instance showNode :: Show Node where
 -- Check if a node has an output pin
 hasOutput :: Node -> Boolean
 hasOutput = not <<< is _OutputNode
+
+-- Get the name of the function the node runs
+getFunctionName :: Node -> FunctionName
+getFunctionName = case _ of
+  ComplexNode { function } -> function
+  InputNode -> FunctionName "input"
+  OutputNode _ -> FunctionName "output"
 
 -- Get all inputs of a node
 getInputs :: Node -> List (Maybe NodeId)

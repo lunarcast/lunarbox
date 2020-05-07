@@ -6,6 +6,7 @@ import Data.Array (foldr)
 import Data.Array as Array
 import Data.Array as Foldable
 import Data.Bifunctor (lmap, rmap)
+import Data.Filterable (filter)
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
 import Data.Graph as CG
 import Data.Lens (lens, wander)
@@ -72,6 +73,10 @@ instance indexGraph :: Ord k => Index (Graph k v) k v where
 instance atGraph :: Ord k => At (Graph k v) k v where
   -- good thing at least I understand this one:)
   at k = lens (lookup k) \m -> maybe (delete k m) (\v -> insert k v m)
+
+-- Filer vertices based on a predicate
+filterVertices :: forall k v. Ord k => (v -> Boolean) -> Graph k v -> Graph k v
+filterVertices filterFunction = Graph <<< filter (filterFunction <<< fst) <<< unwrap
 
 -- A graph with nothing in it
 emptyGraph :: forall k v. Ord k => Graph k v
@@ -150,3 +155,7 @@ parents k (Graph graph) = Map.keys <<< Map.filter (Foldable.elem k <<< snd) $ gr
 -- Check if adding an edge would create a cycle
 wouldCreateCycle :: forall k v. Ord k => k -> k -> Graph k v -> Boolean
 wouldCreateCycle from to = isCyclic <<< insertEdge from to
+
+-- Count the number of vertices in a graph
+size :: forall k v. Ord k => Graph k v -> Int
+size = Map.size <<< unwrap

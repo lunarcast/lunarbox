@@ -14,13 +14,17 @@ Tool to help beginners learn functional programming
 
 Check out the beta [here](https://lunarbox.netlify.app/) or take a look at our trello board [here](https://trello.com/b/iCgkCsQo/lunarbox)
 
+Also check out [the lunarbox api](https://github.com/BlueGhostGH/lunarbox-api)
+
 ## Documentation
 
 You can find the infoeducatie documentation (written in romanian) [here](./infoeducatie/documentatie.md)
 
-> Also for infoeducatie I also made a list with everything I used which I didn't make which you can find [here](./infoeducatie/external.md)
+A list with everything I used not made by me can be found [here](./infoeducatie/external.md)
 
-> To learn how to use lunarbox check out [the wiki](https://github.com/Mateiadrielrafael/lunarbox/wiki)
+## Usage guide
+
+To learn how to use lunarbox check out [the wiki](https://github.com/Mateiadrielrafael/lunarbox/wiki)
 
 ## Contributing
 
