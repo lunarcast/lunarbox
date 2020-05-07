@@ -40,7 +40,7 @@ import Lunarbox.Data.Editor.FunctionData (FunctionData, getFunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode)
+import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode, _nodeInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -178,8 +178,8 @@ createNodeComponent { functionName
         , labels:
           [ label $ highlightTypeToSvg (RGB 255 255 255) $ prettify
               $ foldr typeFunction nodeType
-              $ ( List.mapWithIndex \index type' -> fromMaybe type' $ Map.lookup (InputPin index) localTypeMap
-                )
+              $ (List.mapWithIndex \index type' -> fromMaybe type' $ Map.lookup (InputPin index) localTypeMap)
+              $ List.take (List.length $ view _nodeInputs node)
               $ inputs functionType
           , labelText $ show name
           ]

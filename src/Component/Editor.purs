@@ -49,7 +49,8 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -194,7 +195,12 @@ component =
     HandleAddPanelKeyPress event
       | KE.key event == "Enter" -> do
         sortedFunctions <- gets searchNode
-        for_ (sortedFunctions !! 0) (handleAction <<< CreateNode)
+        currentFunction <- gets $ view _currentFunction
+        functionGraph <- gets $ view _functions
+        let
+          bestMatch = sortedFunctions !! 0
+        when (maybe false not $ wouldCreateCycle <$> bestMatch <*> currentFunction <*> pure functionGraph)
+          $ for_ bestMatch (handleAction <<< CreateNode)
       | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
         inputElement <- getHTMLElementRef searchNodeInputRef
         for_ (inputElement >>= HTMLInputElement.fromHTMLElement) \elem -> do

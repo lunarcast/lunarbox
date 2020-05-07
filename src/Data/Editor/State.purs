@@ -1,7 +1,7 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
-import Control.Monad.State (gets)
+import Control.Monad.State (execState, gets)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
@@ -386,20 +386,18 @@ setCurrentFunction name = makeUnconnetacbleList <<< set _currentFunction name
 -- Creates a function, adds an output node and set it as the current edited function
 initializeFunction :: forall a s m. FunctionName -> State a s m -> State a s m
 initializeFunction name state =
-  let
-    id = NodeId $ show name <> "-output"
+  flip execState state do
+    let
+      id = NodeId $ show name <> "-output"
 
-    function = createFunction name id
-
-    state' = over _project function state
-
-    state'' = setCurrentFunction (Just name) state'
-
-    state''' = set (_atNodeData name id) (Just def) state''
-
-    state'''' = set (_atFunctionData name) (Just def) state'''
-  in
-    compile state''''
+      function = createFunction name id
+    scale <- gets $ view _sceneScale
+    modify_ $ over _project function
+    modify_ $ setCurrentFunction (Just name)
+    modify_ $ set (_atNodeData name id) (Just def)
+    modify_ $ set (_atFunctionData name) (Just def)
+    modify_ $ pan $ (_ / 2.0) <$> scale
+    modify_ compile
 
 -- Remove a conenction from the current function
 removeConnection :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> State a s m
