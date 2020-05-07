@@ -9,7 +9,7 @@
   "imageSize": 100,
   "commit": true,
   "commitConvention": "angular",
-   "badgeTemplate": "[![All Contributors](https://img.shields.io/badge/all_contributors-<%= contributors.length %>-orange.svg?style=for-the-badge)](#contributors)",
+  "badgeTemplate": "[![All Contributors](https://img.shields.io/badge/all_contributors-<%= contributors.length %>-orange.svg?style=for-the-badge)](#contributors)",
   "contributors": [
     {
       "login": "Mateiadrielrafael",
@@ -41,6 +41,17 @@
       "contributions": [
         "design",
         "ideas"
+      ]
+    },
+    {
+      "login": "BlueGhostGH",
+      "name": "Dragomir George",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/17652623?v=4",
+      "profile": "https://github.com/BlueGhostGH",
+      "contributions": [
+        "code",
+        "doc",
+        "tool"
       ]
     }
   ],
