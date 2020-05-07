@@ -23,7 +23,7 @@ import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (emptyState)
-import Lunarbox.Data.ProjectId (ProjectId(..))
+import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
 import Routing.Duplex (print)
@@ -77,8 +77,8 @@ instance manageProjectsAppM :: ManageProjects AppM where
   createProject state = do
     let
       body = stateToJson state
-    r :: Either String {} <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
-    pure $ Right $ ProjectId "mock"
+    response :: Either String { id :: ProjectId } <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
+    pure $ _.id <$> response
   getProject id = pure $ Right emptyState
   saveProject state = do
     printString $ "Saving " <> stringify (stateToJson state)

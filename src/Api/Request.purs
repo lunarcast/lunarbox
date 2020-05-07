@@ -80,9 +80,7 @@ register baseUrl fields = do
     requestJson baseUrl
       { endpoint: Register, method: Post $ Just $ encodeJson fields
       }
-  case response of
-    Left err -> pure $ Left err
-    Right _ -> profile baseUrl
+  pure $ response $> { isAdmin: false, username: fields.username }
 
 -- Get the current signed in profile
 profile :: forall m. MonadAff m => BaseUrl -> m (Either String Profile)

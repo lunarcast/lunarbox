@@ -29,11 +29,13 @@ type StatePermanentData
     }
 
 type Save
-  = { saveData :: StatePermanentData
+  = { project :: StatePermanentData
     , isExample :: Boolean
     , name :: String
-    , nodeCount :: Int
-    , functionCount :: Int
+    , metadata ::
+      { nodeCount :: Int
+      , functionCount :: Int
+      }
     }
 
 -- Encoding and decoding
@@ -44,9 +46,11 @@ stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExa
   save =
     { name
     , isExample
-    , nodeCount: nodeCount state
-    , functionCount: customFunctionCount state
-    , saveData:
+    , metadata:
+      { nodeCount: nodeCount state
+      , functionCount: customFunctionCount state
+      }
+    , project:
       { project
       , nextId
       , nodeData
@@ -60,7 +64,7 @@ jsonToState json = do
   obj <- decodeJson json
   name :: String <- obj .: "name"
   isExample :: Boolean <- obj .: "isExample"
-  saveData :: StatePermanentData <- obj .: "saveData"
+  saveData :: StatePermanentData <- obj .: "project"
   let
     recivedData = Record.merge { name, isExample } saveData
 
