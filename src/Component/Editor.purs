@@ -31,6 +31,7 @@ import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
+import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
@@ -134,7 +135,7 @@ createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Component HH.HTML q (EditorState m) (Output m) m
+component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) (Output m) m
 component =
   mkComponent
     { initialState: compile <<< loadPrelude <<< identity
@@ -464,11 +465,21 @@ component =
                   )
             }
 
+  logoElement =
+    container "sidebar-logo-container"
+      [ HH.img
+          [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
+          , HP.alt "Lunarbox logo"
+          , HP.id_ "sidebar-logo"
+          ]
+      ]
+
   render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   render state@{ currentTab, panelIsOpen } =
     container "editor"
       [ container "sidebar"
           $ tabs currentTab
+          <> pure logoElement
       , HH.div
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel state ]

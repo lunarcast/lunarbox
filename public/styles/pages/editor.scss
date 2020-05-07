@@ -15,21 +15,39 @@
 #editor > #sidebar {
   @include utils.center;
 
+  $icon-font-size: 2rem;
   $icon-size: 4rem;
 
   justify-content: start;
 
   background: $very-dark;
 
-  .sidebar-icon {
+  .sidebar-icon,
+  #sidebar-logo-conainer {
     @include utils.center;
+  }
 
-    user-select: none;
-    cursor: pointer;
+  #sidebar-logo-container {
+    display: flex;
+    justify-content: flex-end;
+    flex-direction: column;
+    flex-grow: 1;
 
+    #sidebar-logo {
+      width: $icon-font-size;
+      height: $icon-font-size;
+
+      margin-bottom: 1rem;
+    }
+  }
+
+  .sidebar-icon {
     width: $icon-size;
     height: $icon-size;
 
+    user-select: none;
+
+    cursor: pointer;
     color: $disabled;
     filter: brightness(0.7);
 
@@ -41,7 +59,7 @@
       border-left $transition-time;
 
     * {
-      font-size: 2rem;
+      font-size: $icon-font-size;
     }
   }
 
