@@ -7,4 +7,4 @@
 
 ## Why are there other contributors?
 
-Vyctor and ImperialWater helped me with design ideas & testing. ImperialWater also fixed some typos.
+Victor Sandu helped me with some design ideas & feedback and ImperialWater helped me with ideas and by fixing some typos

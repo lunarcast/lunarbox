@@ -1,8 +1,4 @@
-# Documentatie
-
-## Table of contents
-
-## Tehnologii
+# Tehnologii
 
 Proiectul a fost scis in [purescript](https://www.purescript.org/), un limbaj de programare pur functionala cu sintaxa aproape indentica cu haskell dar care poate fi compilat in javascript.
 
@@ -15,9 +11,57 @@ Proiectul a fost scis in [purescript](https://www.purescript.org/), un limbaj de
 - Proiectul respecta standardul [all-contributors](https://github.com/all-contributors/all-contributors)
 - Pentru CI & CD am folosit [semantic-release](https://semantic-release.gitbook.io/semantic-release/) impreuna cu [github-actions](https://github.com/features/actions)
 
-## Arhitectura
+# Arhitectura
 
-TODO
+Purescript este un libmbaj de programare pur functional. Nici o functie nu are effecte secundare si totul este imutabil.
+
+## Cod de la dreapta la sttanga
+
+In limaje cum ar fi f# sau elm este destul de normal ca aplicarea functiilor sa se faca de la stanga la dreapa folosind `|>`:
+
+```fsharp
+1 |> foo |> bar |> goo
+```
+
+Purescript a mostenit a multime de lucrucri de la haskell, si chiar daca este posibil sa facem acelasi lucru ca in f# este considerata practica buna ca aplicarile de functii sa fie scrise de la dreapa la stanga:
+
+```haskell
+goo $ bar $ foo 1
+```
+
+## Lentile
+
+O vorba celebra zice (paraframzat in romana):
+
+```
+Ce separa un programator de haskell de un programator de rust? Programatorul de rust tot desface structuri in timp ce programatorul de haskell lucreaza cu ele in orice forma
+```
+
+Pentru a lucra cu structuri complexe de date am folosit lentile. In purescript conventia este ca numele de lentile sa inceapa cu `_`. (Eg: `_NodeGroupNodes`)
+
+## Daca nu exista mutatii, cum se tine minte stateul?
+
+In purescript exista typeclassul `MonadState`. Acest typeclass generalizeaza structurile care tin in interiorul lor un state. Cel mai cunoscut exemplu este cel folosind functii si tupluri:
+
+```haskell
+foo state = (someValueDependeingOnState, newState)
+```
+
+Chiar daca nici o variabila nu e mutabila putem returna un now state. Prin intermediul operatiilor monadice si al notatiei `do` nu trebuie sa scriem totate aceste lucruri manual, cea ce creaza un workflow in care avem posibilitatea sa folosim un state fara a fi expusi la bugurile create de acest concept de obicei in programarea imperativa.
+
+### Denumirea modulelor
+
+Pentru a denumi fiecare modul mi-am pus intrebarea "daca acest modul ar fi in interiorul unei librarii, cum ar fi numit?", si apoi adaug `Lunarbox.` in fata raspunsului. De exemplu cand am vrut sa implementez conceptul de `Camera` am creiat modulul `Lunarbox.Data.Editor.Camera`
+
+### Denumirea variabilelor
+
+In programarea functionala este un lucru foarte obisnuit sa denumim a versiune updatata a lui `<name>` `<name>'`
+
+### Fisiere lungi
+
+In programarea imperativa este considerata o practica buna ca fisierele sa fie de sub 200 de linii. In programarea functionala asta nu conteaza, deoarece totul este foarte sigur iar principiul copozitiei este folosit din plin fisierele cu peste 500 de linii de cod nu sunt ceva special in proiectele mari. De exemplu aici este o sectiune din documentatia pentru [elm](https://elm-lang.org/) (un alt limbaj de programare functionala): ![elm docs](./assets/elm.png)
+
+De exemplu fisierul State.purs contine o multime de functii micute ce manipuleaza diverse parti ale editorului. Fisierul are peste 750 de linii, dar de ce as impartii in mai multe fisiere cand toate functiile au legatura cu acelasi lucru?
 
 ## Portabilitate
 
@@ -27,9 +71,11 @@ Aplicatia ruleaza pe orice pc ce poate rula o versiue recenta de chrome sau fire
 
 Proiectul se bazeaza cel mai mult pe user-testing, dar am scris si cateva unit testuri pentru a ma asigura ca algoritmul de aranjare a arcurilor pe mai multe cercuri functioneaza cu mult inainte de a implementa partea grafica.
 
-## Gestionarea codului
+# Gestionarea codului
 
 De la inceput am folosit [git](). Deoarece in fiecare repo (front-end / back-end) a lucrat o singura persoana am folosit un sistem de branching destul de simplu:
+
+## Ci & Cd
 
 Branchul default este `develop` care contine cele mai recente surse ale aplicatii. Fiecare commit in develop este testat si construit automat folosind github actions. Mereu cand vreau sa fac un release creeez un pull request in `master`. Dupa ce totul e testat si compilat se genereaza un changelog din commituri (acest lucru este posibil deoarece folosesc [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)) si un github release avand ca descriere sectiunea din changelog a respectibului release. Dupa acesti pasi proiectul este publicat automat pe [netlify](https://www.netlify.com/).
 
