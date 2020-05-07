@@ -1,3 +1,27 @@
+# [1.15.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.14.0...v1.15.0) (2020-05-07)
+
+
+### Bug Fixes
+
+* clean up dependency graph when deleting nodes ([09c30c8](https://github.com/Mateiadrielrafael/lunarbox/commit/09c30c8366a592afa2d7778cfd94486a15fa2b68))
+* fixed function level dependency cycles when adding nodes from the search bar ([098ebe4](https://github.com/Mateiadrielrafael/lunarbox/commit/098ebe4b96da38344d62d4761272af19ae81a11a))
+
+
+### Features
+
+* added a favicon and an icon in the left bottom corner of the editor ([25cbc8f](https://github.com/Mateiadrielrafael/lunarbox/commit/25cbc8f4141ad3224274617467133c63191a8ad4))
+* descriptions for all the nodes ([16e0d8d](https://github.com/Mateiadrielrafael/lunarbox/commit/16e0d8da84bd266cd6d0427f86a886dcd0318442))
+* display pin descriptions ([98b1721](https://github.com/Mateiadrielrafael/lunarbox/commit/98b1721882b497dfdf44c9762824d52ebbac17d7))
+* even more keyboard shortcuts ([824ec32](https://github.com/Mateiadrielrafael/lunarbox/commit/824ec3221ca48260e2c7d204be4f9910005e356b))
+* getting the project list from the api ([f7c6ddd](https://github.com/Mateiadrielrafael/lunarbox/commit/f7c6ddda9a1187146010f2e031012228e2a56e52))
+* int id instead of strnig ([c8226c5](https://github.com/Mateiadrielrafael/lunarbox/commit/c8226c5eaaa9b293571b7c58ad4a7719737e7b1c))
+* loading projects from the api ([1197273](https://github.com/Mateiadrielrafael/lunarbox/commit/119727307e016f247cbe350a396ead87595f7bdc))
+* more keybindings for the add nodes input ([2d95dee](https://github.com/Mateiadrielrafael/lunarbox/commit/2d95dee827718601b15d1d740d8fed209889f1a6))
+* more math nodes ([2fbdd20](https://github.com/Mateiadrielrafael/lunarbox/commit/2fbdd208fec4ff3a8a14f3d847e8533ce53cbe71))
+* node deleting ([fcdce2b](https://github.com/Mateiadrielrafael/lunarbox/commit/fcdce2b1b62b68c02a1db5dfad0a6bbad4759dc3))
+* project creating ([65f683b](https://github.com/Mateiadrielrafael/lunarbox/commit/65f683b21af8bdf424a968a612e353bdd7c3d54b))
+* spawn output nodes in the middle of the screen ([00b4ce2](https://github.com/Mateiadrielrafael/lunarbox/commit/00b4ce2a33c37c3b500c9a16e26a8f85ba04c147))
+
 # [1.14.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.13.0...v1.14.0) (2020-05-06)
 
 
