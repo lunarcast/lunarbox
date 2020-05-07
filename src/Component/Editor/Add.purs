@@ -3,7 +3,6 @@ module Lunarbox.Component.Editor.Add
   ) where
 
 import Prelude
-import Control.MonadZero (guard)
 import Data.Array as Array
 import Data.Default (def)
 import Data.Either (either)
@@ -14,7 +13,6 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..), fst)
 import Data.Unfoldable (replicate)
-import Halogen (ClassName(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
@@ -23,7 +21,7 @@ import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
 import Lunarbox.Component.Editor.Node (SelectionStatus(..), renderNode)
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
@@ -50,6 +48,7 @@ type Input
 
 type Actions a
   = { edit :: FunctionName -> Maybe a
+    , delete :: FunctionName -> Maybe a
     , addNode :: FunctionName -> Maybe a
     , changeInputCount :: FunctionName -> Int -> Maybe a
     }
@@ -86,6 +85,15 @@ nodeInput inputCount typeMap name functionData =
       , function: name
       }
 
+-- The little icon buttons next to each node
+nodeButton :: forall a s m. Boolean -> Maybe a -> String -> HH.ComponentHTML a s m
+nodeButton active handleClick iconName =
+  whenElem active \_ ->
+    HH.div
+      [ onClick $ const handleClick
+      ]
+      [ icon iconName ]
+
 makeNode ::
   forall a s m.
   Actions a ->
@@ -93,7 +101,7 @@ makeNode ::
   FunctionName ->
   Map.Map Location Type ->
   Map.Map FunctionName Int -> FunctionData -> HH.ComponentHTML a s m
-makeNode { edit, addNode, changeInputCount } { isUsable, isEditable } name typeMap inputCountMap functionData =
+makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, canBeDeleted } name typeMap inputCountMap functionData =
   HH.div [ className "node" ]
     [ SE.svg
         [ SA.width 75.0
@@ -111,8 +119,13 @@ makeNode { edit, addNode, changeInputCount } { isUsable, isEditable } name typeM
         ]
     , container "node-data"
         [ container "node-text"
-            [ HH.div [ HP.id_ "node-name", className "no-overflow" ]
-                [ HH.text $ show name
+            [ container "node-header"
+                [ HH.div [ HP.id_ "node-name", className "no-overflow" ]
+                    [ HH.text $ show name
+                    ]
+                , nodeButton isUsable (addNode name) "add"
+                , nodeButton isEditable (edit name) "edit"
+                , nodeButton canBeDeleted (delete name) "delete"
                 ]
             , container "node-type"
                 $ fromMaybe mempty
@@ -130,18 +143,6 @@ makeNode { edit, addNode, changeInputCount } { isUsable, isEditable } name typeM
                     , onValueInput $ changeInputCount name <=< map (clamp 0 maxInputs) <<< fromString
                     ]
                 ]
-            ]
-        , container "node-buttons"
-            [ HH.div
-                [ HP.classes $ ClassName <$> ("active" <$ guard isUsable)
-                , onClick $ const if isUsable then addNode name else Nothing
-                ]
-                [ icon "add" ]
-            , HH.div
-                [ HP.classes $ ClassName <$> ("active" <$ guard isEditable)
-                , onClick $ const if isEditable then edit name else Nothing
-                ]
-                [ icon "edit" ]
             ]
         ]
     ]

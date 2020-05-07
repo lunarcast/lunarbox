@@ -38,7 +38,6 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
@@ -49,7 +48,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
@@ -91,6 +90,7 @@ data Action
   | SetExample Boolean
   | SearchNodes String
   | HandleAddPanelKeyPress KeyboardEvent
+  | DeleteFunction FunctionName
 
 data Output m
   = Save (EditorState m)
@@ -287,7 +287,6 @@ component =
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
     SelectInput id index -> do
-      printString "selecting input"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
@@ -297,7 +296,6 @@ component =
         shouldConnect = isNothing $ find (_ == location) unconnectableList
       when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
     SelectOutput id -> do
-      printString "selecting output"
       unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id
@@ -321,6 +319,7 @@ component =
       isAdmin <- gets $ view _isAdmin
       when isAdmin $ modify_ $ set _isExample isExample
     SearchNodes input -> modify_ $ set _nodeSearchTerm input
+    DeleteFunction name -> modify_ $ deleteFunction name
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -409,6 +408,7 @@ component =
             { edit: Just <<< SelectFunction <<< Just
             , addNode: Just <<< CreateNode
             , changeInputCount: (Just <<< _) <<< ChangeInputCount
+            , delete: Just <<< DeleteFunction
             }
         , container "create-input"
             [ HH.button
