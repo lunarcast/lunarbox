@@ -542,6 +542,10 @@ searchNode state = sortBySearch show searchTerm nodes
 
   nodes = Set.toUnfoldable $ Map.keys $ view _functionData state
 
+-- Check if a function exists
+functionExists :: forall a s m. FunctionName -> State a s m -> Boolean
+functionExists name = Map.member name <<< view _functionData
+
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
 _inputCountMap = prop (SProxy :: _ "inputCountMap")

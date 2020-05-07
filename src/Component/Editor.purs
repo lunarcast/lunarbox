@@ -12,7 +12,7 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Array ((!!))
 import Data.Default (def)
-import Data.Foldable (find, foldr, for_)
+import Data.Foldable (find, foldr, for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
@@ -24,7 +24,7 @@ import Data.Tuple (Tuple(..), uncurry)
 import Data.Vec (vec2)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, Slot, SubscriptionId, defaultEval, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
@@ -38,9 +38,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap)
 import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
@@ -51,18 +49,20 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _expression, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _typeMap, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
+import Web.Event.Event as Event
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
+import Web.HTML.HTMLElement (focus)
+import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.HTML.Window (document) as Web
 import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
-import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
@@ -101,6 +101,14 @@ type ChildSlots
 -- Shorthand for manually passing the types of the actions and child slots
 type EditorState m
   = State Action ChildSlots m
+
+-- We use this to automatically focus on the correct elemtn when pressing S
+searchNodeInputRef :: RefLabel
+searchNodeInputRef = RefLabel "search node"
+
+-- We need this to only trigger events when in focus
+searchNodeClassName :: String
+searchNodeClassName = "search-node"
 
 -- Actions to run the scene component with
 sceneActions :: Scene.Actions Action
@@ -170,15 +178,43 @@ component =
         liftEffect $ stopPropagation $ KE.toEvent event
         state <- get
         raise $ Save state
+      | KE.key event == "s" -> do
+        let
+          targetInput =
+            HTMLInputElement.fromEventTarget
+              =<< Event.target (KE.toEvent event)
+        when (isNothing targetInput) do
+          { currentTab, panelIsOpen } <- get
+          when (currentTab /= Add || not panelIsOpen) do
+            modify_ $ set _panelIsOpen true <<< set _currentTab Add
+            adjustSceneScale
+          liftEffect $ preventDefault $ KE.toEvent event
+          getHTMLElementRef searchNodeInputRef >>= traverse_ (liftEffect <<< focus)
       | otherwise -> pure unit
     HandleAddPanelKeyPress event
       | KE.key event == "Enter" -> do
         sortedFunctions <- gets searchNode
         for_ (sortedFunctions !! 0) (handleAction <<< CreateNode)
+      | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
+        inputElement <- getHTMLElementRef searchNodeInputRef
+        for_ (inputElement >>= HTMLInputElement.fromHTMLElement) \elem -> do
+          state <- get
+          inputValue <- liftEffect $ HTMLInputElement.value elem
+          let
+            inputFunctionName = FunctionName inputValue
+
+            exists = functionExists inputFunctionName state
+          if inputValue /= "" && (not exists) then
+            modify_ $ initializeFunction inputFunctionName
+          else
+            if exists then
+              handleAction $ SelectFunction $ Just inputFunctionName
+            else
+              pure unit
       | KE.ctrlKey event && KE.key event == " " -> do
         sortedFunctions <- gets searchNode
         handleAction $ SelectFunction $ sortedFunctions !! 0
-      | otherwise -> pure unit
+      | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
     CreateNode name -> do
       modify_ $ execState $ createNode name
     TogglePanel -> do
@@ -197,10 +233,6 @@ component =
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
       when (oldFunction == Nothing) adjustSceneScale
-      t <- gets $ view _typeMap
-      e <- gets $ view _expression
-      printString $ printTypeMap t
-      printString $ printSource e
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseMove event -> do
@@ -353,6 +385,8 @@ component =
                   [ HP.id_ "node-search-input"
                   , HP.placeholder "Search nodes. Eg: add, greater than..."
                   , HP.value nodeSearchTerm'
+                  , HP.ref searchNodeInputRef
+                  , className searchNodeClassName
                   , onKeyUp $ Just <<< HandleAddPanelKeyPress
                   , onValueInput $ Just <<< SearchNodes
                   ]
