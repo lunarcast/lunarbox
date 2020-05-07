@@ -9,7 +9,8 @@ import Halogen.HTML (HTML)
 type Actions a
   = {}
 
-type Input = Unit
+type Input
+  = Unit
 
 loading :: forall h a. Input -> Actions a -> HTML h a
 loading state actions = HH.text "unimplemented"

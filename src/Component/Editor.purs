@@ -40,7 +40,7 @@ import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.Camera (toWorldCoordinates, zoomOn)
+import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
@@ -155,7 +155,9 @@ component =
       -- Stuff which we need to run at the start
       handleAction AdjustSceneScale
       scale <- gets $ view _sceneScale
-      modify_ $ pan $ (_ / 2.0) <$> scale
+      currentCameraPosition <- gets $ view $ _currentCamera <<< _CameraPosition
+      -- We pan only when the state generation was done without knowing the scale of the scene
+      when (currentCameraPosition == zero) $ modify_ $ pan $ (_ / 2.0) <$> scale
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
