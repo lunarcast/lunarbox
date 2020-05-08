@@ -24,7 +24,7 @@ devUrl :: BaseUrl
 devUrl = BaseUrl "http://localhost:8090"
 
 prodUrl :: BaseUrl
-prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com/api/"
+prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com/"
 
 main :: Boolean -> Effect Unit
 main production =
