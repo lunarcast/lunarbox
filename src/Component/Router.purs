@@ -103,7 +103,6 @@ component =
         navigate $ fromMaybe Home route
       else do
         when (route /= Just destination) $ navigate destination
-        printString "here"
     Logout -> logout
 
   -- Handle queries from the outside world
