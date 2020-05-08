@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.16.1...v1.16.2) (2020-05-08)
+
+
+### Bug Fixes
+
+* removed extra / from prod api link ([a2a2b00](https://github.com/Mateiadrielrafael/lunarbox/commit/a2a2b005f5ead320d08cac895b1ca151765ea6c6))
+
 ## [1.16.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.16.0...v1.16.1) (2020-05-08)
 
 
