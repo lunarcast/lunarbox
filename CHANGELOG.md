@@ -1,3 +1,23 @@
+# [1.16.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.15.0...v1.16.0) (2020-05-08)
+
+
+### Bug Fixes
+
+* display admin settings when logged in as an admin ([8f6236f](https://github.com/Mateiadrielrafael/lunarbox/commit/8f6236f026917318462c80e9c260e167874968d6))
+* no more autosaving while editing the name ([e411706](https://github.com/Mateiadrielrafael/lunarbox/commit/e411706f407f1522eddd971f0b11b081c4dfe6dc))
+
+
+### Features
+
+* autosave ([b8dfcf0](https://github.com/Mateiadrielrafael/lunarbox/commit/b8dfcf03e94bda254389bb9ecdb8104733b505ce))
+* better projects page on smaller windows ([273a2d6](https://github.com/Mateiadrielrafael/lunarbox/commit/273a2d68df4797ab21bedf67bf21c34b1c482306))
+* cloning examples ([53c0d5e](https://github.com/Mateiadrielrafael/lunarbox/commit/53c0d5eb387d4975090a141aaafbdc51a359eddc))
+* error page ([3f4d086](https://github.com/Mateiadrielrafael/lunarbox/commit/3f4d0869dcaafb1e67fca0f83796e404f419a65d))
+* loading animation ([fe79bdb](https://github.com/Mateiadrielrafael/lunarbox/commit/fe79bdb973fb571d903219bbc19c01da7139a944))
+* more array nodes ([eefcd52](https://github.com/Mateiadrielrafael/lunarbox/commit/eefcd529ce870c6a2edb8470c667c1bfc4fcc93b))
+* more array nodes ([29aec1e](https://github.com/Mateiadrielrafael/lunarbox/commit/29aec1e75295e1af7ca3318d55247d5979f77400))
+* project deleting ([bbd0531](https://github.com/Mateiadrielrafael/lunarbox/commit/bbd0531d2897efbe058427766dcef3c3fac21d44))
+
 # [1.15.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.14.0...v1.15.0) (2020-05-07)
 
 
