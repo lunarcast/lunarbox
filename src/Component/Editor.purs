@@ -20,6 +20,7 @@ import Data.List.Lazy as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
+import Data.String as String
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Vec (vec2)
@@ -328,9 +329,13 @@ component =
     Autosave oldState -> do
       interval <- asks $ view _autosaveInterval
       liftAff $ delay interval
-      newState <- gets stateToJson
-      when (newState /= oldState) $ raise $ Save newState
-      handleAction $ Autosave newState
+      name <- gets $ view _name
+      if String.length name >= 2 then do
+        newState <- gets stateToJson
+        when (newState /= oldState) $ raise $ Save newState
+        handleAction $ Autosave newState
+      else
+        handleAction $ Autosave oldState
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
