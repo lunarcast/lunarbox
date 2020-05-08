@@ -1,6 +1,7 @@
 module Lunarbox.Data.Dataflow.Native.Array (arrayNodes) where
 
 import Prelude
+import Data.Array as Array
 import Data.Filterable (filter)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
@@ -8,13 +9,13 @@ import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction, toArray, toBoolean)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (createTypeVariable, typeArray, typeBool, typeFunction)
+import Lunarbox.Data.Dataflow.Type (createTypeVariable, multiArgumentFuncion, typeArray, typeBool, typeFunction)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 
 -- List will all the native array nodes
 arrayNodes :: forall a s m. Array (NativeConfig a s m)
-arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat ]
+arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat, match, concatArrays ]
 
 -- A constant equal to an array with 0 elements
 typeEmptyArray :: Scheme
@@ -178,5 +179,87 @@ flat =
           }
         ]
         { name: "array", description: "An array containing all the elements of the nested arrays of the input." }
+    , component: Nothing
+    }
+
+-- Basically used to pattern match an array
+typeMatch :: Scheme
+typeMatch =
+  Forall [ a, b ]
+    $ multiArgumentFuncion
+        [ typeB
+        , multiArgumentFuncion
+            [ typeA
+            , typeArray typeA
+            ]
+            typeB
+        , typeArray typeA
+        ]
+        typeB
+  where
+  Tuple a typeA = createTypeVariable "t0"
+
+  Tuple b typeB = createTypeVariable "t1"
+
+evalMatch :: RuntimeValue -> RuntimeValue -> RuntimeValue -> RuntimeValue
+evalMatch default (Function function) (NArray array) = case Array.uncons array of
+  Just { head, tail } -> case function head of
+    Function function' -> function' $ NArray tail
+    _ -> Null
+  Nothing -> default
+
+evalMatch _ _ _ = Null
+
+match :: forall a s m. NativeConfig a s m
+match =
+  NativeConfig
+    { name: FunctionName "pattern match array"
+    , expression: (NativeExpression typeMatch $ Function $ binaryFunction <<< evalMatch)
+    , functionData:
+      internal
+        [ { name: "default value"
+          , description: "If the 3rd argument is an empty array this will become the result"
+          }
+        , { name: "function"
+          , description: "A function which takes the first element of an array as the first argument and the rest of the array as the second."
+          }
+        , { name: "array"
+          , description: "Array to pattern match. If this is empty the defuault value will be returned. Else the head and the tail of this array will be based to the given function."
+          }
+        ]
+        { name: "array"
+        , description: "If the given array was empty this will equal the default value, else this will be the result of passing the head and the tail of the given array to the given function."
+        }
+    , component: Nothing
+    }
+
+-- Concat 2 arrays into 1
+evalConcat :: RuntimeValue -> RuntimeValue -> RuntimeValue
+evalConcat (NArray first) (NArray second) = NArray $ first <> second
+
+evalConcat _ _ = Null
+
+typeConcat :: Scheme
+typeConcat =
+  Forall [ a ]
+    $ multiArgumentFuncion
+        [ typeA
+        , typeA
+        ]
+        typeA
+  where
+  Tuple a typeA = createTypeVariable "t0"
+
+concatArrays :: forall a s m. NativeConfig a s m
+concatArrays =
+  NativeConfig
+    { name: FunctionName "concat arrays"
+    , expression: NativeExpression typeConcat $ binaryFunction evalConcat
+    , functionData:
+      internal
+        [ { name: "first array", description: "Any array" }
+        , { name: "second array", description: "Any array" }
+        ]
+        { name: "a ++ b", description: "An arrray containing the elements of both inputs" }
     , component: Nothing
     }

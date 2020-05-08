@@ -232,10 +232,12 @@ component =
       adjustSceneScale
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
+      panelWasOpen <- gets $ view _panelIsOpen
       if (oldTab == newTab) then
         handleAction TogglePanel
-      else
-        modify_ $ set _currentTab newTab
+      else do
+        modify_ $ set _currentTab newTab <<< set _panelIsOpen true
+        when (not panelWasOpen) adjustSceneScale
     CreateFunction name -> do
       modify_ $ initializeFunction name
     SelectFunction name -> do
