@@ -4,6 +4,7 @@ module Lunarbox.Component.Projects
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
+import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Lens (Lens', set)
 import Data.Lens.Record (prop)
@@ -135,8 +136,8 @@ component =
     Loading -> pure loading
     Failure err -> pure $ HH.text $ "error " <> err
     Success { userProjects, exampleProjects } ->
-      [ renderProjectList "Projects" (order userProjects) [ listButton "add" CreateProject ]
-      , renderProjectList "Examples" (order exampleProjects) []
+      [ renderProjectList "Projects" (order $ Array.reverse userProjects) [ listButton "add" CreateProject ]
+      , renderProjectList "Examples" (order $ Array.reverse exampleProjects) []
       ]
     where
     order = sortBySearch _.name search

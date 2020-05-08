@@ -26,7 +26,7 @@ import Data.Vec (vec2)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
@@ -175,17 +175,13 @@ component =
             (EventType "resize")
             (Window.toEventTarget window)
             (const $ Just AdjustSceneScale)
+      void <<< fork <<< handleAction <<< Autosave <<< stateToJson =<< get
     AdjustSceneScale -> adjustSceneScale
     HandleKey sid event
       | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
       | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
-      | KE.ctrlKey event && KE.key event == "s" -> do
-        liftEffect $ preventDefault $ KE.toEvent event
-        liftEffect $ stopPropagation $ KE.toEvent event
-        state <- get
-        raise $ Save $ stateToJson state
       | KE.key event == "s" -> do
         let
           targetInput =

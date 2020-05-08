@@ -18,7 +18,7 @@ import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval)
 import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate)
-import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveRawProject)
+import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.HOC.Connect as Connect
 import Lunarbox.Component.Loading (loading)
@@ -83,7 +83,8 @@ component =
       modify_ $ set _projectData $ fromEither response
     Receive userData -> modify_ $ Record.merge userData
     Save json -> do
-      response <- saveRawProject json
+      id <- gets $ view _id
+      response <- saveProject id json
       case response of
         Left error -> modify_ $ set _projectData $ Failure error
         _ -> pure unit
