@@ -10,8 +10,9 @@ import Data.Argonaut (Json)
 import Data.Either (Either(..))
 import Data.Lens (Lens', set, view)
 import Data.Lens.Record (prop)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
+import Debug.Trace (spy)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, mkComponent, mkEval)
@@ -94,8 +95,10 @@ component =
   handleEditorOutput = case _ of
     Editor.Save state -> Just $ Save state
 
-  render { projectData } = case projectData of
+  render { projectData, currentUser } = case projectData of
     NotAsked -> loading
     Loading -> loading
     Failure text -> error text
-    Success state -> slot (SProxy :: _ "editor") unit Editor.component state handleEditorOutput
+    Success state -> case currentUser of
+      Nothing -> error "not logged in"
+      Just { isAdmin } -> slot (SProxy :: _ "editor") unit Editor.component (Record.merge { isAdmin } state) handleEditorOutput

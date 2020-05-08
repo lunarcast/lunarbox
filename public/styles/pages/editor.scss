@@ -105,6 +105,10 @@
   overflow: hidden;
 }
 
+#editor > #panel:not(.active) .switch {
+  display: none;
+}
+
 .project-setting {
   $margin: 1rem;
 

@@ -243,10 +243,10 @@ typeConcat :: Scheme
 typeConcat =
   Forall [ a ]
     $ multiArgumentFuncion
-        [ typeA
-        , typeA
+        [ typeArray typeA
+        , typeArray typeA
         ]
-        typeA
+    $ typeArray typeA
   where
   Tuple a typeA = createTypeVariable "t0"
 
