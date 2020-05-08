@@ -3,14 +3,16 @@ module Lunarbox.Component.Loading
   ) where
 
 import Prelude
-import Halogen.HTML as HH
+import Data.Array (replicate)
 import Halogen.HTML (HTML)
+import Halogen.HTML as HH
+import Lunarbox.Component.Utils (className)
 
-type Actions a
-  = {}
-
-type Input
-  = Unit
-
-loading :: forall h a. Input -> Actions a -> HTML h a
-loading state actions = HH.text "unimplemented"
+-- Loading animation 
+-- Based on loading.io
+loading :: forall h a. HTML h a
+loading =
+  HH.div [ className "loading-container" ]
+    [ HH.div [ className "lds-roller" ]
+        $ replicate 8 (HH.div_ [])
+    ]

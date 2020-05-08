@@ -13,10 +13,8 @@ import Routing.Duplex.Parser (RouteError)
 
 data Route
   = Home
-  | Playground
   | Login
   | Register
-  | Settings
   | Projects
   | Project ProjectId
 
@@ -35,10 +33,8 @@ routingCodec =
   root
     $ sum
         { "Home": noArgs
-        , "Settings": "settings" / noArgs
         , "Login": "login" / noArgs
         , "Register": "register" / noArgs
-        , "Playground": "playground" / noArgs
         , "Projects": "projects" / noArgs
         , "Project": "project" / projectId segment
         }

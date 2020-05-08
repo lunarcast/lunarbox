@@ -472,11 +472,12 @@ deleteNode functionName id state =
           $ map \input -> if input == Just id then Nothing else input
         modify_ $ over (_nodes functionName) $ G.delete id
         modify_ $ set (_atNodeData functionName id) Nothing
-        modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id == _)
+        modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id /= _)
         when (functionRefCount <= 1)
           $ modify_
           $ over _functions
           $ G.removeEdge nodeFunction functionName
+        modify_ compile
   where
   node = join $ preview (_atNode functionName id) state
 

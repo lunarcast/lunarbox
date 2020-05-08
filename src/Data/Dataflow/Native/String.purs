@@ -48,7 +48,7 @@ evalConcat _ _ = Null
 concatStrings :: forall a s m. NativeConfig a s m
 concatStrings =
   NativeConfig
-    { name: FunctionName "concat"
+    { name: FunctionName "concat strings"
     , expression: NativeExpression (Forall [] $ typeFunction typeString $ typeFunction typeString typeString) $ binaryFunction evalConcat
     , functionData:
       internal

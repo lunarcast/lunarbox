@@ -4,9 +4,12 @@ module Lunarbox.Capability.Resource.Project
   , getProject
   , createProject
   , saveProject
+  , deleteProject
+  , cloneProject
   ) where
 
 import Prelude
+import Data.Argonaut (Json)
 import Data.Either (Either)
 import Halogen (HalogenM, lift)
 import Lunarbox.Data.Editor.State (State)
@@ -19,11 +22,15 @@ class
   getProjects :: m (Either String ProjectList)
   getProject :: forall a s m'. ProjectId -> m (Either String (State a s m'))
   createProject :: forall a s m'. State a s m' -> m (Either String ProjectId)
-  saveProject :: forall a s m'. State a s m' -> m (Either String Unit)
+  saveProject :: ProjectId -> Json -> m (Either String Unit)
+  deleteProject :: ProjectId -> m (Either String Unit)
+  cloneProject :: ProjectId -> m (Either String ProjectId)
 
 -- | This instance lets us avoid having to use `lift` when we use these functions in a component.
 instance manageUserHalogenM :: ManageProjects m => ManageProjects (HalogenM st act slots msg m) where
   getProjects = lift getProjects
   getProject = lift <<< getProject
   createProject = lift <<< createProject
-  saveProject = lift <<< saveProject
+  deleteProject = lift <<< deleteProject
+  cloneProject = lift <<< cloneProject
+  saveProject = (lift <<< _) <<< saveProject

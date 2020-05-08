@@ -7,9 +7,10 @@ module Lunarbox.Component.Editor
   ) where
 
 import Prelude
-import Control.Monad.Reader (class MonadReader)
+import Control.Monad.Reader (class MonadReader, asks)
 import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
+import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Default (def)
 import Data.Foldable (find, foldr, for_, traverse_)
@@ -19,12 +20,14 @@ import Data.List.Lazy as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
+import Data.String as String
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Vec (vec2)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff (delay)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
@@ -38,7 +41,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
-import Lunarbox.Config (Config)
+import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
@@ -49,6 +52,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
+import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
@@ -92,9 +96,10 @@ data Action
   | SearchNodes String
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
+  | Autosave Json
 
-data Output m
-  = Save (EditorState m)
+data Output
+  = Save Json
 
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
@@ -135,7 +140,7 @@ createId = do
   { nextId } <- get
   pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
-component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) (Output m) m
+component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
 component =
   mkComponent
     { initialState: compile <<< loadPrelude <<< identity
@@ -148,7 +153,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots (Output m) m Unit
+  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots Output m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window
@@ -171,17 +176,13 @@ component =
             (EventType "resize")
             (Window.toEventTarget window)
             (const $ Just AdjustSceneScale)
+      void <<< fork <<< handleAction <<< Autosave <<< stateToJson =<< get
     AdjustSceneScale -> adjustSceneScale
     HandleKey sid event
       | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
         modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
       | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
-      | KE.ctrlKey event && KE.key event == "s" -> do
-        liftEffect $ preventDefault $ KE.toEvent event
-        liftEffect $ stopPropagation $ KE.toEvent event
-        state <- get
-        raise $ Save state
       | KE.key event == "s" -> do
         let
           targetInput =
@@ -232,10 +233,12 @@ component =
       adjustSceneScale
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
+      panelWasOpen <- gets $ view _panelIsOpen
       if (oldTab == newTab) then
         handleAction TogglePanel
-      else
-        modify_ $ set _currentTab newTab
+      else do
+        modify_ $ set _currentTab newTab <<< set _panelIsOpen true
+        when (not panelWasOpen) adjustSceneScale
     CreateFunction name -> do
       modify_ $ initializeFunction name
     SelectFunction name -> do
@@ -323,6 +326,16 @@ component =
       when isAdmin $ modify_ $ set _isExample isExample
     SearchNodes input -> modify_ $ set _nodeSearchTerm input
     DeleteFunction name -> modify_ $ deleteFunction name
+    Autosave oldState -> do
+      interval <- asks $ view _autosaveInterval
+      liftAff $ delay interval
+      name <- gets $ view _name
+      if String.length name >= 2 then do
+        newState <- gets stateToJson
+        when (newState /= oldState) $ raise $ Save newState
+        handleAction $ Autosave newState
+      else
+        handleAction $ Autosave oldState
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

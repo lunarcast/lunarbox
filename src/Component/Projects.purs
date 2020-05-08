@@ -4,20 +4,23 @@ module Lunarbox.Component.Projects
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
+import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Lens (Lens', set)
+import Data.Filterable (filter)
+import Data.Lens (Lens', preview, set)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
-import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, defaultEval, mkComponent, mkEval, modify_)
+import Effect.Class (class MonadEffect, liftEffect)
+import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
-import Lunarbox.Capability.Resource.Project (class ManageProjects, createProject, getProjects)
+import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject, createProject, deleteProject, getProjects)
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Utils (className, container)
+import Lunarbox.Component.Loading (loading)
+import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.State (emptyState)
@@ -25,7 +28,10 @@ import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectList, ProjectOverview)
 import Lunarbox.Data.Route (Route(..))
-import Network.RemoteData (RemoteData(..), fromEither)
+import Network.RemoteData (RemoteData(..), _Success, fromEither)
+import Web.Event.Event (stopPropagation)
+import Web.UIEvent.MouseEvent (MouseEvent)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 type State
   = { projectList :: RemoteData String ProjectList
@@ -42,8 +48,10 @@ _search = prop (SProxy :: _ "search")
 data Action
   = Initialize
   | OpenProject ProjectId
-  | Search String
+  | DeleteProject ProjectId MouseEvent
   | CreateProject
+  | CloneProject ProjectId
+  | Search String
 
 type Output
   = Void
@@ -85,20 +93,37 @@ component =
       modify_ $ set _projectList $ fromEither projectList
     Search term -> modify_ $ set _search term
     OpenProject id -> navigate $ Project id
+    CloneProject id -> do
+      response <- cloneProject id
+      case response of
+        Right cloneId -> navigate $ Project cloneId
+        Left err -> modify_ $ set _projectList $ Failure err
+    DeleteProject id event -> do
+      liftEffect $ stopPropagation $ MouseEvent.toEvent event
+      oldProjects <- gets $ preview $ _projectList <<< _Success
+      modify_ $ set _projectList Loading
+      response <- deleteProject id
+      case response of
+        Right _ ->
+          modify_
+            $ set _projectList
+            $ case oldProjects of
+                Just { exampleProjects, userProjects } ->
+                  Success
+                    { exampleProjects, userProjects: filter ((_ /= id) <<< _.id) userProjects }
+                Nothing -> Failure "Cannot find projec list"
+        Left err -> modify_ $ set _projectList $ Failure err
     CreateProject -> do
-      response <- createProject emptyState
       -- Display a loading message
       modify_ $ set _projectList Loading
+      response <- createProject emptyState
       case response of
         Right id -> navigate $ Project id
         Left err -> modify_ $ set _projectList $ Failure err
 
-  loading :: forall h a. HH.HTML h a
-  loading = HH.text "loading"
-
-  renderProject { name, id, metadata: { functionCount, nodeCount } } =
-    HH.div [ className "project", onClick $ const $ Just $ OpenProject id ]
-      [ HH.div [ className "project-name" ] [ HH.text name ]
+  renderProject isExample { name, id, metadata: { functionCount, nodeCount } } =
+    HH.div [ className "project", onClick $ const $ Just $ (if isExample then CloneProject else OpenProject) id ]
+      [ HH.div [ className "project-name no-overflow" ] [ HH.text name ]
       , HH.div [ className "project-data" ]
           [ HH.div [ className "function-count" ]
               [ icon "functions"
@@ -108,11 +133,18 @@ component =
               [ icon "track_changes"
               , HH.text $ show nodeCount
               ]
+          , whenElem (not isExample) \_ ->
+              HH.div
+                [ className "node-icon"
+                , onClick $ Just <<< DeleteProject id
+                ]
+                [ icon "delete"
+                ]
           ]
       ]
 
-  renderProjectList :: String -> Array { | ProjectOverview } -> Array (HH.HTML _ _) -> HH.HTML _ _
-  renderProjectList title projects buttons =
+  renderProjectList :: Boolean -> String -> Array { | ProjectOverview } -> Array (HH.HTML _ _) -> HH.HTML _ _
+  renderProjectList areExamples title projects buttons =
     container "project-list"
       [ container "list-header"
           $ [ container "list-title" [ HH.text title ]
@@ -120,7 +152,7 @@ component =
           <> buttons
       , container
           "list-items"
-          $ renderProject
+          $ renderProject areExamples
           <$> projects
       ]
 
@@ -137,8 +169,8 @@ component =
     Loading -> pure loading
     Failure err -> pure $ HH.text $ "error " <> err
     Success { userProjects, exampleProjects } ->
-      [ renderProjectList "Projects" (order userProjects) [ listButton "add" CreateProject ]
-      , renderProjectList "Examples" (order exampleProjects) []
+      [ renderProjectList false "Projects" (order $ Array.reverse userProjects) [ listButton "add" CreateProject ]
+      , renderProjectList true "Examples" (order $ Array.reverse exampleProjects) []
       ]
     where
     order = sortBySearch _.name search

@@ -1,0 +1,23 @@
+@use "../utils/utils";
+
+@import "../theme.scss";
+
+.error-container {
+  @include utils.center;
+
+  width: 100%;
+  height: 100%;
+
+  background: $primary;
+  color: $on-dark-pale;
+}
+
+.error-text {
+  font-weight: bold;
+  font-size: 2rem;
+}
+
+.error-illustration {
+  max-height: 50vh;
+  margin-bottom: 2rem;
+}

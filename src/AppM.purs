@@ -80,10 +80,12 @@ instance manageProjectsAppM :: ManageProjects AppM where
       body = stateToJson state
     response :: Either String ProjectIdData <- mkRequest { endpoint: Projects, method: Post $ Just $ encodeJson body }
     pure $ _.project.id <$> response
+  cloneProject id = do
+    response :: Either String ProjectIdData <- mkRequest { endpoint: Clone id, method: Get }
+    pure $ _.project.id <$> response
   getProject id = do
     response <- mkRawRequest { endpoint: Project id, method: Get }
     pure $ jsonToState =<< response
-  saveProject state = do
-    response <- mkRawRequest { endpoint: Projects, method: Post $ Just $ stateToJson state }
-    pure $ unit <$ response
+  saveProject id json = void <$> mkRawRequest { endpoint: Project id, method: Put $ Just json }
+  deleteProject id = void <$> mkRawRequest { endpoint: Project id, method: Delete }
   getProjects = mkRequest { endpoint: Projects, method: Get }

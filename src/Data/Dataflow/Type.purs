@@ -11,10 +11,12 @@ module Lunarbox.Data.Dataflow.Type
   , numberOfInputs
   , createTypeVariable
   , isArrow
+  , multiArgumentFuncion
   ) where
 
 import Prelude
 import Data.List (List(..), (:))
+import Data.List as List
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
@@ -60,6 +62,16 @@ createTypeVariable :: String -> Tuple TVarName Type
 createTypeVariable name = Tuple varName $ TVariable true varName
   where
   varName = TVarName name
+
+-- Takes an list of types and an output creates a function type from therm
+multiArgumentFuncionImpl :: List Type -> Type -> Type
+multiArgumentFuncionImpl Nil return = return
+
+multiArgumentFuncionImpl (first : last) return = first `typeFunction` multiArgumentFuncionImpl last return
+
+-- Same as multiArgumentFuncionImpl but takes an array instead
+multiArgumentFuncion :: Array Type -> Type -> Type
+multiArgumentFuncion = multiArgumentFuncionImpl <<< List.fromFoldable
 
 -- Internal version of numberOfInputs which also takes an argument for the accumulated count
 numberOfInputs' :: Int -> Type -> Int

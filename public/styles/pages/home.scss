@@ -67,64 +67,65 @@ $bg-height: calc(50vh + #{$tangent} * -50vw);
       filter: brightness(0.8);
       max-width: 80vw;
       text-align: center;
+      font-family: fonts.$montserrat;
 
       #free {
         font-weight: bold;
         filter: brightness(1.7);
       }
     }
+  }
+}
 
-    #action-buttons {
-      @include utils.center;
+#home #action-buttons {
+  @include utils.center;
 
-      flex-direction: row;
-      flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: wrap;
 
-      button {
-        font-family: fonts.$oxanium;
-        margin: 1rem;
-        padding: 1rem;
-        font-size: 1.5rem;
-        width: 10rem;
-        border: none;
-        outline: none;
-        border-radius: 0.3rem;
-        transition: filter $transition-time, box-shadow $transition-time;
-      }
+  button {
+    font-family: fonts.$oxanium;
+    margin: 1rem;
+    padding: 1rem;
+    font-size: 1.5rem;
+    width: 10rem;
+    border: none;
+    outline: none;
+    border-radius: 0.3rem;
+    transition: filter $transition-time, box-shadow $transition-time;
+  }
 
-      button:hover {
-        box-shadow: 0.3rem 0.3rem 0.3rem 0.1rem rgba(0, 0, 0, 0.4);
-        filter: brightness(1.2);
-      }
+  button:hover {
+    box-shadow: 0.3rem 0.3rem 0.3rem 0.1rem rgba(0, 0, 0, 0.4);
+    filter: brightness(1.2);
+  }
 
-      button#primary {
-        color: white;
-        background: darken($secondary, 25%);
-      }
+  button#primary {
+    color: white;
+    background: darken($secondary, 25%);
+  }
 
-      button#secondary {
-        background: darken($bright, 15%);
-      }
+  button#secondary {
+    background: darken($bright, 15%);
+  }
 
-      button#logout {
-        background: transparent;
-        color: $disabled;
+  button#logout {
+    background: transparent;
+    color: $disabled;
 
-        &:hover {
-          box-shadow: none;
-        }
-      }
+    &:hover {
+      box-shadow: none;
+    }
+  }
 
-      &.user {
-        flex-direction: column;
+  &.user {
+    flex-direction: column;
 
-        button#logout {
-          margin: 0;
+    button#logout {
+      margin: 0;
 
-          &:hover {
-            filter: brightness(1.5);
-          }
-        }
+      &:hover {
+        filter: brightness(1.5);
       }
     }
   }

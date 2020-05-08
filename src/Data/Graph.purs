@@ -33,9 +33,9 @@ derive instance ordGraph :: (Ord k, Ord v) => Ord (Graph k v)
 
 derive newtype instance showGraph :: (Show k, Show v) => Show (Graph k v)
 
-derive newtype instance encodeJsonFunctionData :: (Ord k, EncodeJson k, EncodeJson v) => EncodeJson (Graph k v)
+derive newtype instance encodeJsonGraph :: (Ord k, EncodeJson k, EncodeJson v) => EncodeJson (Graph k v)
 
-derive newtype instance decodeJsonFunctionData :: (Ord k, DecodeJson k, DecodeJson v) => DecodeJson (Graph k v)
+derive newtype instance decodeJsonGraph :: (Ord k, DecodeJson k, DecodeJson v) => DecodeJson (Graph k v)
 
 instance functorGraph :: Ord k => Functor (Graph k) where
   map f (Graph m) = Graph (map (lmap f) m)
