@@ -20,6 +20,7 @@ import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
 import Lunarbox.Component.Editor as Editor
+import Lunarbox.Component.Error (error)
 import Lunarbox.Component.HOC.Connect as Connect
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Config (Config)
@@ -96,5 +97,5 @@ component =
   render { projectData } = case projectData of
     NotAsked -> loading
     Loading -> loading
-    Failure text -> HH.text $ "An error occured " <> text
+    Failure text -> error text
     Success state -> slot (SProxy :: _ "editor") unit Editor.component state handleEditorOutput

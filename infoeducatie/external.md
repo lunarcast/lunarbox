@@ -5,6 +5,7 @@
 - All the purescript dependencies I used are listed in spago.dhall
 - Other tooling I used can be found in package.json
 - The loading animation is taken from [loading.io](https://loading.io/css/)
+- THe svg illustrations are taken from [undraw](https://undraw.co/)
 
 ## Why are there other contributors?
 
