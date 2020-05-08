@@ -11,6 +11,27 @@ Proiectul a fost scis in [purescript](https://www.purescript.org/), un limbaj de
 - Proiectul respecta standardul [all-contributors](https://github.com/all-contributors/all-contributors)
 - Pentru CI & CD am folosit [semantic-release](https://semantic-release.gitbook.io/semantic-release/) impreuna cu [github-actions](https://github.com/features/actions)
 
+## De ce purescript
+
+Proiectul nu a fost scris in purescript la inceput. Pentru primele luni din development am folosit [typescript](), [react]() and [fp-ts](). Cand am inceput sa implementez algoritmul de inferenta a tipurilor am observat ca pana si folosind fp-ts, stivele de monazi din typescript erau foarte greu de folosit. Asa ca am inceput sa caut un limbaj de programare functionala
+
+Am incercat elm, am incercat fsharp, iar cand am descroperit purescript am stiut ca este limbajul potrivit:
+
+1. **Derivarea typeclassurilor**: Elm se lauda ca are o strategie unica pentru decodarea / encodarea json-ului deoarece in loc sa folosesti un simplu JSON.parse trebuie sa compui decodatori cea ce face ca totul sa fie safe. Cu toate astea, cantitaeta de biolerplate pentru putina siguranta este foarte mare. Purescript ofera derivarea de typeclassuri si implementatii generice pentru multe typeclassuri cea ce face purescript sa ofere siguranta din elm (nu exista erori la runtime) fara boilerplate.
+
+2. **Similar cu haskell**: Majoritatea resurselor legae de teoria tipurilor si sisteme de tipuri sunt scrise in haskell. Faputl ca purescript are 90% sintaxa din haskell a insemnat ca puteam sa utilizez cunostintele mele de haskell pentru acest proiect fara pronleme.
+
+3. **Package managment de calitate**: am folosit multi manageri de depentinte si pot zice cu confidenta ca spago este unul dintre cel mai solid dintre toate. Nu as exagera daca as zice ca spago sterge podeaua cu npm, pip si nuget. Acest lucru este cauzat in principal deoarece spago foloseste [seturi de pachete](https://github.com/purescript/package-sets)
+
+## De ce parcel
+
+Pana acum am folosit webpack si rollup pentru toate proiectele mele, asa ca am vrut sa incerc ceva nou. Pot zice cu confidenta ca parcel este o alegere solida pentru bundling fara a trebui configurat manual.
+
+## De ce scss
+
+1. **Mixins**: Am scris cateva mixinuri pe care le-am folosit pentru a refolosi stiluri in intreaga aplicatie.
+2. **Matematica la compile time**: la un moment dat am avut nevoie sa calculez a tangenta in stiluri. Scss calculeaza acea tangenta pentru mine la compile time asa ca nu trebuie sa hardcodez numere mai mult decat este necesar.
+
 # Arhitectura
 
 Purescript este un libmbaj de programare pur functional. Nici o functie nu are effecte secundare si totul este imutabil.
