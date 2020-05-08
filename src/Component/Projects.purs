@@ -17,7 +17,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
-import Lunarbox.Capability.Resource.Project (class ManageProjects, createProject, deleteProject, getProjects)
+import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject, createProject, deleteProject, getProjects)
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Utils (className, container, whenElem)
@@ -50,6 +50,7 @@ data Action
   | OpenProject ProjectId
   | DeleteProject ProjectId MouseEvent
   | CreateProject
+  | CloneProject ProjectId
   | Search String
 
 type Output
@@ -92,6 +93,11 @@ component =
       modify_ $ set _projectList $ fromEither projectList
     Search term -> modify_ $ set _search term
     OpenProject id -> navigate $ Project id
+    CloneProject id -> do
+      response <- cloneProject id
+      case response of
+        Right cloneId -> navigate $ Project cloneId
+        Left err -> modify_ $ set _projectList $ Failure err
     DeleteProject id event -> do
       liftEffect $ stopPropagation $ MouseEvent.toEvent event
       oldProjects <- gets $ preview $ _projectList <<< _Success
@@ -116,7 +122,7 @@ component =
         Left err -> modify_ $ set _projectList $ Failure err
 
   renderProject isExample { name, id, metadata: { functionCount, nodeCount } } =
-    HH.div [ className "project", onClick $ const $ Just $ OpenProject id ]
+    HH.div [ className "project", onClick $ const $ Just $ (if isExample then CloneProject else OpenProject) id ]
       [ HH.div [ className "project-name no-overflow" ] [ HH.text name ]
       , HH.div [ className "project-data" ]
           [ HH.div [ className "function-count" ]

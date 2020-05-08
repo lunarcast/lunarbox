@@ -5,6 +5,7 @@ module Lunarbox.Capability.Resource.Project
   , createProject
   , saveProject
   , deleteProject
+  , cloneProject
   ) where
 
 import Prelude
@@ -23,6 +24,7 @@ class
   createProject :: forall a s m'. State a s m' -> m (Either String ProjectId)
   saveProject :: ProjectId -> Json -> m (Either String Unit)
   deleteProject :: ProjectId -> m (Either String Unit)
+  cloneProject :: ProjectId -> m (Either String ProjectId)
 
 -- | This instance lets us avoid having to use `lift` when we use these functions in a component.
 instance manageUserHalogenM :: ManageProjects m => ManageProjects (HalogenM st act slots msg m) where
@@ -30,4 +32,5 @@ instance manageUserHalogenM :: ManageProjects m => ManageProjects (HalogenM st a
   getProject = lift <<< getProject
   createProject = lift <<< createProject
   deleteProject = lift <<< deleteProject
+  cloneProject = lift <<< cloneProject
   saveProject = (lift <<< _) <<< saveProject

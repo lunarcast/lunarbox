@@ -20,6 +20,7 @@ data Endpoint
   | Register
   | Projects
   | Project ProjectId
+  | Clone ProjectId
 
 derive instance eqEndpoint :: Eq Endpoint
 
@@ -41,4 +42,5 @@ endpointCodec =
         , "Profile": "users" / noArgs
         , "Projects": "projects" / noArgs
         , "Project": "projects" / projectId segment
+        , "Clone": "projects" / "clone" / projectId segment
         }
