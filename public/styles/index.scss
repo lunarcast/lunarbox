@@ -1,17 +1,17 @@
 @use "./fonts";
 
-// Pages
-@import "./pages/home.scss";
-@import "./pages/editor.scss";
-@import "./pages/login.scss";
-@import "./pages/projects.scss";
-
 // Components
 @import "./components/tooltip.scss";
 @import "./components/switch.scss";
 @import "./components/node-input.scss";
 @import "./components/with-logo.scss";
 @import "./components/loading.scss";
+
+// Pages
+@import "./pages/home.scss";
+@import "./pages/editor.scss";
+@import "./pages/login.scss";
+@import "./pages/projects.scss";
 
 // Libraries
 @import "normalize.css";

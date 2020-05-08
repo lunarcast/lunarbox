@@ -97,7 +97,7 @@ component =
 
   renderProject { name, id, metadata: { functionCount, nodeCount } } =
     HH.div [ className "project", onClick $ const $ Just $ OpenProject id ]
-      [ HH.div [ className "project-name" ] [ HH.text name ]
+      [ HH.div [ className "project-name no-overflow" ] [ HH.text name ]
       , HH.div [ className "project-data" ]
           [ HH.div [ className "function-count" ]
               [ icon "functions"
