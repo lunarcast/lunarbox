@@ -14,7 +14,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 
 -- List will all the native array nodes
 arrayNodes :: forall a s m. Array (NativeConfig a s m)
-arrayNodes = [ emptyArray, cons, map', filter', flatMap ]
+arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat ]
 
 -- A constant equal to an array with 0 elements
 typeEmptyArray :: Scheme
@@ -135,5 +135,48 @@ flatMap =
           }
         ]
         { name: "resulting array", description: "An array which contains the concatenated results of passing every element of the original array to the given function" }
+    , component: Nothing
+    }
+
+-- Wrap an value in an array with one element
+typeWrap :: Scheme
+typeWrap = Forall [ a ] $ typeFunction typeA $ typeArray typeA
+  where
+  Tuple a typeA = createTypeVariable "t0"
+
+wrap' :: forall a s m. NativeConfig a s m
+wrap' =
+  NativeConfig
+    { name: FunctionName "wrap in array"
+    , expression: (NativeExpression typeWrap $ Function $ NArray <<< pure)
+    , functionData:
+      internal
+        [ { name: "element", description: "A value to wrap in an array"
+          }
+        ]
+        { name: "array", description: "An array containing the input" }
+    , component: Nothing
+    }
+
+-- Flatten a nested array
+typeFlat :: Scheme
+typeFlat = Forall [ a ] $ typeFunction (typeArray $ typeArray typeA) $ typeArray typeA
+  where
+  Tuple a typeA = createTypeVariable "t0"
+
+evalFlat :: RuntimeValue -> RuntimeValue
+evalFlat = evalFlatMap $ Function identity
+
+flat :: forall a s m. NativeConfig a s m
+flat =
+  NativeConfig
+    { name: FunctionName "flatten array"
+    , expression: (NativeExpression typeFlat $ Function evalFlat)
+    , functionData:
+      internal
+        [ { name: "nested array", description: "An array of arrays"
+          }
+        ]
+        { name: "array", description: "An array containing all the elements of the nested arrays of the input." }
     , component: Nothing
     }

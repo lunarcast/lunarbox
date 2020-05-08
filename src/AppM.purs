@@ -86,4 +86,7 @@ instance manageProjectsAppM :: ManageProjects AppM where
   saveProject state = do
     response <- mkRawRequest { endpoint: Projects, method: Post $ Just $ stateToJson state }
     pure $ unit <$ response
+  saveRawProject json = do
+    response <- mkRawRequest { endpoint: Projects, method: Post $ Just json }
+    pure $ unit <$ response
   getProjects = mkRequest { endpoint: Projects, method: Get }

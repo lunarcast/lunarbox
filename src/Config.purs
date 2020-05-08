@@ -1,16 +1,4 @@
-module Lunarbox.Config
-  ( Config(..)
-  , DevOptions(..)
-  , UserEnv
-  , shouldCancelOnBlur
-  , _user
-  , _currentUser
-  , _baseUrl
-  , _locationState
-  , _pushStateInterface
-  , _changeRoute
-  , _userBus
-  ) where
+module Lunarbox.Config where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk, asks)
@@ -19,6 +7,7 @@ import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Symbol (SProxy(..))
+import Data.Time.Duration (Milliseconds)
 import Effect (Effect)
 import Effect.Aff.Bus (BusRW)
 import Effect.Ref (Ref)
@@ -45,6 +34,7 @@ newtype Config
   { devOptions :: DevOptions
   , baseUrl :: BaseUrl
   , user :: UserEnv
+  , autosaveInterval :: Milliseconds
   , pushStateInterface :: PushStateInterface
   }
 
@@ -66,6 +56,9 @@ _currentUser = _user <<< prop (SProxy :: _ "currentUser")
 
 _userBus :: Lens' Config (BusRW (Maybe Profile))
 _userBus = _user <<< prop (SProxy :: _ "userBus")
+
+_autosaveInterval :: Lens' Config Milliseconds
+_autosaveInterval = newtypeIso <<< prop (SProxy :: _ "autosaveInterval")
 
 _baseUrl :: Lens' Config BaseUrl
 _baseUrl = newtypeIso <<< prop (SProxy :: _ "baseUrl")
