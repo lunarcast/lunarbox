@@ -20,6 +20,7 @@ import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.HOC.Connect as Connect
+import Lunarbox.Component.Loading (loading)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Profile (Profile)
 import Lunarbox.Data.ProjectId (ProjectId)
@@ -89,8 +90,6 @@ component =
   handleEditorOutput :: Editor.Output m -> Maybe (Action m)
   handleEditorOutput = case _ of
     Editor.Save state -> Just $ Save state
-
-  loading = HH.text "loading"
 
   render { projectData } = case projectData of
     NotAsked -> loading

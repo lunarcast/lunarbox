@@ -1,4 +1,5 @@
 @use "../utils/utils";
+@use "../fonts";
 
 @import "../theme.scss";
 
@@ -73,6 +74,8 @@
         }
 
         #list-title {
+          font-family: fonts.$oxanium;
+          font-weight: bold;
           flex-grow: 1;
           cursor: normal;
         }

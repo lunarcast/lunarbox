@@ -17,6 +17,7 @@ import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, createProject, getProjects)
 import Lunarbox.Component.Icon (icon)
+import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Utils (className, container)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
@@ -92,9 +93,6 @@ component =
       case response of
         Right id -> navigate $ Project id
         Left err -> modify_ $ set _projectList $ Failure err
-
-  loading :: forall h a. HH.HTML h a
-  loading = HH.text "loading"
 
   renderProject { name, id, metadata: { functionCount, nodeCount } } =
     HH.div [ className "project", onClick $ const $ Just $ OpenProject id ]

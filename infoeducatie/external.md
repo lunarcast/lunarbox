@@ -4,6 +4,7 @@
 - Some of the auth stuff was originally taken from [this repo](https://github.com/thomashoneyman/purescript-halogen-realworld/)
 - All the purescript dependencies I used are listed in spago.dhall
 - Other tooling I used can be found in package.json
+- The loading animation is taken from [loading.io](https://loading.io/css/)
 
 ## Why are there other contributors?
 
