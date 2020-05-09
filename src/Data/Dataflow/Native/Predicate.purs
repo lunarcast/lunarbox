@@ -39,7 +39,7 @@ smallerThan :: forall a s m. NativeConfig a s m
 smallerThan =
   createBinaryCompare "smaller than"
     { name: "a < b"
-    , description: "compares both values and returns true if the first one is greater than the second"
+    , description: "Compares both values and returns true if the first one is greater than the second"
     }
     (<)
 
@@ -47,7 +47,7 @@ greaterThan :: forall a s m. NativeConfig a s m
 greaterThan =
   createBinaryCompare "greater than"
     { name: "a > b"
-    , description: "compares both values and returns true if the first one is greater than the second"
+    , description: "Compares both values and returns true if the first one is greater than the second"
     }
     (>)
 
@@ -55,7 +55,7 @@ greaterOrEqual :: forall a s m. NativeConfig a s m
 greaterOrEqual =
   createBinaryCompare "greater or equal"
     { name: "a >= b"
-    , description: "compares both values and returns true if the first one is greater or equal than the second"
+    , description: "Compares both values and returns true if the first one is greater or equal than the second"
     }
     (>=)
 
@@ -63,6 +63,6 @@ smallerOrEqual :: forall a s m. NativeConfig a s m
 smallerOrEqual =
   createBinaryCompare "smaller or equal"
     { name: "a <= b"
-    , description: "compares both values and returns true if the first one is smaller or equal than the second"
+    , description: "Compares both values and returns true if the first one is smaller or equal than the second"
     }
     (<=)

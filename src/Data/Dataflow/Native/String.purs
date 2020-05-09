@@ -51,11 +51,11 @@ concatStrings =
     { name: FunctionName "concat strings"
     , expression: NativeExpression (Forall [] $ typeFunction typeString $ typeFunction typeString typeString) $ binaryFunction evalConcat
     , functionData:
-      internal
-        [ { name: "first string", description: "Any string" }
-        , { name: "second strings", description: "Any string" }
-        ]
-        { name: "a ++ b", description: "The result of 'glueing' the string together" }
+        internal
+          [ { name: "first string", description: "Any string" }
+          , { name: "second strings", description: "Any string" }
+          ]
+          { name: "a ++ b", description: "The result of 'glueing' the strings together" }
     , component: Nothing
     }
 
@@ -77,8 +77,8 @@ trimString =
     { name: FunctionName "trim"
     , expression: NativeExpression (Forall [] $ typeFunction typeString typeString) $ stringUnary String.trim
     , functionData:
-      internal [ { name: "string", description: "Any string" } ]
-        { name: "trimmed string", description: "The given string but without spaces at the end and at the start"
-        }
+        internal [ { name: "string", description: "Any string" } ]
+          { name: "trimmed string", description: "The given string but without spaces at the end and at the start"
+          }
     , component: Nothing
     }
