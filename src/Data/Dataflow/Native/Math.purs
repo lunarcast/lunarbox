@@ -49,7 +49,7 @@ add =
   NativeConfig
     { name: FunctionName "add"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (+))
-    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments." }
+    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments" }
     , component: Nothing
     }
 
@@ -71,7 +71,7 @@ multiply =
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (*))
     , functionData:
         internal [ numberDoc "first number", numberDoc "second number" ]
-          { name: "product", description: "The result of multiplying the first number with the second" }
+          { name: "product", description: "The result of multiplying the first number by the second" }
     , component: Nothing
     }
 
@@ -117,7 +117,7 @@ modulus =
     }
 
 evalSqrt :: RuntimeValue -> RuntimeValue
-evalSqrt (Number num) = Number $ sqrt num
+evalSqrt (Number num) = if num >= 0.0 then Number $ sqrt num else Null
 
 evalSqrt _ = Null
 
