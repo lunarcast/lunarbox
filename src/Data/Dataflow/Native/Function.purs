@@ -125,7 +125,7 @@ compose =
           }
         , { name: "second function", description: "A function from type B and type C" }
         ]
-        { name: "second . first", description: "A function which first applies the A -> B transformation and then passed the return of that to the B -> C transformation returning a value of type C" }
+        { name: "second . first", description: "A function which first applies the A -> B transformation and then passes the return of that to the B -> C transformation returning a value of type C" }
     , component: Nothing
     }
 

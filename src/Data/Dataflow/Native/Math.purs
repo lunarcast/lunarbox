@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Native.Math
   ) where
 
 import Prelude
+import Math (sqrt)
 import Data.Maybe (Maybe(..))
 import Data.Number (isNaN)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
@@ -16,7 +17,7 @@ import Math (pow, (%))
 
 -- ALl the math native nodes
 mathNodes :: forall a s m. Array (NativeConfig a s m)
-mathNodes = [ add, substract, multiply, divide, raiseToPower, modulus ]
+mathNodes = [ add, subtract, multiply, divide, raiseToPower, modulus, squareRoot ]
 
 -- Type for functions of type Number -> Number -> Number
 binaryNumberType :: Scheme
@@ -48,18 +49,18 @@ add =
   NativeConfig
     { name: FunctionName "add"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (+))
-    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments." }
+    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments" }
     , component: Nothing
     }
 
-substract :: forall a s m. NativeConfig a s m
-substract =
+subtract :: forall a s m. NativeConfig a s m
+subtract =
   NativeConfig
-    { name: FunctionName "substract"
+    { name: FunctionName "subtract"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (-))
     , functionData:
-      internal [ numberDoc "first number", numberDoc "second number" ]
-        { name: "difference", description: "The result of substracting the second argument from the first" }
+        internal [ numberDoc "first number", numberDoc "second number" ]
+          { name: "difference", description: "The result of subtracting the second argument from the first" }
     , component: Nothing
     }
 
@@ -69,8 +70,8 @@ multiply =
     { name: FunctionName "multiply"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (*))
     , functionData:
-      internal [ numberDoc "first number", numberDoc "second number" ]
-        { name: "product", description: "The result of multiplying the first number with the second" }
+        internal [ numberDoc "first number", numberDoc "second number" ]
+          { name: "product", description: "The result of multiplying the first number by the second" }
     , component: Nothing
     }
 
@@ -80,13 +81,13 @@ divide =
     { name: FunctionName "divide"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (/))
     , functionData:
-      internal
-        [ { name: "dividend", description: "The number to divide" }
-        , { name: "divisor", description: "The number to divide the dividend by. Cannot be 0" }
-        ]
-        { name: "quotient"
-        , description: "The result of dividng the first argument by the second"
-        }
+        internal
+          [ { name: "dividend", description: "The number to divide" }
+          , { name: "divisor", description: "The number to divide the dividend by. Cannot be 0" }
+          ]
+          { name: "quotient"
+          , description: "The result of dividng the first argument by the second"
+          }
     , component: Nothing
     }
 
@@ -96,8 +97,8 @@ raiseToPower =
     { name: FunctionName "raise to power"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction pow)
     , functionData:
-      internal [ numberDoc "base", numberDoc "exponend" ]
-        { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
+        internal [ numberDoc "base", numberDoc "exponend" ]
+          { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
     , component: Nothing
     }
 
@@ -107,10 +108,27 @@ modulus =
     { name: FunctionName "modulus"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (%))
     , functionData:
-      internal
-        [ { name: "left side", description: "The number to take the modulus from" }
-        , { name: "right side", description: "The number to divide the first input by and find the reminder" }
-        ]
-        { name: "a % b", description: "The reminder of dividing the first number to the second" }
+        internal
+          [ { name: "left side", description: "The number to take the modulus from" }
+          , { name: "right side", description: "The number to divide the first input by and find the remainder" }
+          ]
+          { name: "a % b", description: "The remainder of dividing the first number to the second" }
+    , component: Nothing
+    }
+
+evalSqrt :: RuntimeValue -> RuntimeValue
+evalSqrt (Number num) = if num >= 0.0 then Number $ sqrt num else Null
+
+evalSqrt _ = Null
+
+squareRoot :: forall a s m. NativeConfig a s m
+squareRoot =
+  NativeConfig
+    { name: FunctionName "square root"
+    , expression: NativeExpression (Forall [] $ typeFunction typeNumber typeNumber) $ Function evalSqrt
+    , functionData:
+        internal
+          [ { name: "radicand", description: "The number to take the square root from" } ]
+          { name: "sqrt a", description: "The result of taking the square root of the number" }
     , component: Nothing
     }

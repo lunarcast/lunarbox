@@ -221,14 +221,14 @@ match =
           , description: "If the 3rd argument is an empty array this will become the result"
           }
         , { name: "function"
-          , description: "A function which takes the first element of an array as the first argument and the rest of the array as the second."
+          , description: "A function which takes the first element of an array as the first argument and the rest of the array as the second"
           }
         , { name: "array"
-          , description: "Array to pattern match. If this is empty the defuault value will be returned. Else the head and the tail of this array will be based to the given function."
+          , description: "Array to pattern match. If this is empty the defuault value will be returned. Else the head and the tail of this array will be based to the given function"
           }
         ]
         { name: "array"
-        , description: "If the given array was empty this will equal the default value, else this will be the result of passing the head and the tail of the given array to the given function."
+        , description: "If the given array was empty this will equal the default value, else this will be the result of passing the head and the tail of the given array to the given function"
         }
     , component: Nothing
     }
