@@ -19,7 +19,7 @@ import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
 import Data.Vec (vec2, (!!))
-import Halogen.HTML (HTML, IProp, ComponentHTML)
+import Halogen.HTML (ComponentHTML, HTML)
 import Halogen.HTML.Events (onMouseDown, onMouseUp)
 import Lunarbox.Capability.Editor.Node.Arc (Arc(..))
 import Lunarbox.Capability.Editor.Node.Arc as Arc
@@ -45,7 +45,8 @@ import Math (cos, floor, pi, sin)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
-import Web.UIEvent.MouseEvent (MouseEvent)
+import Web.Event.Internal.Types (Event)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 -- A node can either have one of it's inputs, it's output or nothing selected
 data SelectionStatus
@@ -69,21 +70,21 @@ type Input a s m
     }
 
 type Actions a
-  = { select :: Maybe a
-    , selectInput :: Int -> Maybe a
-    , selectOutput :: Maybe a
+  = { select :: Event -> Maybe a
+    , selectInput :: Int -> Event -> Maybe a
+    , selectOutput :: Event -> Maybe a
     , setValue :: RuntimeValue -> Maybe a
-    , removeConnection :: NodeId -> Int -> Maybe a
+    , removeConnection :: NodeId -> Int -> Event -> Maybe a
     }
 
-output :: forall r a. Boolean -> String -> Maybe a -> Color -> HTML r a
+output :: forall r a. Boolean -> String -> (Event -> Maybe a) -> Color -> HTML r a
 output unconnectable label selectOutput color =
   withLabel label
     $ SE.circle
         [ SA.r 10.0
         , SA.fill $ Just color
         , SA.class_ $ "node-output" <> if unconnectable then " unconnectable" else ""
-        , onMouseUp $ const selectOutput
+        , onMouseUp $ selectOutput <<< MouseEvent.toEvent
         ]
 
 constant :: forall r a. HTML r a
@@ -125,7 +126,7 @@ renderNode { nodeData: nodeData
   SE.g
     [ SA.transform [ SA.Translate (centerPosition !! d0) (centerPosition !! d1) ]
     , SA.class_ "node"
-    , allowMoving
+    , onMouseDown $ select <<< MouseEvent.toEvent
     ]
     $ [ overlays maxRadius labels
       ]
@@ -148,9 +149,6 @@ renderNode { nodeData: nodeData
       [ SA.r $ nodeRadius - arcWidth * 4.0
       , SA.fill $ Just transparent
       ]
-
-  allowMoving :: forall r. IProp ( onMouseDown ∷ MouseEvent | r ) _
-  allowMoving = onMouseDown $ const select
 
   outputColor =
     fromMaybe transparent
@@ -178,7 +176,7 @@ renderNode { nodeData: nodeData
             , dotted: true
             , className: Nothing
             }
-            { handleClick: Nothing
+            { handleClick: const Nothing
             }
     _ -> mempty
 
@@ -265,7 +263,7 @@ renderNode { nodeData: nodeData
                                   , dotted: isMouse
                                   , className: Just "node-connection"
                                   }
-                                  { handleClick: guard (not isMouse) >>= const (removeConnection nodeId index)
+                                  { handleClick: \event -> guard (not isMouse) >>= const (removeConnection nodeId index event)
                                   }
 
                         inputSvg =

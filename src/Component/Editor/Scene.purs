@@ -24,7 +24,7 @@ import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseMove, onMouseUp, onWheel)
+import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
@@ -55,6 +55,7 @@ import Math (pow)
 import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
+import Web.Event.Internal.Types (Event)
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.WheelEvent (deltaY)
 
@@ -76,12 +77,13 @@ type Input a s m
 
 type Actions a
   = { mouseMove :: MouseEvent -> Maybe a
+    , mouseDown :: MouseEvent -> Maybe a
     , mouseUp :: Maybe a
-    , selectNode :: NodeId -> Maybe a
+    , selectNode :: NodeId -> Event -> Maybe a
     , zoom :: Number -> Maybe a
-    , selectInput :: NodeId -> Int -> Maybe a
-    , selectOutput :: NodeId -> Maybe a
-    , removeConnection :: NodeId -> Tuple NodeId Int -> Maybe a
+    , selectInput :: NodeId -> Int -> Event -> Maybe a
+    , selectOutput :: NodeId -> Event -> Maybe a
+    , removeConnection :: NodeId -> Tuple NodeId Int -> Event -> Maybe a
     , setValue :: FunctionName -> NodeId -> RuntimeValue -> Maybe a
     }
 
@@ -198,7 +200,7 @@ createNodeComponent { functionName
         }
 
 scene :: forall a s m. Actions a -> Input a s m -> ComponentHTML a s m
-scene actions@{ mouseMove, mouseUp, selectNode, zoom } state@{ nodeData, camera, scale, lastMousePosition } =
+scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom } state@{ nodeData, camera, scale, lastMousePosition } =
   either
     (\err -> erroredEditor $ show err)
     success
@@ -222,6 +224,7 @@ scene actions@{ mouseMove, mouseUp, selectNode, zoom } state@{ nodeData, camera,
           , SA.id "scene"
           , toViewBox scale camera
           , onMouseMove mouseMove
+          , onMouseDown mouseDown
           , onWheel \e -> zoom $ pow scrollStep $ signum $ deltaY e
           , onMouseUp $ const mouseUp
           ]

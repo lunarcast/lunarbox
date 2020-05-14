@@ -13,6 +13,8 @@ import Lunarbox.Svg.Element (withLabel)
 import Svg.Attributes (Color, D(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
+import Web.Event.Internal.Types (Event)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 type Input a
   = { radius :: Number
@@ -23,7 +25,7 @@ type Input a
     , tooltip :: String
     }
 
-input :: forall h a i. Input i -> Maybe a -> HTML h a
+input :: forall h a i. Input i -> (Event -> Maybe a) -> HTML h a
 input { radius, spacing, tooltip, arc: Arc start end _, color, unconnectable } selectInput =
   withLabel tooltip
     $ SE.path
@@ -33,5 +35,5 @@ input { radius, spacing, tooltip, arc: Arc start end _, color, unconnectable } s
         , SA.class_ $ "node-input" <> if unconnectable then " unconnectable" else ""
         , strokeWidth arcWidth
         , strokeLinecap Butt
-        , onMouseUp $ const selectInput
+        , onMouseUp $ selectInput <<< MouseEvent.toEvent
         ]

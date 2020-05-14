@@ -110,11 +110,11 @@ makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, can
         ]
         [ renderNode
             (nodeInput inputCount typeMap name functionData)
-            { select: Nothing
-            , selectOutput: Nothing
-            , selectInput: const Nothing
+            { select: const Nothing
+            , selectOutput: const Nothing
+            , selectInput: const $ const Nothing
             , setValue: const Nothing
-            , removeConnection: const $ const Nothing
+            , removeConnection: const $ const $ const Nothing
             }
         ]
     , container "node-data"

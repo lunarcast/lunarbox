@@ -19,6 +19,8 @@ import Math (floor)
 import Svg.Attributes (Color)
 import Svg.Attributes as SA
 import Svg.Elements as SE
+import Web.Event.Internal.Types (Event)
+import Web.UIEvent.MouseEvent as MouseEvent
 
 type Input
   = { from :: Vec2 Number
@@ -29,7 +31,7 @@ type Input
     }
 
 type Actions a
-  = { handleClick :: Maybe a
+  = { handleClick :: Event -> Maybe a
     }
 
 renderEdge :: forall s a m. Input -> Actions a -> ComponentHTML a s m
@@ -44,7 +46,7 @@ renderEdge' { from, to, color, dotted, className } { handleClick } =
       , SA.x2 $ floor $ to !! d0
       , SA.y2 $ floor $ to !! d1
       , SA.stroke $ Just color
-      , onMouseUp $ const handleClick
+      , onMouseUp $ handleClick <<< MouseEvent.toEvent
       , strokeWidth connectionsWidth
       ]
     <> ( guard dotted

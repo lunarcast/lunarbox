@@ -62,6 +62,8 @@ import Lunarbox.Data.Vector (Vec2)
 import Math (pow)
 import Svg.Attributes (Color)
 import Web.DOM.Node as WebNode
+import Web.Event.Event as Event
+import Web.Event.Internal.Types (Event)
 import Web.HTML.HTMLElement (DOMRect, toNode)
 
 data Tab
@@ -346,6 +348,10 @@ canConnect from (Tuple toId toIndex) state =
     guard $ canUnify toType fromType
     pure true
 
+-- Removes the partial connection. Here to solve #40
+clearPartialConnection :: forall a s m. State a s m -> State a s m
+clearPartialConnection = set _partialFrom Nothing <<< set _partialTo Nothing <<< set _unconnectablePins mempty
+
 -- Tries connecting the pins the user selected
 tryConnecting :: forall a s m. State a s m -> State a s m
 tryConnecting state =
@@ -596,6 +602,10 @@ searchNode state = sortBySearch show searchTerm nodes
 -- Check if a function exists
 functionExists :: forall a s m. FunctionName -> State a s m -> Boolean
 functionExists name = Map.member name <<< view _functionData
+
+-- Prevent and stop the propagation for any dom event
+preventDefaults :: forall q i o m a s. MonadEffect m => Event -> HalogenM (State a s m) q i o m Unit
+preventDefaults event = liftEffect $ Event.preventDefault event *> Event.stopPropagation event
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)

@@ -53,12 +53,12 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
+import Web.Event.Event (Event, EventType(..), preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
@@ -81,12 +81,13 @@ data Action
   | CreateNode FunctionName
   | StartFunctionCreation
   | SceneMouseUp
+  | SceneMouseDown MouseEvent
   | SceneMouseMove MouseEvent
-  | SelectInput NodeId Int
-  | SelectOutput NodeId
-  | SelectNode NodeId
+  | SelectInput NodeId Int Event
+  | SelectOutput NodeId Event
+  | SelectNode NodeId Event
   | SceneZoom Number
-  | RemoveConnection NodeId (Tuple NodeId Int)
+  | RemoveConnection NodeId (Tuple NodeId Int) Event
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | AdjustSceneScale
   | TogglePanel
@@ -97,6 +98,7 @@ data Action
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
   | Autosave Json
+  | PreventDefaults Event
 
 data Output
   = Save Json
@@ -122,11 +124,12 @@ sceneActions :: Scene.Actions Action
 sceneActions =
   { mouseUp: Just SceneMouseUp
   , zoom: Just <<< SceneZoom
-  , selectNode: Just <<< SelectNode
-  , selectOutput: Just <<< SelectOutput
+  , mouseDown: Just <<< SceneMouseDown
   , mouseMove: Just <<< SceneMouseMove
-  , selectInput: (Just <<< _) <<< SelectInput
-  , removeConnection: (Just <<< _) <<< RemoveConnection
+  , selectNode: (Just <<< _) <<< SelectNode
+  , selectOutput: (Just <<< _) <<< SelectOutput
+  , removeConnection: ((Just <<< _) <<< _) <<< RemoveConnection
+  , selectInput: ((Just <<< _) <<< _) <<< SelectInput
   , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
   }
 
@@ -247,6 +250,10 @@ component =
       when (oldFunction == Nothing) adjustSceneScale
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
+    SceneMouseDown event -> do
+      let
+        bits = MouseEvent.buttons event
+      when (isPressed LeftButton bits) $ modify_ clearPartialConnection
     SceneMouseMove event -> do
       let
         bits = MouseEvent.buttons event
@@ -276,7 +283,8 @@ component =
       put $ update state'
     SceneMouseUp -> do
       modify_ $ resetNodeOffset <<< (over _nodeData $ map $ set _NodeDataSelected false)
-    SelectNode id -> do
+    SelectNode id event -> do
+      preventDefaults event
       maybeCurrentFunction <- gets $ view _currentFunction
       nodes <- gets $ preview _currentNodes
       state <- get
@@ -292,7 +300,7 @@ component =
         modify_
           $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
           <<< set (_isSelected currentFunction id) true
-    SelectInput id index -> do
+    SelectInput id index event -> do
       unconnectableList <- gets $ view _unconnectablePins
       let
         setTo = set _partialTo $ Just $ Tuple id index
@@ -301,7 +309,7 @@ component =
 
         shouldConnect = isNothing $ find (_ == location) unconnectableList
       when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
-    SelectOutput id -> do
+    SelectOutput id event -> do
       unconnectableList <- gets $ view _unconnectablePins
       let
         setFrom = set _partialFrom $ Just id
@@ -310,7 +318,7 @@ component =
 
         shouldConnect = isNothing $ find (_ == location) unconnectableList
       when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setFrom
-    RemoveConnection from to -> do
+    RemoveConnection from to event -> do
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
@@ -336,6 +344,7 @@ component =
         handleAction $ Autosave newState
       else
         handleAction $ Autosave oldState
+    PreventDefaults event -> preventDefaults event
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
