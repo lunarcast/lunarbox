@@ -1,6 +1,7 @@
 module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
   , binaryFunction
+  , ternaryFunction
   , toBoolean
   , toNumber
   , toString
@@ -83,6 +84,10 @@ instance ordRuntimeValue :: Ord RuntimeValue where
 -- helper to ease the creation of binary functions
 binaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue
 binaryFunction f = Function $ Function <<< f
+
+-- Same as binaryFunction but with 3 arguments
+ternaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue
+ternaryFunction f = Function $ binaryFunction <<< f
 
 -- Turns any runtime value to a boolean
 toBoolean :: RuntimeValue -> Boolean

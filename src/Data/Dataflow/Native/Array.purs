@@ -3,19 +3,21 @@ module Lunarbox.Data.Dataflow.Native.Array (arrayNodes) where
 import Prelude
 import Data.Array as Array
 import Data.Filterable (filter)
-import Data.Maybe (Maybe(..))
+import Data.Int (floor)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction, toArray, toBoolean)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction, ternaryFunction, toArray, toBoolean)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (createTypeVariable, multiArgumentFuncion, typeArray, typeBool, typeFunction)
+import Lunarbox.Data.Dataflow.Type (createTypeVariable, multiArgumentFuncion, typeArray, typeBool, typeFunction, typeNumber)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Math as Number
 
 -- List will all the native array nodes
 arrayNodes :: forall a s m. Array (NativeConfig a s m)
-arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat, match, concatArrays ]
+arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat, match, concatArrays, lookup ]
 
 -- A constant equal to an array with 0 elements
 typeEmptyArray :: Scheme
@@ -261,5 +263,43 @@ concatArrays =
         , { name: "second array", description: "Any array" }
         ]
         { name: "a ++ b", description: "An arrray containing the elements of both inputs" }
+    , component: Nothing
+    }
+
+-- Lookup an index of an array with e falback value
+evalLookup :: RuntimeValue -> RuntimeValue -> RuntimeValue -> RuntimeValue
+evalLookup (NArray array) (Number index) default =
+  if index == Number.floor index then
+    fromMaybe default $ array `Array.index` (floor index)
+  else
+    default
+
+evalLookup _ _ _ = Null
+
+typeLookup :: Scheme
+typeLookup =
+  Forall [ a ]
+    $ multiArgumentFuncion
+        [ typeArray typeA
+        , typeNumber
+        , typeA
+        ]
+        typeA
+  where
+  Tuple a typeA = createTypeVariable "t0"
+
+lookup :: forall a s m. NativeConfig a s m
+lookup =
+  NativeConfig
+    { name: FunctionName "array lookup"
+    , expression: NativeExpression typeLookup $ ternaryFunction evalLookup
+    , functionData:
+      internal
+        [ { name: "array", description: "An array to lookup any index of." }
+        , { name: "index", description: "An index to get from an array."
+          }
+        , { name: "default value", description: "A value to return in case the index isn't an integer or the index is out of bounds." }
+        ]
+        { name: "value at index", description: "The value at the fiven index in the array or the default value if the index is not an int or is out of bounds." }
     , component: Nothing
     }
