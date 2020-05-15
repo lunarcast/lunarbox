@@ -8,7 +8,7 @@ import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseDown)
+import Halogen.HTML.Events (onMouseDown, onMouseMove, onWheel)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Editor.Constants (commentTextMargin)
@@ -17,6 +17,7 @@ import Svg.Attributes as SA
 import Svg.Elements as SE
 import Web.Event.Internal.Types (Event)
 import Web.UIEvent.MouseEvent as MouseEvent
+import Web.UIEvent.WheelEvent as WheelEvent
 
 -- Half the margin aroudn the textbox
 halfMargin :: Number
@@ -59,6 +60,8 @@ comment { position, scale, text } { select, stopPropagation } =
             [ HP.value text
             , className "comment-textarea"
             , onMouseDown $ stopPropagation <<< MouseEvent.toEvent
+            , onMouseMove $ stopPropagation <<< MouseEvent.toEvent
+            , onWheel $ stopPropagation <<< WheelEvent.toEvent
             ]
         ]
     ]

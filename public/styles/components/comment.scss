@@ -1,17 +1,34 @@
 @import "../theme.scss";
 
+$radius: 0.5rem;
+
 svg .comment-container {
   cursor: move;
 }
 
 svg .comment-container > .comment {
-  fill: rgba(1, 204, 255, 0.87);
-  border-radius: 1rem;
+  fill: $comment;
+  border-radius: $radius;
 }
 
 svg .comment-container .comment-textarea {
-  user-select: initial;
   width: 100%;
   height: 100%;
-  display: block;
+  padding: 0.5rem;
+  background: transparent;
+  background: $comment;
+  border-radius: $radius;
+
+  border: none;
+  outline: none;
+
+  transition: filter $transition-time;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+  &:focus {
+    border: 2px solid $comment;
+    filter: brightness(1.5);
+  }
 }
