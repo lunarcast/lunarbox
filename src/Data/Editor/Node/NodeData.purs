@@ -1,5 +1,6 @@
 module Lunarbox.Data.Editor.Node.NodeData
-  ( NodeData(..)
+  ( CompatNodeData
+  , NodeData(..)
   , _NodeDataPosition
   , _NodeDataSelected
   , _NodeDataZPosition
@@ -7,7 +8,7 @@ module Lunarbox.Data.Editor.Node.NodeData
   ) where
 
 import Prelude
-import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, (.!=), (.:?))
 import Data.Default (class Default)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -18,9 +19,17 @@ import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
+import Record as Record
 
+-- Node data from the first lunarbox version. Used to keep backwards compatibility
+type CompatNodeData r
+  = ( position :: Vec2 Number, selected :: Boolean, zPosition :: Int
+    | r
+    )
+
+-- Newer versions of lunarbox also have the comment field
 newtype NodeData
-  = NodeData { position :: Vec2 Number, selected :: Boolean, zPosition :: Int, comment :: Maybe String }
+  = NodeData { | CompatNodeData ( comment :: Maybe String ) }
 
 derive instance newtypeNodeData :: Newtype NodeData _
 
@@ -30,7 +39,15 @@ derive instance genericNodeData :: Generic NodeData _
 
 derive newtype instance encodeJsonNodeData :: EncodeJson NodeData
 
-derive newtype instance decodeJsonNodeData :: DecodeJson NodeData
+instance decodeJsonNodeData :: DecodeJson NodeData where
+  decodeJson json = do
+    -- Decode the part all versions of lunarbox have
+    others :: { | CompatNodeData () } <- decodeJson json
+    -- Decode comments which were added in 1.18
+    obj <- decodeJson json
+    comment <- obj .:? "comment" .!= Nothing
+    -- Merge everything together
+    pure $ NodeData $ Record.merge { comment } others
 
 instance showNodeData :: Show NodeData where
   show = genericShow
