@@ -94,13 +94,11 @@ infer expression =
         pure tv
       Let location name value body -> do
         env <- ask
-        (Tuple t0 (InferOutput { constraints })) <- listen $ infer value
+        Tuple valueType (InferOutput { constraints }) <- listen $ infer value
         subst <- case runSolve (SolveContext { location }) $ solve constraints of
           Right result -> pure result
           Left err -> throwError err
-        let
-          t1 = apply subst t0
-        generalized <- local (const env) $ generalize t1
+        generalized <- local (const env) $ generalize $ apply subst valueType
         createClosure name generalized $ infer body
       FixPoint _ body -> do
         t <- infer body

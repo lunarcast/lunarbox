@@ -1,9 +1,9 @@
 module Lunarbox.Data.Editor.Node.NodeData
   ( NodeData(..)
-  , NodeDataContent
   , _NodeDataPosition
   , _NodeDataSelected
   , _NodeDataZPosition
+  , _NodeDataComment
   ) where
 
 import Prelude
@@ -11,18 +11,16 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Lens (Lens', iso)
+import Data.Lens (Lens')
 import Data.Lens.Record (prop)
-import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
+import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
 
--- This is here so we don't have to rewrite this type in the _NodeData lens
-type NodeDataContent
-  = { position :: Vec2 Number, selected :: Boolean, zPosition :: Int }
-
 newtype NodeData
-  = NodeData NodeDataContent
+  = NodeData { position :: Vec2 Number, selected :: Boolean, zPosition :: Int, comment :: Maybe String }
 
 derive instance newtypeNodeData :: Newtype NodeData _
 
@@ -41,17 +39,17 @@ instance ordNodeData :: Ord NodeData where
   compare (NodeData { zPosition }) (NodeData ({ zPosition: zPosition' })) = compare zPosition zPosition'
 
 instance defaultNodeData :: Default NodeData where
-  def = NodeData { position: zero, selected: false, zPosition: 0 }
+  def = NodeData { position: zero, selected: false, zPosition: 0, comment: Nothing }
 
 -- Lenses
-_NodeData :: Lens' NodeData NodeDataContent
-_NodeData = iso unwrap wrap
-
 _NodeDataPosition :: Lens' NodeData (Vec2 Number)
-_NodeDataPosition = _NodeData <<< prop (SProxy :: SProxy "position")
+_NodeDataPosition = newtypeIso <<< prop (SProxy :: SProxy "position")
 
 _NodeDataSelected :: Lens' NodeData Boolean
-_NodeDataSelected = _NodeData <<< prop (SProxy :: SProxy "selected")
+_NodeDataSelected = newtypeIso <<< prop (SProxy :: SProxy "selected")
 
 _NodeDataZPosition :: Lens' NodeData Int
-_NodeDataZPosition = _NodeData <<< prop (SProxy :: _ "zPosition")
+_NodeDataZPosition = newtypeIso <<< prop (SProxy :: _ "zPosition")
+
+_NodeDataComment :: Lens' NodeData (Maybe String)
+_NodeDataComment = newtypeIso <<< prop (SProxy :: _ "comment")

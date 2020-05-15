@@ -22,7 +22,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..))
 import Data.Vec (vec2)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
@@ -56,6 +56,7 @@ import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
+import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (Event, EventType(..), preventDefault, stopPropagation)
@@ -480,11 +481,14 @@ component =
             , functionName: currentFunction
             , camera: fromMaybe def $ Map.lookup currentFunction cameras
             , nodeData:
-              Map.fromFoldable
-                $ (uncurry \(Tuple _ id) value -> Tuple id value)
-                <$> ( List.filter (uncurry \(Tuple name _) _ -> name == currentFunction)
-                      $ Map.toUnfoldable nodeData
-                  )
+              maybeBimap
+                ( \(Tuple name id) value ->
+                    if name /= currentFunction then
+                      Nothing
+                    else
+                      Just $ Tuple id value
+                )
+                nodeData
             }
 
   logoElement =
