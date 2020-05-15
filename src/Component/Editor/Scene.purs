@@ -9,7 +9,7 @@ import Control.MonadZero (guard)
 import Data.Array (foldr, sortBy)
 import Data.Bifunctor (bimap)
 import Data.Default (def)
-import Data.Either (Either, either, note)
+import Data.Either (Either(..), either, note)
 import Data.Lens (is, preview, view)
 import Data.List as List
 import Data.Map (Map)
@@ -21,12 +21,13 @@ import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
-import Data.Vec ((!!))
+import Data.Vec (vec2, (!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (ColoringError, generateTypeMap, prettify)
+import Lunarbox.Component.Editor.Comment (comment)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToSvg)
 import Lunarbox.Component.Editor.Node (renderNode)
 import Lunarbox.Component.Editor.Node.Label (labelText, label)
@@ -41,7 +42,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode, _nodeInputs)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataComment, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (_NodeGroupInputs)
@@ -81,6 +82,7 @@ type Actions a
     , mouseUp :: Maybe a
     , selectNode :: NodeId -> Event -> Maybe a
     , zoom :: Number -> Maybe a
+    , stopPropagation :: Event -> Maybe a
     , selectInput :: NodeId -> Int -> Event -> Maybe a
     , selectOutput :: NodeId -> Event -> Maybe a
     , removeConnection :: NodeId -> Tuple NodeId Int -> Event -> Maybe a
@@ -200,7 +202,7 @@ createNodeComponent { functionName
         }
 
 scene :: forall a s m. Actions a -> Input a s m -> ComponentHTML a s m
-scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom } state@{ nodeData, camera, scale, lastMousePosition } =
+scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom, stopPropagation } state@{ nodeData, camera, scale, lastMousePosition } =
   either
     (\err -> erroredEditor $ show err)
     success
@@ -213,7 +215,20 @@ scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom } state@{ nodeDa
 
   state' = state { lastMousePosition = toWorldCoordinates camera lastMousePosition }
 
-  nodeHtml = sequence $ (createNodeComponent state' actions <$> sortedNodes :: Array (Either _ _))
+  nodeHtml =
+    sequence
+      $ ( \nodeDataWithId@(Tuple id currentNodeData) -> case view _NodeDataComment currentNodeData of
+            Just text ->
+              Right
+                $ comment
+                    { text
+                    , position: view _NodeDataPosition currentNodeData
+                    , scale: vec2 200.0 150.0
+                    }
+                    { select: selectNode id, stopPropagation }
+            Nothing -> createNodeComponent state' actions nodeDataWithId
+        )
+      <$> sortedNodes
 
   success =
     HH.div [ HP.ref sceneRef ]

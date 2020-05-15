@@ -63,3 +63,11 @@ nodeOffsetInitialRadius = 100.0
 -- The width of the number and string inputs
 inputWIdth :: Number
 inputWIdth = 75.0
+
+-- Comments are added in a striaght line as in the logic gate sim
+commentOffset :: Number
+commentOffset = 30.0
+
+-- Margin around the text inside comments
+commentTextMargin :: Number
+commentTextMargin = 20.0

@@ -13,7 +13,7 @@ import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Default (def)
-import Data.Foldable (find, foldr, for_, traverse_)
+import Data.Foldable (find, foldr, for_, sequence_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
 import Data.List.Lazy as List
@@ -53,7 +53,7 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createComment, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, inputNodeName, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Map (maybeBimap)
@@ -65,12 +65,14 @@ import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement (focus)
 import Web.HTML.HTMLInputElement as HTMLInputElement
+import Web.HTML.HTMLTextAreaElement as HTMLTextAreaElement
 import Web.HTML.Window (document) as Web
 import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
 import Web.UIEvent.MouseEvent (MouseEvent)
+import Web.UIEvent.MouseEvent as MouseEven
 import Web.UIEvent.MouseEvent as MouseEvent
 
 data Action
@@ -99,7 +101,8 @@ data Action
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
   | Autosave Json
-  | PreventDefaults Event
+  | StopPropagations Event
+  | CreateComment
 
 data Output
   = Save Json
@@ -127,6 +130,7 @@ sceneActions =
   , zoom: Just <<< SceneZoom
   , mouseDown: Just <<< SceneMouseDown
   , mouseMove: Just <<< SceneMouseMove
+  , stopPropagation: Just <<< StopPropagations
   , selectNode: (Just <<< _) <<< SelectNode
   , selectOutput: (Just <<< _) <<< SelectOutput
   , removeConnection: ((Just <<< _) <<< _) <<< RemoveConnection
@@ -189,10 +193,14 @@ component =
       | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
       | KE.key event == "s" -> do
         let
+          target = Event.target $ KE.toEvent event
+
           targetInput =
             HTMLInputElement.fromEventTarget
-              =<< Event.target (KE.toEvent event)
-        when (isNothing targetInput) do
+              =<< target
+
+          targetTextarea = HTMLTextAreaElement.fromEventTarget =<< target
+        when (isNothing targetInput && isNothing targetTextarea) do
           { currentTab, panelIsOpen } <- get
           when (currentTab /= Add || not panelIsOpen) do
             modify_ $ set _panelIsOpen true <<< set _currentTab Add
@@ -288,6 +296,7 @@ component =
       preventDefaults event
       maybeCurrentFunction <- gets $ view _currentFunction
       nodes <- gets $ preview _currentNodes
+      camera <- gets $ view _currentCamera
       state <- get
       let
         nodeIds = Set.toUnfoldable $ G.keys $ fromMaybe G.emptyGraph nodes
@@ -297,10 +306,20 @@ component =
         zPositions = (view _NodeDataZPosition) <$> nodeData
 
         zPosition = 1 + foldr max (-1) zPositions
-      for_ maybeCurrentFunction \currentFunction -> do
-        modify_
-          $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
-          <<< set (_isSelected currentFunction id) true
+      sequence_ do
+        currentFunction <- maybeCurrentFunction
+        mouseEvent <- MouseEven.fromEvent event
+        let
+          position =
+            toNumber
+              <$> vec2 (MouseEvent.clientX mouseEvent) (MouseEvent.clientY mouseEvent)
+        pure do
+          state' <- getSceneMousePosition position
+          put
+            $ ( set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
+                  <<< set (_isSelected currentFunction id) true
+              )
+                state'
     SelectInput id index event -> do
       unconnectableList <- gets $ view _unconnectablePins
       let
@@ -345,7 +364,8 @@ component =
         handleAction $ Autosave newState
       else
         handleAction $ Autosave oldState
-    PreventDefaults event -> preventDefaults event
+    StopPropagations event -> liftEffect $ stopPropagation event
+    CreateComment -> modify_ createComment
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -368,6 +388,16 @@ component =
     ]
     where
     icon = sidebarIcon currentTab
+
+  -- Butons for the footer of the add panel
+  footerButton :: String -> Action -> HH.HTML _ Action
+  footerButton text action =
+    HH.button
+      [ className "unselectable"
+      , onClick $ const $ Just action
+      ]
+      [ HH.text text
+      ]
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin, nodeSearchTerm } = case currentTab of
@@ -436,13 +466,9 @@ component =
             , changeInputCount: (Just <<< _) <<< ChangeInputCount
             , delete: Just <<< DeleteFunction
             }
-        , container "create-input"
-            [ HH.button
-                [ className "unselectable"
-                , onClick $ const $ Just $ CreateNode $ FunctionName "input"
-                ]
-                [ HH.text "Create input node"
-                ]
+        , container "footer-buttons"
+            [ footerButton "Create input" $ CreateNode inputNodeName
+            , footerButton "Create comment" CreateComment
             ]
         ]
 

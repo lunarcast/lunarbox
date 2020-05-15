@@ -1,6 +1,7 @@
 module Lunarbox.Data.Editor.Node.NodeData
   ( CompatNodeData
   , NodeData(..)
+  , defaultComment
   , _NodeDataPosition
   , _NodeDataSelected
   , _NodeDataZPosition
@@ -9,10 +10,10 @@ module Lunarbox.Data.Editor.Node.NodeData
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, (.!=), (.:?))
-import Data.Default (class Default)
+import Data.Default (class Default, def)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Lens (Lens')
+import Data.Lens (Lens', set)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
@@ -57,6 +58,10 @@ instance ordNodeData :: Ord NodeData where
 
 instance defaultNodeData :: Default NodeData where
   def = NodeData { position: zero, selected: false, zPosition: 0, comment: Nothing }
+
+-- Same as def but also keeps a comment
+defaultComment :: NodeData
+defaultComment = set _NodeDataComment (Just "some text") def
 
 -- Lenses
 _NodeDataPosition :: Lens' NodeData (Vec2 Number)

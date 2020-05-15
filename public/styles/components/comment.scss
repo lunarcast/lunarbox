@@ -1,0 +1,17 @@
+@import "../theme.scss";
+
+svg .comment-container {
+  cursor: move;
+}
+
+svg .comment-container > .comment {
+  fill: rgba(1, 204, 255, 0.87);
+  border-radius: 1rem;
+}
+
+svg .comment-container .comment-textarea {
+  user-select: initial;
+  width: 100%;
+  height: 100%;
+  display: block;
+}

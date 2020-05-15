@@ -38,7 +38,7 @@ import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Editor.Camera (Camera, toWorldCoordinates)
 import Lunarbox.Data.Editor.Camera as Camera
-import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
+import Lunarbox.Data.Editor.Constants (commentOffset, nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
 import Lunarbox.Data.Editor.Foreign.NodeBoundingdBox (nodeBoundingBox)
@@ -47,7 +47,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected, defaultComment)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
@@ -150,6 +150,32 @@ createId = do
 inputNodeName :: FunctionName
 inputNodeName = FunctionName "input"
 
+-- Calculate the position of a new node
+newNodePosition :: forall a s m. StateM.State (State a s m) (Vec2 Number)
+newNodePosition = do
+  addedNodes <- gets $ (toNumber <<< view _addedNodes)
+  center <- gets sceneCenter
+  let
+    angle = nodeOffset * addedNodes
+
+    radius = nodeOffsetInitialRadius * (nodeOffsetGrowthRate `pow` angle)
+
+    offset = polarToCartesian radius angle
+  pure $ offset + center
+
+-- Adds a new comment to the current scene
+createComment :: forall a s m. State a s m -> State a s m
+createComment =
+  execState do
+    id <- createId
+    addedNodes <- gets $ (toNumber <<< view _addedNodes)
+    center <- gets sceneCenter
+    let
+      position = (_ + addedNodes * commentOffset) <$> center
+    modify_ $ set (_atCurrentNodeData id) $ Just $ set _NodeDataPosition position defaultComment
+    modify_ $ over _addedNodes (_ + 1)
+
+-- Adds a new node to the current scene
 createNode :: forall a s m. FunctionName -> StateM.State (State a s m) Unit
 createNode name = do
   let
@@ -163,8 +189,7 @@ createNode name = do
     else
       gets
         $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
-  addedNodes <- gets $ (toNumber <<< view _addedNodes)
-  center <- gets sceneCenter
+  position <- newNodePosition
   let
     node =
       if isInput then
@@ -181,14 +206,6 @@ createNode name = do
 
       inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
 
-    angle = nodeOffset * addedNodes
-
-    radius = nodeOffsetInitialRadius * (nodeOffsetGrowthRate `pow` angle)
-
-    offset = polarToCartesian radius angle
-
-    position = offset + center
-
     nodeData = set _NodeDataPosition position def
   for_ maybeCurrentFunction
     $ \currentFunction -> do
@@ -197,7 +214,7 @@ createNode name = do
         modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
         when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
         when (not isInput) $ modify_ $ over _functions $ G.insertEdge name currentFunction
-        modify_ $ compile
+        modify_ compile
 
 -- Get the type of the output a node (Also works for input pins)
 getOutputType :: forall a s m. FunctionName -> NodeId -> State a s m -> Maybe Type

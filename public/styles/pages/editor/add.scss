@@ -1,10 +1,18 @@
 @use "../../utils/utils";
 @import "../../theme.scss";
 
-#add-node-container > #create-input > button {
+#add-node-container > #footer-buttons {
+  padding-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+#add-node-container > #footer-buttons > button {
+  $margin: 0.4rem;
+
   flex-grow: 1;
 
-  background: $primary;
+  background: lighten($color: $primary, $amount: 5%);
   color: white;
 
   border: none;
@@ -13,8 +21,9 @@
   width: 100%;
   font-size: 1.5rem;
 
+  margin-bottom: $margin;
+  margin-top: $margin;
   padding: 0.6rem;
-  margin-bottom: 1rem;
 
   transition: filter $transition-time;
 

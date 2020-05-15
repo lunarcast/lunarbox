@@ -23,7 +23,7 @@
   background: $very-dark;
 
   .sidebar-icon,
-  #sidebar-logo-conainer {
+  #sidebar-logo-container {
     @include utils.center;
   }
 
@@ -152,3 +152,4 @@
 @import "./editor/add.scss";
 
 @import "../components/node.scss";
+@import "../components/comment.scss";
