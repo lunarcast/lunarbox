@@ -21,7 +21,7 @@ import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Typelevel.Num (d0, d1)
-import Data.Vec (vec2, (!!))
+import Data.Vec ((!!))
 import Halogen.HTML (ComponentHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp, onWheel)
@@ -42,6 +42,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _ComplexNode, _OutputNode, _nodeInputs)
+import Lunarbox.Data.Editor.Node.CommentData (CommentData(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataComment, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -87,6 +88,7 @@ type Actions a
     , selectOutput :: NodeId -> Event -> Maybe a
     , removeConnection :: NodeId -> Tuple NodeId Int -> Event -> Maybe a
     , setValue :: FunctionName -> NodeId -> RuntimeValue -> Maybe a
+    , handleCommentChange :: NodeId -> Event -> Maybe a
     }
 
 -- Errors which could arise while creating the node svg
@@ -202,7 +204,7 @@ createNodeComponent { functionName
         }
 
 scene :: forall a s m. Actions a -> Input a s m -> ComponentHTML a s m
-scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom, stopPropagation } state@{ nodeData, camera, scale, lastMousePosition } =
+scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom, stopPropagation, handleCommentChange } state@{ nodeData, camera, scale, lastMousePosition } =
   either
     (\err -> erroredEditor $ show err)
     success
@@ -218,14 +220,17 @@ scene actions@{ mouseMove, mouseUp, mouseDown, selectNode, zoom, stopPropagation
   nodeHtml =
     sequence
       $ ( \nodeDataWithId@(Tuple id currentNodeData) -> case view _NodeDataComment currentNodeData of
-            Just text ->
+            Just (CommentData { text, scale: commentScale }) ->
               Right
                 $ comment
                     { text
+                    , scale: commentScale
                     , position: view _NodeDataPosition currentNodeData
-                    , scale: vec2 200.0 150.0
                     }
-                    { select: selectNode id, stopPropagation }
+                    { select: selectNode id
+                    , change: handleCommentChange id
+                    , stopPropagation
+                    }
             Nothing -> createNodeComponent state' actions nodeDataWithId
         )
       <$> sortedNodes

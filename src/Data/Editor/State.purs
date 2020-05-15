@@ -47,7 +47,8 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected, defaultComment)
+import Lunarbox.Data.Editor.Node.CommentData (CommentData, _CommentDataText)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataComment, _NodeDataPosition, _NodeDataSelected, defaultComment)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
@@ -786,3 +787,9 @@ _isAdmin = prop (SProxy :: _ "isAdmin")
 
 _nodeSearchTerm :: forall a s m. Lens' (State a s m) String
 _nodeSearchTerm = prop (SProxy :: _ "nodeSearchTerm")
+
+_comment :: forall a s m. NodeId -> Traversal' (State a s m) (Maybe CommentData)
+_comment id = _atCurrentNodeData id <<< _Just <<< _NodeDataComment
+
+_commentText :: forall a s m. NodeId -> Traversal' (State a s m) String
+_commentText id = _comment id <<< _Just <<< _CommentDataText

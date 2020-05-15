@@ -8,7 +8,7 @@ import Data.Typelevel.Num (d0, d1)
 import Data.Vec ((!!))
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseDown, onMouseMove, onWheel)
+import Halogen.HTML.Events (onInput, onMouseDown, onMouseMove, onWheel)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Editor.Constants (commentTextMargin)
@@ -26,6 +26,7 @@ halfMargin = commentTextMargin / 2.0
 type Actions a
   = { select :: Event -> Maybe a
     , stopPropagation :: Event -> Maybe a
+    , change :: Event -> Maybe a
     }
 
 type Input
@@ -36,7 +37,7 @@ type Input
 
 -- Comment nodes
 comment :: forall h a. Input -> Actions a -> HTML h a
-comment { position, scale, text } { select, stopPropagation } =
+comment { position, scale, text } { select, change, stopPropagation } =
   SE.g
     [ SA.transform
         [ SA.Translate (position !! d0) (position !! d1)
@@ -62,6 +63,7 @@ comment { position, scale, text } { select, stopPropagation } =
             , onMouseDown $ stopPropagation <<< MouseEvent.toEvent
             , onMouseMove $ stopPropagation <<< MouseEvent.toEvent
             , onWheel $ stopPropagation <<< WheelEvent.toEvent
+            , onInput change
             ]
         ]
     ]

@@ -18,6 +18,7 @@ import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
+import Lunarbox.Data.Editor.Node.CommentData (CommentData)
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
 import Record as Record
@@ -30,7 +31,7 @@ type CompatNodeData r
 
 -- Newer versions of lunarbox also have the comment field
 newtype NodeData
-  = NodeData { | CompatNodeData ( comment :: Maybe String ) }
+  = NodeData { | CompatNodeData ( comment :: Maybe CommentData ) }
 
 derive instance newtypeNodeData :: Newtype NodeData _
 
@@ -61,7 +62,7 @@ instance defaultNodeData :: Default NodeData where
 
 -- Same as def but also keeps a comment
 defaultComment :: NodeData
-defaultComment = set _NodeDataComment (Just "some text") def
+defaultComment = set _NodeDataComment (Just def) def
 
 -- Lenses
 _NodeDataPosition :: Lens' NodeData (Vec2 Number)
@@ -73,5 +74,5 @@ _NodeDataSelected = newtypeIso <<< prop (SProxy :: SProxy "selected")
 _NodeDataZPosition :: Lens' NodeData Int
 _NodeDataZPosition = newtypeIso <<< prop (SProxy :: _ "zPosition")
 
-_NodeDataComment :: Lens' NodeData (Maybe String)
+_NodeDataComment :: Lens' NodeData (Maybe CommentData)
 _NodeDataComment = newtypeIso <<< prop (SProxy :: _ "comment")

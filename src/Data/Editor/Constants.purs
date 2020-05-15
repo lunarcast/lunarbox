@@ -70,4 +70,4 @@ commentOffset = 30.0
 
 -- Margin around the text inside comments
 commentTextMargin :: Number
-commentTextMargin = 20.0
+commentTextMargin = 30.0

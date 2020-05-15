@@ -22,8 +22,11 @@ import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
+import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
+import Data.Typelevel.Num (d1)
 import Data.Vec (vec2)
+import Data.Vec as Vec
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -42,18 +45,20 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
+import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Node.CommentData (minCommentScale)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createComment, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, inputNodeName, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _commentText, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createComment, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, inputNodeName, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Map (maybeBimap)
@@ -61,9 +66,10 @@ import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (Event, EventType(..), preventDefault, stopPropagation)
 import Web.Event.Event as Event
+import Web.HTML (HTMLInputElement, HTMLTextAreaElement)
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
-import Web.HTML.HTMLElement (focus)
+import Web.HTML.HTMLElement (focus, getBoundingClientRect)
 import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.HTML.HTMLTextAreaElement as HTMLTextAreaElement
 import Web.HTML.Window (document) as Web
@@ -103,6 +109,7 @@ data Action
   | Autosave Json
   | StopPropagations Event
   | CreateComment
+  | HandleCommentChange NodeId Event
 
 data Output
   = Save Json
@@ -133,6 +140,7 @@ sceneActions =
   , stopPropagation: Just <<< StopPropagations
   , selectNode: (Just <<< _) <<< SelectNode
   , selectOutput: (Just <<< _) <<< SelectOutput
+  , handleCommentChange: (Just <<< _) <<< HandleCommentChange
   , removeConnection: ((Just <<< _) <<< _) <<< RemoveConnection
   , selectInput: ((Just <<< _) <<< _) <<< SelectInput
   , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
@@ -366,6 +374,18 @@ component =
         handleAction $ Autosave oldState
     StopPropagations event -> liftEffect $ stopPropagation event
     CreateComment -> modify_ createComment
+    HandleCommentChange id event -> do
+      let
+        targetInput = Event.target event >>= HTMLTextAreaElement.fromEventTarget
+      value <- map (fromMaybe "") $ for targetInput $ liftEffect <<< HTMLTextAreaElement.value
+      height <-
+        map (maybe (minCommentScale `Vec.index` d1) $ _.height)
+          $ for targetInput
+          $ liftEffect
+          <<< getBoundingClientRect
+          <<< HTMLTextAreaElement.toHTMLElement
+      print height
+      modify_ $ set (_commentText id) value
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
