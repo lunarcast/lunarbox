@@ -31,14 +31,14 @@ type RequestOptions
     }
 
 -- Url to send requests to
-newtype BaseUrl
-  = BaseUrl String
+data BaseUrl
+  = BaseUrl String Boolean
 
 -- Default request we can reuse troughout the app
 defaultRequest :: BaseUrl -> RequestOptions -> Request Json
-defaultRequest (BaseUrl baseUrl) { endpoint, method } =
+defaultRequest (BaseUrl baseUrl pretty) { endpoint, method } =
   { method: Left method
-  , url: baseUrl <> print endpointCodec endpoint
+  , url: baseUrl <> print endpointCodec endpoint <> if pretty then "?pretty" else ""
   , content: RB.json <$> body
   , username: Nothing
   , password: Nothing
