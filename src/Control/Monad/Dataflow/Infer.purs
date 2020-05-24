@@ -23,13 +23,14 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader)
 import Control.Monad.State (class MonadState)
 import Control.Monad.Writer (class MonadTell, class MonadWriter)
 import Data.Either (Either)
-import Data.Lens (Lens', iso, set, view)
+import Data.Lens (Lens', iso, over, set, view)
 import Data.Lens.Record (prop)
 import Data.List (List(..))
 import Data.Map as Map
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple)
+import Lunarbox.Data.Dataflow.Class.Substituable (class Substituable, apply, ftv)
 import Lunarbox.Data.Dataflow.Constraint (Constraint(..), ConstraintSet(..))
 import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv)
@@ -88,6 +89,10 @@ newtype InferEnv l
   }
 
 derive instance newtypeInferEnv :: Newtype (InferEnv l) _
+
+instance substituableInferEnv :: Substituable (InferEnv l) where
+  ftv (InferEnv { typeEnv }) = ftv typeEnv
+  apply = over _typeEnv <<< apply
 
 _typeEnv :: forall l. Lens' (InferEnv l) TypeEnv
 _typeEnv = iso unwrap wrap <<< prop (SProxy :: _ "typeEnv")

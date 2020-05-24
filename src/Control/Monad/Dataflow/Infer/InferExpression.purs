@@ -98,7 +98,7 @@ infer expression =
         subst <- case runSolve (SolveContext { location }) $ solve constraints of
           Right result -> pure result
           Left err -> throwError err
-        generalized <- local (const env) $ generalize $ apply subst valueType
+        generalized <- local (const $ apply subst env) $ generalize $ apply subst valueType
         createClosure name generalized $ infer body
       FixPoint _ body -> do
         t <- infer body
