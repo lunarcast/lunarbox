@@ -46,14 +46,14 @@ comment { position, scale, text } { select, change, stopPropagation } =
     , onMouseDown $ select <<< MouseEvent.toEvent
     ]
     [ SE.rect
-        [ SA.width $ scale !! d0
-        , SA.height $ scale !! d1
+        [ SA.width $ scale !! d0 + commentTextMargin
+        , SA.height $ scale !! d1 + commentTextMargin
         , SA.class_ "comment"
         , SA.ry 10.0
         ]
     , SE.foreignObject
-        [ SA.width $ scale !! d0 - commentTextMargin
-        , SA.height $ scale !! d1 - commentTextMargin
+        [ SA.width $ scale !! d0
+        , SA.height $ scale !! d1
         , SA.x halfMargin
         , SA.y halfMargin
         ]

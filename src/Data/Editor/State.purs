@@ -47,7 +47,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
-import Lunarbox.Data.Editor.Node.CommentData (CommentData, _CommentDataText)
+import Lunarbox.Data.Editor.Node.CommentData (CommentData, _CommentDataScale, _CommentDataText)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataComment, _NodeDataPosition, _NodeDataSelected, defaultComment)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -793,3 +793,6 @@ _comment id = _atCurrentNodeData id <<< _Just <<< _NodeDataComment
 
 _commentText :: forall a s m. NodeId -> Traversal' (State a s m) String
 _commentText id = _comment id <<< _Just <<< _CommentDataText
+
+_commentScale :: forall a s m. NodeId -> Traversal' (State a s m) (Vec2 Number)
+_commentScale id = _comment id <<< _Just <<< _CommentDataScale

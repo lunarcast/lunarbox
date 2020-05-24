@@ -1,6 +1,7 @@
 module Lunarbox.Data.Editor.Node.CommentData
   ( CommentData(..)
   , minCommentScale
+  , minHeight
   , _CommentDataText
   , _CommentDataScale
   ) where
@@ -14,7 +15,8 @@ import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
-import Data.Vec (vec2)
+import Data.Typelevel.Num (d1)
+import Data.Vec (vec2, (!!))
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Vector (Vec2)
 
@@ -28,6 +30,10 @@ newtype CommentData
 -- We don't want a tiny comment when there's a small amount of text
 minCommentScale :: Vec2 Number
 minCommentScale = vec2 200.0 150.0
+
+-- Minimum height of a comment
+minHeight :: Number
+minHeight = minCommentScale !! d1
 
 -- Typeclasses instances
 derive instance eqCommentData :: Eq CommentData
