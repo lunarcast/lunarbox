@@ -30,11 +30,11 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
+import Halogen.HTML.Events (onClick, onKeyUp, onMouseUp, onValueInput)
 import Halogen.HTML.Properties (classes, id_)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-import Lunarbox.Capability.Navigate (class Navigate)
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
@@ -58,6 +58,7 @@ import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
+import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (Event, EventType(..), preventDefault, stopPropagation)
 import Web.Event.Event as Event
@@ -100,6 +101,7 @@ data Action
   | DeleteFunction FunctionName
   | Autosave Json
   | PreventDefaults Event
+  | Navigate Route
 
 data Output
   = Save Json
@@ -341,11 +343,12 @@ component =
       name <- gets $ view _name
       if String.length name >= 2 then do
         newState <- gets stateToJson
-        when (newState /= oldState) $ raise $ Save newState
+        unless (newState == oldState) $ raise $ Save newState
         handleAction $ Autosave newState
       else
         handleAction $ Autosave oldState
     PreventDefaults event -> preventDefaults event
+    Navigate route -> navigate route
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -497,6 +500,7 @@ component =
           [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
           , HP.alt "Lunarbox logo"
           , HP.id_ "sidebar-logo"
+          , onMouseUp $ const $ Just $ Navigate Home
           ]
       ]
 
