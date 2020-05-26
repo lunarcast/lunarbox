@@ -52,6 +52,7 @@ data Action
   | CreateProject
   | CloneProject ProjectId
   | Search String
+  | Navigate Route
 
 type Output
   = Void
@@ -92,6 +93,7 @@ component =
       projectList <- getProjects
       modify_ $ set _projectList $ fromEither projectList
     Search term -> modify_ $ set _search term
+    Navigate route -> navigate route
     OpenProject id -> navigate $ Project id
     CloneProject id -> do
       response <- cloneProject id
@@ -179,8 +181,8 @@ component =
     container "projects-container"
       [ withLogo
           $ container "projects"
-              [ container "project-search"
-                  [ container "search-spacing" []
+              [ container "projects-header"
+                  [ HH.div [ HP.id_ "back", onClick $ const $ Just $ Navigate Home ] [ icon "arrow_back_ios" ]
                   , HH.input
                       [ HP.value search
                       , HP.placeholder "Search"
