@@ -1,7 +1,7 @@
 ---
 to: src/<%= folder %>/<%= name.replace(/\./g, "/") %>.purs
 ---
-module Lunarbox.<%= folder %>.<%= name %> where
+module Lunarbox.<%= folder %>.<%= name %> (component) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)

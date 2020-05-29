@@ -14,6 +14,7 @@ import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, logout, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.User (class ManageUser)
+import Lunarbox.Component.Clone as CloneC
 import Lunarbox.Component.HOC.Connect (WithCurrentUser)
 import Lunarbox.Component.HOC.Connect as Connect
 import Lunarbox.Component.Home as Home
@@ -49,6 +50,7 @@ type ChildSlots
     , register :: OpaqueSlot Unit
     , projects :: OpaqueSlot Unit
     , project :: OpaqueSlot ProjectId
+    , clone :: OpaqueSlot ProjectId
     , home :: OpaqueSlot Unit
     )
 
@@ -131,6 +133,7 @@ component =
           Login -> HH.slot (SProxy :: _ "login") unit Login.component { redirect: true } absurd
           Register -> HH.slot (SProxy :: _ "register") unit Register.component unit absurd
           Projects -> requireAuthorization $ HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
+          Clone targetId -> requireAuthorization $ HH.slot (SProxy :: _ "clone") targetId CloneC.component { targetId } absurd
           Project id -> requireAuthorization $ HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
       # fromMaybe notFound
     where

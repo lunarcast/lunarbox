@@ -107,6 +107,7 @@ type State a s m
     , isExample :: Boolean
     , isAdmin :: Boolean
     , nodeSearchTerm :: String
+    , isVisible :: Boolean
     }
 
 -- Starting state which contains nothing
@@ -134,9 +135,10 @@ emptyState =
     , expression: nothing
     , project: Project { main: FunctionName "main", functions: G.emptyGraph }
     , name: "Unnamed project"
+    , nodeSearchTerm: ""
     , isExample: false
     , isAdmin: false
-    , nodeSearchTerm: ""
+    , isVisible: false
     }
 
 -- Helpers
@@ -766,6 +768,9 @@ _isExample = prop (SProxy :: _ "isExample")
 
 _isAdmin :: forall a s m. Lens' (State a s m) Boolean
 _isAdmin = prop (SProxy :: _ "isAdmin")
+
+_isVisible :: forall a s m. Lens' (State a s m) Boolean
+_isVisible = prop (SProxy :: _ "isVisible")
 
 _nodeSearchTerm :: forall a s m. Lens' (State a s m) String
 _nodeSearchTerm = prop (SProxy :: _ "nodeSearchTerm")

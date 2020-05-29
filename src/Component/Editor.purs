@@ -53,7 +53,7 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Map (maybeBimap)
@@ -97,6 +97,7 @@ data Action
   | SetName String
   | SetExample Boolean
   | SearchNodes String
+  | SetVisibility Boolean
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
   | Autosave Json
@@ -331,6 +332,8 @@ component =
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
     SetName name -> modify_ $ set _name name
+    SetVisibility isVisible -> do
+      modify_ $ set _isVisible isVisible
     SetExample isExample -> do
       -- We only allow editing the example status when we are an admine
       isAdmin <- gets $ view _isAdmin
@@ -373,7 +376,7 @@ component =
     icon = sidebarIcon currentTab
 
   panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin, nodeSearchTerm } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm } = case currentTab of
     Settings ->
       container "settings"
         [ container "title" [ HH.text "Project settings" ]
@@ -384,6 +387,12 @@ component =
                 , HP.placeholder "Project name"
                 , className "setting-text-input"
                 , onValueInput $ Just <<< SetName
+                ]
+            ]
+        , HH.div [ className "project-setting" ]
+            [ HH.div [ className "setting-label" ] [ HH.text "Visibility:" ]
+            , HH.div [ className "setting-switch-input" ]
+                [ switch { checked: isVisible, round: true } (Just <<< SetVisibility)
                 ]
             ]
         , whenElem isAdmin \_ ->

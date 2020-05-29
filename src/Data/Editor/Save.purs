@@ -34,17 +34,19 @@ type Save
     | ProjectData
       ( project :: StatePermanentData
       , isExample :: Boolean
+      , visible :: Boolean
       )
     }
 
 -- Encoding and decoding
 stateToJson :: forall a s m. State a s m -> Json
-stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExample, name } = encodeJson save
+stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExample, name, isVisible } = encodeJson save
   where
   save :: Save
   save =
     { name
     , isExample
+    , visible: isVisible
     , metadata:
       { nodeCount: nodeCount state
       , functionCount: visualFunctionCount state
@@ -63,9 +65,10 @@ jsonToState json = do
   obj <- decodeJson json
   name :: String <- obj .: "name"
   isExample :: Boolean <- obj .: "isExample"
+  isVisible :: Boolean <- obj .: "visible"
   saveData :: StatePermanentData <- obj .: "project"
   let
-    recivedData = Record.merge { name, isExample } saveData
+    recivedData = Record.merge { name, isExample, isVisible } saveData
 
     baseState :: State a s m
     baseState = Record.merge recivedData emptyState

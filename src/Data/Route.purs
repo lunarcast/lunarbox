@@ -17,6 +17,7 @@ data Route
   | Register
   | Projects
   | Project ProjectId
+  | Clone ProjectId
 
 derive instance eqRoute :: Eq Route
 
@@ -37,6 +38,7 @@ routingCodec =
         , "Register": "register" / noArgs
         , "Projects": "projects" / noArgs
         , "Project": "project" / projectId segment
+        , "Clone": "clone" / projectId segment
         }
 
 --  This combinator transforms a codec over `String` into one that operatos on the `ProjectId` type.
