@@ -1,5 +1,4 @@
 dependencies:
-  mousetrap-ts: 1.0.0
   normalize.css: 8.0.1
   seedrandom: 3.0.5
   tslib: 1.11.1
@@ -4944,10 +4943,6 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha512-xV2bxeN6F7oYjZWTe/YPAy6MN2M+sL4u/Rlm2AHCIVGfo2p1yGmBHQ6vHehl4bRTZBdHu3TSkWdYgkwpYzAGSw==
-  /mousetrap-ts/1.0.0:
-    dev: false
-    resolution:
-      integrity: sha512-NAOxr9A82Z6/rXWBH6RPsWCPW/W+EYSHSHwg9QI6wy0rreLsdeCgT4JUwRk1cVq4Dm2ZYodcCeAu/VDp2vKS6Q==
   /ms/2.0.0:
     dev: true
     resolution:
@@ -8263,7 +8258,6 @@ specifiers:
   cssnano: ^4.1.10
   htmlnano: ^0.2.5
   hygen: ^5.0.3
-  mousetrap-ts: ^1.0.0
   nodemon: ^2.0.2
   normalize.css: ^8.0.1
   parcel-bundler: ^1.12.4
