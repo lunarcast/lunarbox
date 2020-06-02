@@ -3,11 +3,12 @@
     "moduleResolution": "Node",
     "module": "CommonJS",
     "target": "ES2015",
+    "lib": ["DOM", "DOM.Iterable", "ESNext.Array", "ESNext"],
     "downlevelIteration": true,
     "strictNullChecks": true,
     "strictBindCallApply": true,
     "esModuleInterop": true,
     "importHelpers": true
   },
-  "include": ["src"]
+  "include": ["src", "public"]
 }

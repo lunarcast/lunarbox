@@ -5,12 +5,14 @@
   ],
   "cSpell.words": [
     "downlevel",
+    "hdom",
     "htmlnano",
     "hygen",
     "lunarbox",
     "oxanium",
     "prebuild",
     "purescript",
+    "scenegraph",
     "scrollbar",
     "seedrandom",
     "spago",
@@ -20,5 +22,6 @@
     "unmount",
     "unselectable",
     "width"
-  ]
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib"
 }
