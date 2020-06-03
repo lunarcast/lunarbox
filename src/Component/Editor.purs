@@ -12,7 +12,6 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
-import Data.Default (def)
 import Data.Foldable (find, foldr, for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
@@ -49,14 +48,13 @@ import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.Map (maybeBimap)
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
@@ -103,12 +101,14 @@ data Action
   | Autosave Json
   | PreventDefaults Event
   | Navigate Route
+  | LoadNodes
 
 data Output
   = Save Json
 
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
+    , scene :: Slot Scene.Query Void Unit
     )
 
 -- Shorthand for manually passing the types of the actions and child slots
@@ -122,30 +122,6 @@ searchNodeInputRef = RefLabel "search node"
 -- We need this to only trigger events when in focus
 searchNodeClassName :: String
 searchNodeClassName = "search-node"
-
--- Actions to run the scene component with
-sceneActions :: Scene.Actions Action
-sceneActions =
-  { mouseUp: Just SceneMouseUp
-  , zoom: Just <<< SceneZoom
-  , mouseDown: Just <<< SceneMouseDown
-  , mouseMove: Just <<< SceneMouseMove
-  , selectNode: (Just <<< _) <<< SelectNode
-  , selectOutput: (Just <<< _) <<< SelectOutput
-  , removeConnection: ((Just <<< _) <<< _) <<< RemoveConnection
-  , selectInput: ((Just <<< _) <<< _) <<< SelectInput
-  , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
-  }
-
--- Create a scene with the set of actions above
-createScene :: forall m. Scene.Input Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-createScene = Scene.scene sceneActions
-
--- This is a helper monad which just generates an id
-createId :: forall m. HalogenM (EditorState m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
-createId = do
-  { nextId } <- get
-  pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
 
 component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
 component =
@@ -352,6 +328,8 @@ component =
         handleAction $ Autosave oldState
     PreventDefaults event -> preventDefaults event
     Navigate route -> navigate route
+    LoadNodes -> do
+      pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -479,29 +457,7 @@ component =
       group <-
         preview (_projectNodeGroup currentFunction) project
       pure
-        $ createScene
-            { unconnectablePins
-            , project
-            , typeMap
-            , lastMousePosition
-            , functionData
-            , partialConnection
-            , valueMap
-            , functionUis
-            , scale: sceneScale
-            , typeColors: colorMap
-            , functionName: currentFunction
-            , camera: fromMaybe def $ Map.lookup currentFunction cameras
-            , nodeData:
-              maybeBimap
-                ( \(Tuple name id) value ->
-                    if name /= currentFunction then
-                      Nothing
-                    else
-                      Just $ Tuple id value
-                )
-                nodeData
-            }
+        $ HH.slot (SProxy :: _ "scene") unit Scene.component unit absurd
 
   logoElement =
     container "sidebar-logo-container"

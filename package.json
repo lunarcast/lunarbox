@@ -20,6 +20,7 @@
     "@thi.ng/vectors": "^4.4.3",
     "normalize.css": "^8.0.1",
     "seedrandom": "^3.0.5",
+    "src": "^1.1.2",
     "tslib": "^1.13.0"
   },
   "devDependencies": {
@@ -43,5 +44,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Mateiadrielrafael/lunarbox.git"
+  },
+  "alias": {
+    "src": "./src"
   }
 }

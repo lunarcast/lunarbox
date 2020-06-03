@@ -1,13 +1,13 @@
-import { Vec2, arc, group } from "./geom"
 import { arcStrokeWidth, inputLayerOffset, nodeRadius } from "./constants"
 import * as g from "@thi.ng/geom"
+import { Vec2Like } from "@thi.ng/vectors"
 
 type NodeId = string
 
 export interface InputData {
   output: string | null
   color: string
-  arc: [number, number]
+  arc: Vec2Like
   value: NodeId | null
 }
 
@@ -20,7 +20,11 @@ export interface SceneData {
   nodes: NodeData[]
 }
 
-export const renderInput = (position: Vec2, step: number, input: InputData) => {
+export const renderInput = (
+  position: Vec2Like,
+  step: number,
+  input: InputData
+) => {
   return g.withAttribs(
     g.arc(
       position,

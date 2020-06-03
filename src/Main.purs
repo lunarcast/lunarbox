@@ -18,7 +18,6 @@ import Lunarbox.Component.Router as Router
 import Lunarbox.Config (Config(..))
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Route (parseRoute)
-import Lunarbox.Foreign.Render (App)
 import Routing.PushState (makeInterface, matchesWith)
 
 devUrl :: BaseUrl
@@ -27,8 +26,8 @@ devUrl = BaseUrl "http://localhost:8090" true
 prodUrl :: BaseUrl
 prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com" false
 
-main :: App -> Effect Unit
-main { production } =
+main :: Boolean -> Effect Unit
+main production =
   runHalogenAff do
     -- Url to make requests to
     let
@@ -55,7 +54,7 @@ main { production } =
     nav <- liftEffect makeInterface
     -- wait for the body to be created
     body <- awaitBody
-    -- TODO: make this depend on some .env file
+    -- Readonly config readable from anywhere in the app
     let
       env :: Config
       env =

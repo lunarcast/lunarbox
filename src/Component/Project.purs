@@ -29,26 +29,28 @@ import Lunarbox.Data.ProjectId (ProjectId)
 import Network.RemoteData (RemoteData(..), fromEither)
 import Record as Record
 
-type State m
-  = { id :: ProjectId
-    , projectData :: RemoteData String (Editor.EditorState m)
-    , currentUser :: Maybe Profile
-    }
+type Input r
+  = ( id :: ProjectId | r )
 
-type Input
-  = ( id :: ProjectId )
+type State m
+  = { 
+    | Input
+      ( projectData :: RemoteData String (Editor.EditorState m)
+      , currentUser :: Maybe Profile
+      )
+    }
 
 -- Lenses
 _projectData :: forall m. Lens' (State m) (RemoteData String (Editor.EditorState m))
 _projectData = prop (SProxy :: _ "projectData")
 
-_id :: forall m. Lens' (State m) ProjectId
+_id :: forall r. Lens' { | Input r } ProjectId
 _id = prop (SProxy :: _ "id")
 
 data Action
   = Init
   | Save Json
-  | Receive { | Connect.WithCurrentUser Input }
+  | Receive { | Connect.WithCurrentUser (Input ()) }
 
 type ChildSlots
   = ( editor :: forall query. Slot query Editor.Output Unit )
@@ -61,7 +63,7 @@ component ::
   MonadReader Config m =>
   ManageProjects m =>
   Navigate m =>
-  Component HH.HTML q { | Input } o m
+  Component HH.HTML q { | Input () } o m
 component =
   Connect.component
     $ mkComponent
@@ -100,4 +102,4 @@ component =
     Failure text -> error text
     Success state -> case currentUser of
       Nothing -> error "not logged in"
-      Just { isAdmin } -> slot (SProxy :: _ "editor") unit Editor.component (Record.merge { isAdmin } state) handleEditorOutput
+      Just { isAdmin } -> slot (SProxy :: _ "editor") unit Editor.component (state { isAdmin = isAdmin }) handleEditorOutput
