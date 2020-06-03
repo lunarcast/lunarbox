@@ -12,7 +12,6 @@ import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRe
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Foreign.Render (Context2d, GeomteryCache, NodeRenderingData, getContext, loadNodes, renderScene, resizeCanvas)
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -82,5 +81,5 @@ component =
       handleAction Render
       pure $ Just a
 
-  -- context <- getContext canvas
-  render _ = HH.canvas [ HP.ref canvasRef ]
+  -- This only renders the canvas, the rest of the rendering is done via some typescript code
+  render = const $ HH.canvas [ HP.ref canvasRef ]

@@ -50,7 +50,7 @@ derive newtype instance encodeJsonProject :: EncodeJson Project
 derive newtype instance decodeJsonProject :: DecodeJson Project
 
 instance graphRepProject :: GraphRep Project FunctionName DataflowFunction where
-  toGraph (Project { functions }) = toGraph $ go <$> functions
+  toGraph (Project { functions }) = G.invert $ toGraph $ go <$> functions
     where
     go :: DataflowFunction -> Tuple DataflowFunction (Set.Set FunctionName)
     go function = Tuple function $ getDependencies function

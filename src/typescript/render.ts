@@ -1,8 +1,8 @@
 import { arcStrokeWidth, inputLayerOffset, nodeRadius } from "./constants"
 import * as g from "@thi.ng/geom"
 import { Vec2Like } from "@thi.ng/vectors"
-
-type NodeId = string
+import { walk } from "@thi.ng/hdom-canvas"
+import { IHiccupShape } from "@thi.ng/geom-api"
 
 export interface InputData {
   output: string | null
@@ -16,9 +16,11 @@ export interface NodeData {
   inputs: InputData[][]
 }
 
-export interface SceneData {
-  nodes: NodeData[]
-}
+export type NodeId = { readonly brand: unique symbol } & string
+
+export type Effect<T> = () => T
+
+export type GeometryCache = Map<NodeId, IHiccupShape>
 
 export const renderInput = (
   position: Vec2Like,
@@ -38,16 +40,22 @@ export const renderInput = (
 }
 
 export const renderNode = (node: NodeData) => {
-  // return g.group(
-  //   {},
-  //   node.inputs.flatMap((layer, index) =>
-  //     layer.map((input) => renderInput(node.position, index, input))
-  //   )
-  // )
-
   return g.circle(node.position, 10, { fill: "yellow" })
 }
 
-export const renderScene = (scene: SceneData) => {
-  return g.group({}, scene.nodes.map(renderNode))
+export const renderScene = (
+  ctx: CanvasRenderingContext2D,
+  cache: GeometryCache
+) => {
+  ctx.resetTransform()
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+
+  const shapes = g.group({}, [...cache.values()]).toHiccup()
+
+  ctx.fillRect(0, 0, 100, 100)
+
+  walk(ctx, [shapes], {
+    attribs: {},
+    edits: []
+  })
 }

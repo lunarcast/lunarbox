@@ -1,13 +1,15 @@
 module Lunarbox.Data.Graph where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Array (foldr)
 import Data.Array as Array
 import Data.Array as Foldable
 import Data.Bifunctor (lmap, rmap)
-import Data.Filterable (filter)
+import Data.Filterable (filter, filterMap)
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
+import Data.Functor (voidLeft)
 import Data.Graph as CG
 import Data.Lens (lens, wander)
 import Data.Lens.At (class At)
@@ -159,3 +161,19 @@ wouldCreateCycle from to = isCyclic <<< insertEdge from to
 -- Count the number of vertices in a graph
 size :: forall k v. Ord k => Graph k v -> Int
 size = Map.size <<< unwrap
+
+-- Reverse all the edges in the graph
+-- TODO: make this only iterate trough the edgeList once.
+-- Curently this is O(N ^ 2) but in theory it could be O(N)
+invert :: forall k v. Ord k => Graph k v -> Graph k v
+invert graph@(Graph map) = Graph $ Map.mapMaybeWithKey go map
+  where
+  -- We need the type definition so purescript knows what Unfoldable instance to use
+  edgeList :: Array _
+  edgeList = edges graph
+
+  go key (Tuple value _) =
+    Just
+      $ Tuple value
+      $ Set.fromFoldable
+      $ filterMap (uncurry $ flip $ voidLeft <<< guard <<< eq key) edgeList
