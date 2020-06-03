@@ -12,6 +12,7 @@ import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRe
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Lunarbox.Config (Config)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Foreign.Render (Context2d, GeomteryCache, NodeRenderingData, getContext, loadNodes, renderScene, resizeCanvas)
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -70,7 +71,8 @@ component =
       withContext $ const $ pure unit
     Render ->
       withContext \ctx -> do
-        liftEffect $ renderScene ctx { nodes: [] }
+        cache <- gets _.geometryCache
+        liftEffect $ renderScene ctx cache
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)
   handleQuery = case _ of

@@ -3,10 +3,13 @@ module Lunarbox.Foreign.Render where
 import Prelude
 import Control.Apply (applyFirst)
 import Data.Default (class Default)
+import Data.Lens (view)
 import Data.List (List, foldr)
 import Data.Nullable (Nullable)
 import Data.Tuple (Tuple, uncurry)
 import Effect (Effect)
+import Lunarbox.Data.Editor.Node (Node)
+import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Vector (Vec2)
 import Web.HTML (HTMLCanvasElement)
@@ -23,7 +26,7 @@ foreign import resizeCanvas :: HTMLCanvasElement -> Effect Unit
 
 foreign import getContext :: HTMLCanvasElement -> Effect Context2d
 
-foreign import renderScene :: Context2d -> SceneData -> Effect Unit
+foreign import renderScene :: Context2d -> GeomteryCache -> Effect Unit
 
 foreign import loadNode :: GeomteryCache -> NodeId -> NodeRenderingData -> Effect Unit
 
@@ -44,12 +47,15 @@ type NodeRenderingData
     , inputs :: Array (Array InputData)
     }
 
-type SceneData
-  = { nodes :: Array NodeRenderingData
-    }
-
 -- Load more nodes in the same cache
 loadNodes :: GeomteryCache -> List (Tuple NodeId NodeRenderingData) -> Effect Unit
 loadNodes cache = foldr (applyFirst <<< go) $ pure unit
   where
   go = uncurry $ loadNode cache
+
+-- Get the rendering data from other smaller chunks
+buildRenderingData :: NodeData -> Node -> NodeRenderingData
+buildRenderingData nodeData node =
+  { position: view _NodeDataPosition nodeData
+  , inputs: [ [] ]
+  }

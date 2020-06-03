@@ -38,12 +38,14 @@ export const renderInput = (
 }
 
 export const renderNode = (node: NodeData) => {
-  return g.group(
-    {},
-    node.inputs.flatMap((layer, index) =>
-      layer.map((input) => renderInput(node.position, index, input))
-    )
-  )
+  // return g.group(
+  //   {},
+  //   node.inputs.flatMap((layer, index) =>
+  //     layer.map((input) => renderInput(node.position, index, input))
+  //   )
+  // )
+
+  return g.circle(node.position, 10, { fill: "yellow" })
 }
 
 export const renderScene = (scene: SceneData) => {

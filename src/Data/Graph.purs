@@ -50,8 +50,8 @@ instance monoidGraph :: (Ord k, Semigroup v) => Monoid (Graph k v) where
 
 instance foldableGraph :: Ord k => Foldable (Graph k) where
   foldMap f = foldMap (f <<< fst) <<< unwrap
-  foldr = foldrDefault
-  foldl = foldlDefault
+  foldr f = foldrDefault f
+  foldl f = foldlDefault f
 
 instance traversableGraph :: Ord k => Traversable (Graph k) where
   traverse f (Graph m) = Graph <$> traverse (uncurry f') m

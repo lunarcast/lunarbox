@@ -1,13 +1,13 @@
 import * as Native from "src/typescript/render"
 import { walk } from "@thi.ng/hdom-canvas"
 import * as g from "@thi.ng/geom"
-import { IShape } from "@thi.ng/geom-api"
+import { IShape, IHiccupShape } from "@thi.ng/geom-api"
 
 export type NodeId = { readonly brand: unique symbol } & string
 
 export type Effect<T> = () => T
 
-export type GeometryCache = Map<NodeId, IShape>
+export type GeometryCache = Map<NodeId, IHiccupShape>
 
 export const emptyGeometryCache = new Map()
 
@@ -25,15 +25,19 @@ export const loadNode = (cache: GeometryCache) => (id: NodeId) => (
  * @param ctx The context to render to
  */
 export const renderScene = (ctx: CanvasRenderingContext2D) => (
-  scene: Native.SceneData
+  cache: GeometryCache
 ) => () => {
   ctx.resetTransform()
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  const shape = Native.renderScene(scene)
+  const shapes = [...cache.values()]
 
-  walk(ctx, [shape], {
-    attribs: [],
+  ctx.translate(100, 100)
+
+  console.log(shapes)
+
+  walk(ctx, shapes, {
+    attribs: {},
     edits: []
   })
 }

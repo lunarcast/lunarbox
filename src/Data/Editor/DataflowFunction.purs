@@ -12,7 +12,9 @@ import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (typeString)
+import Lunarbox.Data.Editor.Class.Depends (class Depends, getDependencies)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, compileNodeGroup)
 
@@ -37,6 +39,10 @@ instance decodeJsonDataflowFunction :: DecodeJson DataflowFunction where
     else
       -- Create temporary funciton wchi should be replaced soon
       pure $ NativeFunction $ NativeExpression (Forall [] typeString) $ String "loading"
+
+instance dependencyDataflowFunction :: Depends DataflowFunction FunctionName where
+  getDependencies (NativeFunction _) = mempty
+  getDependencies (VisualFunction g) = getDependencies g
 
 compileDataflowFunction :: DataflowFunction -> Expression NodeOrPinLocation
 compileDataflowFunction = case _ of

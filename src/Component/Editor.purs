@@ -12,16 +12,17 @@ import Control.Monad.State (execState, get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
+import Data.Compactable (compact)
 import Data.Foldable (find, foldr, for_, traverse_)
 import Data.Int (toNumber)
 import Data.Lens (_Just, over, preview, set, view)
-import Data.List.Lazy as List
+import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Set as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Data.Vec (vec2)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
@@ -41,6 +42,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
+import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
@@ -52,11 +54,12 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Route (Route(..))
+import Lunarbox.Foreign.Render (buildRenderingData)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (Event, EventType(..), preventDefault, stopPropagation)
 import Web.Event.Event as Event
@@ -143,6 +146,7 @@ component =
       document <- liftEffect $ Web.document window
       -- Stuff which we need to run at the start
       handleAction AdjustSceneScale
+      handleAction LoadNodes
       scale <- gets $ view _sceneScale
       currentCameraPosition <- gets $ view $ _currentCamera <<< _CameraPosition
       -- We pan only when the state generation was done without knowing the scale of the scene
@@ -183,7 +187,7 @@ component =
       | KE.key event == "Enter" -> do
         sortedFunctions <- gets searchNode
         currentFunction <- gets $ view _currentFunction
-        functionGraph <- gets $ view _functions
+        functionGraph <- gets $ toGraph <<< _.project
         let
           bestMatch = sortedFunctions !! 0
         when (maybe false not $ wouldCreateCycle <$> bestMatch <*> currentFunction <*> pure functionGraph)
@@ -227,7 +231,8 @@ component =
     SelectFunction name -> do
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
-      when (oldFunction == Nothing) adjustSceneScale
+      handleAction LoadNodes
+    -- when (oldFunction == Nothing) adjustSceneScale
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseDown event -> do
@@ -329,7 +334,20 @@ component =
     PreventDefaults event -> preventDefaults event
     Navigate route -> navigate route
     LoadNodes -> do
-      pure unit
+      maybeNodes <- gets $ preview _currentNodes
+      for_ maybeNodes \nodes -> do
+        state <- get
+        let
+          (nodes' :: List.List _) = G.toUnfoldable $ nodes
+
+          nodes'' =
+            nodes'
+              <#> uncurry \id node -> do
+                  nodeData <- join $ preview (_atCurrentNodeData id) state
+                  pure $ Tuple id $ buildRenderingData nodeData node
+
+          nodes''' = List.catMaybes nodes''
+        void $ query (SProxy :: _ "scene") unit $ tell $ Scene.LoadNodes nodes'''
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

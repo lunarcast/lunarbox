@@ -133,7 +133,7 @@ emptyState =
     , sceneScale: zero
     , lastMousePosition: zero
     , expression: nothing
-    , project: Project { main: FunctionName "main", functions: G.emptyGraph }
+    , project: Project { main: FunctionName "main", functions: mempty }
     , name: "Unnamed project"
     , nodeSearchTerm: ""
     , isExample: false
@@ -198,7 +198,6 @@ createNode name = do
         modify_ $ set (_atNode currentFunction id) $ Just node
         modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
         when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
-        when (not isInput) $ modify_ $ over _functions $ G.insertEdge name currentFunction
         modify_ $ compile
 
 -- Get the type of the output a node (Also works for input pins)
@@ -295,7 +294,6 @@ compile state@{ project, expression, typeMap, valueMap } =
       Set.toUnfoldable
         $ Map.keys
         $ Map.filter (is _VisualFunction)
-        $ G.toMap
         $ view _functions state
 
     state' =
@@ -481,10 +479,6 @@ deleteNode functionName id state =
         modify_ $ over (_nodes functionName) $ G.delete id
         modify_ $ set (_atNodeData functionName id) Nothing
         modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id /= _)
-        when (functionRefCount <= 1)
-          $ modify_
-          $ over _functions
-          $ G.removeEdge nodeFunction functionName
         modify_ compile
   where
   node = join $ preview (_atNode functionName id) state
@@ -515,7 +509,7 @@ deleteFunction toDelete state =
               Tuple name
                 <$> preview _VisualFunction function
           )
-          $ ( G.toUnfoldable
+          $ ( Map.toUnfoldable
                 $ view _functions state ::
                 List _
             )
@@ -559,7 +553,7 @@ setRuntimeValue functionName nodeId value =
         (Just value)
 
 visualFunctionCount :: forall a s m. State a s m -> Int
-visualFunctionCount = G.size <<< G.filterVertices (is _VisualFunction) <<< view _functions
+visualFunctionCount = Map.size <<< filter (is _VisualFunction) <<< view _functions
 
 -- This makes the node start from the middle again
 resetNodeOffset :: forall a s m. State a s m -> State a s m
@@ -667,7 +661,7 @@ _typeMap = prop (SProxy :: _ "typeMap")
 _nextId :: forall a s m. Lens' (State a s m) Int
 _nextId = prop (SProxy :: _ "nextId")
 
-_functions :: forall a s m. Lens' (State a s m) (G.Graph FunctionName DataflowFunction)
+_functions :: forall a s m. Lens' (State a s m) (Map.Map FunctionName DataflowFunction)
 _functions = _project <<< _ProjectFunctions
 
 _nodeGroup :: forall a s m. FunctionName -> Traversal' (State a s m) NodeGroup

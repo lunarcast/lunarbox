@@ -17,13 +17,17 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Lens (Lens', Traversal', _Just, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Record (prop)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
+import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression, optimize)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
+import Lunarbox.Data.Editor.Class.Depends (getDependencies)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
@@ -35,7 +39,7 @@ import Lunarbox.Data.Lens (newtypeIso)
 
 newtype Project
   = Project
-  { functions :: G.Graph FunctionName DataflowFunction
+  { functions :: Map.Map FunctionName DataflowFunction
   , main :: FunctionName
   }
 
@@ -45,14 +49,20 @@ derive newtype instance encodeJsonProject :: EncodeJson Project
 
 derive newtype instance decodeJsonProject :: DecodeJson Project
 
-_ProjectFunctions :: Lens' Project (G.Graph FunctionName DataflowFunction)
+instance graphRepProject :: GraphRep Project FunctionName DataflowFunction where
+  toGraph (Project { functions }) = toGraph $ go <$> functions
+    where
+    go :: DataflowFunction -> Tuple DataflowFunction (Set.Set FunctionName)
+    go function = Tuple function $ getDependencies function
+
+_ProjectFunctions :: Lens' Project (Map.Map FunctionName DataflowFunction)
 _ProjectFunctions = newtypeIso <<< prop (SProxy :: _ "functions")
 
 _ProjectMain :: Lens' Project FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
 compileProject :: Project -> Expression Location
-compileProject (Project { functions, main }) = optimize $ compileGraph compileDataflowFunction functions main
+compileProject project@(Project { main }) = optimize $ compileGraph compileDataflowFunction (toGraph project) main
 
 createEmptyFunction :: NodeId -> DataflowFunction
 createEmptyFunction id =
@@ -67,7 +77,7 @@ emptyProject :: NodeId -> Project
 emptyProject id =
   Project
     { main: FunctionName "main"
-    , functions: G.singleton (FunctionName "main") function
+    , functions: Map.singleton (FunctionName "main") function
     }
   where
   function = createEmptyFunction id
@@ -80,7 +90,7 @@ createFunction name outputId =
     $ createEmptyFunction outputId
 
 getFunctions :: forall u. Unfoldable u => Project -> u FunctionName
-getFunctions = Set.toUnfoldable <<< G.keys <<< view _ProjectFunctions
+getFunctions = Set.toUnfoldable <<< Map.keys <<< view _ProjectFunctions
 
 _atProjectFunction :: FunctionName -> Traversal' Project (Maybe DataflowFunction)
 _atProjectFunction name = _ProjectFunctions <<< at name

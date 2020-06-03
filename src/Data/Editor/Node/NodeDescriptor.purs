@@ -9,6 +9,7 @@ import Data.Lens (is)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust, maybe)
+import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Editor.DataflowFunction (_VisualFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Project (Project(..))
@@ -21,8 +22,8 @@ type NodeDescriptor
     }
 
 describe :: Maybe FunctionName -> Project -> Map FunctionName NodeDescriptor
-describe currentFunction (Project { functions, main }) =
-  flip (Map.mapMaybeWithKey) (G.toMap functions) \name function ->
+describe currentFunction project@(Project { functions, main }) =
+  flip (Map.mapMaybeWithKey) functions \name function ->
     let
       isCurrent = currentFunction == Just name
 
@@ -36,7 +37,7 @@ describe currentFunction (Project { functions, main }) =
           && not isExternal
           && isVisual
 
-      wouldCycle = maybe false (flip (G.wouldCreateCycle name) functions) currentFunction
+      wouldCycle = maybe false (flip (G.wouldCreateCycle name) $ toGraph project) currentFunction
 
       isUsable = isJust currentFunction && not wouldCycle
 
