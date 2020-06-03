@@ -8,7 +8,7 @@ import Data.Array as Array
 import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Filterable (filter, filterMap)
-import Data.Foldable (foldMap, foldr, for_, traverse_)
+import Data.Foldable (foldMap, foldr, for_)
 import Data.Int (toNumber)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
@@ -566,10 +566,6 @@ setScale { height, width } = resetNodeOffset <<< (set _sceneScale $ vec2 width h
 -- Ref to access the scene svg
 sceneRef :: RefLabel
 sceneRef = RefLabel "scene"
-
--- Adjusts the scale based on the scene I get in ts
-adjustSceneScale :: forall q i o m a s. MonadEffect m => HalogenM (State a s m) q i o m Unit
-adjustSceneScale = getSceneBoundingBox >>= traverse_ (modify_ <<< setScale)
 
 -- Pan the current camera in  screen coordinates
 pan :: forall a s m. Vec2 Number -> State a s m -> State a s m

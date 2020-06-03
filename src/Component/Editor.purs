@@ -26,7 +26,7 @@ import Data.Vec (vec2)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onKeyUp, onMouseUp, onValueInput)
@@ -53,21 +53,20 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Foreign.Render (buildRenderingData)
 import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Web.Event.Event (Event, EventType(..), preventDefault, stopPropagation)
+import Web.Event.Event (Event, preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement (focus)
 import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.HTML.Window (document) as Web
-import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
@@ -91,7 +90,6 @@ data Action
   | SceneZoom Number
   | RemoveConnection NodeId (Tuple NodeId Int) Event
   | SetRuntimeValue FunctionName NodeId RuntimeValue
-  | AdjustSceneScale
   | TogglePanel
   | ChangeInputCount FunctionName Int
   | SetName String
@@ -144,7 +142,6 @@ component =
       window <- liftEffect Web.window
       document <- liftEffect $ Web.document window
       -- Stuff which we need to run at the start
-      handleAction AdjustSceneScale
       handleAction LoadNodes
       scale <- gets $ view _sceneScale
       currentCameraPosition <- gets $ view $ _currentCamera <<< _CameraPosition
@@ -156,14 +153,7 @@ component =
           KET.keydown
           (HTMLDocument.toEventTarget document)
           (map (HandleKey sid) <<< KE.fromEvent)
-      -- Registr resize events
-      void $ subscribe
-        $ ES.eventListenerEventSource
-            (EventType "resize")
-            (Window.toEventTarget window)
-            (const $ Just AdjustSceneScale)
       void <<< fork <<< handleAction <<< Autosave <<< stateToJson =<< get
-    AdjustSceneScale -> adjustSceneScale
     HandleKey sid event
       | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
         modify_ deleteSelection
@@ -178,7 +168,6 @@ component =
           { currentTab, panelIsOpen } <- get
           when (currentTab /= Add || not panelIsOpen) do
             modify_ $ set _panelIsOpen true <<< set _currentTab Add
-            adjustSceneScale
           liftEffect $ preventDefault $ KE.toEvent event
           getHTMLElementRef searchNodeInputRef >>= traverse_ (liftEffect <<< focus)
       | otherwise -> pure unit
@@ -213,10 +202,7 @@ component =
       | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
     CreateNode name -> do
       modify_ $ execState $ createNode name
-    TogglePanel -> do
-      modify_ $ over _panelIsOpen not
-      -- Since this modifies the scale of the scene we also update that
-      adjustSceneScale
+    TogglePanel -> modify_ $ over _panelIsOpen not
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       panelWasOpen <- gets $ view _panelIsOpen
@@ -224,14 +210,12 @@ component =
         handleAction TogglePanel
       else do
         modify_ $ set _currentTab newTab <<< set _panelIsOpen true
-        when (not panelWasOpen) adjustSceneScale
     CreateFunction name -> do
       modify_ $ initializeFunction name
     SelectFunction name -> do
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
       handleAction LoadNodes
-    -- when (oldFunction == Nothing) adjustSceneScale
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     SceneMouseDown event -> do

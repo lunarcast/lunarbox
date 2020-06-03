@@ -1,6 +1,7 @@
 import "./styles/index.scss"
 import { main as mainImpl } from "../output/Main"
-import { Effect } from "../src/Foreign/Render"
+
+type Effect<T> = (v: T) => void
 
 const main = mainImpl as (prod: boolean) => Effect<void>
 

@@ -24,6 +24,8 @@ foreign import data GeomteryCache :: Type
 -- Foreign helpers
 foreign import resizeCanvas :: HTMLCanvasElement -> Effect Unit
 
+foreign import resizeContext :: Context2d -> Effect Unit
+
 foreign import getContext :: HTMLCanvasElement -> Effect Context2d
 
 foreign import renderScene :: Context2d -> GeomteryCache -> Effect Unit

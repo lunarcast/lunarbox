@@ -32,3 +32,7 @@ export const resizeCanvas = (canvas: HTMLCanvasElement) => () => {
   canvas.width = width
   canvas.height = height
 }
+
+// Same as the above thing but works with rendering contexts instead
+export const resizeContext = (ctx: CanvasRenderingContext2D) =>
+  resizeCanvas(ctx.canvas)

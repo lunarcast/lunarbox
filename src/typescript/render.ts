@@ -3,6 +3,7 @@ import * as g from "@thi.ng/geom"
 import { Vec2Like } from "@thi.ng/vectors"
 import { walk } from "@thi.ng/hdom-canvas"
 import { IHiccupShape } from "@thi.ng/geom-api"
+import { transform23 } from "@thi.ng/matrices"
 
 export interface InputData {
   output: string | null
@@ -50,7 +51,14 @@ export const renderScene = (
   ctx.resetTransform()
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-  const shapes = g.group({}, [...cache.values()]).toHiccup()
+  const matrix = transform23(
+    null,
+    [ctx.canvas.width / 2, ctx.canvas.height / 2],
+    0,
+    1
+  )
+
+  const shapes = g.group({ transform: matrix }, [...cache.values()]).toHiccup()
 
   ctx.fillRect(0, 0, 100, 100)
 

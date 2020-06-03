@@ -8,13 +8,17 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, subscribe)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Foreign.Render (Context2d, GeomteryCache, NodeRenderingData, getContext, loadNodes, renderScene, resizeCanvas)
+import Lunarbox.Foreign.Render (Context2d, GeomteryCache, NodeRenderingData, getContext, loadNodes, renderScene, resizeCanvas, resizeContext)
+import Web.Event.Event (EventType(..))
+import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
+import Web.HTML.Window as Window
 
 type State
   = { context :: Maybe Context2d, geometryCache :: GeomteryCache }
@@ -22,6 +26,7 @@ type State
 data Action
   = Init
   | Render
+  | ResizeCanvas
 
 type ChildSlots
   = ()
@@ -68,10 +73,20 @@ component =
   handleAction = case _ of
     Init -> do
       withContext $ const $ pure unit
+      window <- liftEffect Web.window
+      -- Registr resize events
+      void $ subscribe
+        $ ES.eventListenerEventSource
+            (EventType "resize")
+            (Window.toEventTarget window)
+            (const $ Just ResizeCanvas)
     Render ->
       withContext \ctx -> do
         cache <- gets _.geometryCache
         liftEffect $ renderScene ctx cache
+    ResizeCanvas -> do
+      withContext $ liftEffect <<< resizeContext
+      handleAction Render
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)
   handleQuery = case _ of
