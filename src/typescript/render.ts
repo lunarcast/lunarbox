@@ -3,12 +3,11 @@ import { walk } from "@thi.ng/hdom-canvas"
 import { Mat23Like, transform23 } from "@thi.ng/matrices"
 import type {
   GeometryCache,
-  InputData,
   NodeData,
   NodeId,
   NodeGeometry
 } from "./types/Node"
-import { Vec2Like, polar2, add2 } from "@thi.ng/vectors"
+import { Vec2Like } from "@thi.ng/vectors"
 import * as Arc from "./arcs"
 import {
   nodeRadius,
