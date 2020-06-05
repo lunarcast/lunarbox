@@ -1,15 +1,20 @@
 import * as Native from "src/typescript/render"
+import { GeometryCache, NodeId, NodeData } from "src/typescript/types/Node"
+import { Vec2, Vec2Like } from "@thi.ng/vectors"
 
 // The initial cache used from purescript
-export const emptyGeometryCache = new Map()
+export const emptyGeometryCache = Native.emptyGeometryCache
 
 // Add a new node to the scene
-export const loadNode = (cache: Native.GeometryCache) => (
-  id: Native.NodeId
-) => (data: Native.NodeData) => () => {
-  const shape = Native.renderNode(data)
+export const loadNode = (cache: GeometryCache) => (id: NodeId) => (
+  data: NodeData
+) => () => {
+  const shape = Native.renderNode(
+    (id) => (cache.nodes.get(id)?.output.pos ?? [0, 0]) as Vec2Like,
+    data
+  )
 
-  cache.set(id, shape)
+  cache.nodes.set(id, shape)
 }
 
 /**
@@ -18,7 +23,7 @@ export const loadNode = (cache: Native.GeometryCache) => (
  * @param ctx The context to render to
  */
 export const renderScene = (ctx: CanvasRenderingContext2D) => (
-  cache: Native.GeometryCache
+  cache: GeometryCache
 ) => () => Native.renderScene(ctx, cache)
 
 // To be able to get contexts from purescript

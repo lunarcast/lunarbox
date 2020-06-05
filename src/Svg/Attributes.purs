@@ -63,7 +63,7 @@ arc radius startAngle endAngle =
 
     end = polarToCartesian radius startAngle
 
-    largeArcFlag = not $ arcLength startAngle endAngle >= pi
+    largeArcFlag = arcLength startAngle endAngle < pi
   in
     [ M (start !! d0) $ start !! d1
     , A radius

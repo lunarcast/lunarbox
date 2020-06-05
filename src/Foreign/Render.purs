@@ -2,13 +2,16 @@ module Lunarbox.Foreign.Render where
 
 import Prelude
 import Control.Apply (applyFirst)
+import Data.Array as Array
 import Data.Default (class Default)
 import Data.Lens (view)
 import Data.List (List, foldr)
+import Data.List as List
 import Data.Nullable (Nullable)
+import Data.Nullable as Nullable
 import Data.Tuple (Tuple, uncurry)
 import Effect (Effect)
-import Lunarbox.Data.Editor.Node (Node)
+import Lunarbox.Data.Editor.Node (Node, getInputs)
 import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Vector (Vec2)
@@ -38,15 +41,13 @@ instance defaultGeomtryCache :: Default GeomteryCache where
   def = emptyGeometryCache
 
 type InputData
-  = { output :: Nullable String
+  = { output :: Nullable NodeId
     , color :: String
-    , arc :: Vec2 Number
-    , value :: Nullable NodeId
     }
 
 type NodeRenderingData
   = { position :: Vec2 Number
-    , inputs :: Array (Array InputData)
+    , inputs :: Array InputData
     }
 
 -- Load more nodes in the same cache
@@ -59,5 +60,5 @@ loadNodes cache = foldr (applyFirst <<< go) $ pure unit
 buildRenderingData :: NodeData -> Node -> NodeRenderingData
 buildRenderingData nodeData node =
   { position: view _NodeDataPosition nodeData
-  , inputs: [ [] ]
+  , inputs: getInputs node # List.toUnfoldable <#> \output -> { output: Nullable.toNullable output, color: "green" }
   }

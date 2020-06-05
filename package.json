@@ -1,11 +1,11 @@
 {
   "version": "0.0.0-development",
   "scripts": {
-    "build:purescript": "spago build",
+    "build:purescript": "spago build -x",
     "dev": "parcel public/index.html --port 8080",
     "prebuild": "rm -rf dist",
     "bundle:purescript": "spago bundle-app -t output/prod-bundle.js",
-    "build": "tsc && spago build && parcel build public/index.html && cp _redirects dist",
+    "build": "tsc && spago build -x && parcel build public/index.html && cp _redirects dist",
     "semantic-release": "semantic-release",
     "test": "spago test"
   },

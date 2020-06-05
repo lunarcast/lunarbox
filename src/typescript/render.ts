@@ -1,47 +1,80 @@
-import { arcStrokeWidth, inputLayerOffset, nodeRadius } from "./constants"
 import * as g from "@thi.ng/geom"
-import { Vec2Like } from "@thi.ng/vectors"
 import { walk } from "@thi.ng/hdom-canvas"
-import { IHiccupShape } from "@thi.ng/geom-api"
-import { transform23 } from "@thi.ng/matrices"
+import { Mat23Like, transform23 } from "@thi.ng/matrices"
+import type {
+  GeometryCache,
+  InputData,
+  NodeData,
+  NodeId,
+  NodeGeometry
+} from "./types/Node"
+import { Vec2Like, polar2, add2 } from "@thi.ng/vectors"
+import * as Arc from "./arcs"
+import {
+  nodeRadius,
+  inputLayerOffset,
+  arcStrokeWidth,
+  arcSpacing
+} from "./constants"
+import { TAU } from "@thi.ng/math"
 
-export interface InputData {
-  output: string | null
-  color: string
-  arc: Vec2Like
-  value: NodeId | null
+// Used in the Default purescript implementation of GeomCache
+export const emptyGeometryCache: GeometryCache = {
+  nodes: new Map(),
+  camera: transform23(null, [0, 0], 0, 1) as Mat23Like
 }
 
-export interface NodeData {
-  position: [number, number]
-  inputs: InputData[][]
-}
-
-export type NodeId = { readonly brand: unique symbol } & string
-
-export type Effect<T> = () => T
-
-export type GeometryCache = Map<NodeId, IHiccupShape>
-
+/**
+ * Create the geometry for a node input.
+ *
+ * @param position The position of the input
+ * @param step The layer the input lays on.
+ * @param input The input-specific data
+ */
 export const renderInput = (
   position: Vec2Like,
   step: number,
-  input: InputData
+  input: Arc.InputWithArc
 ) => {
-  return g.withAttribs(
-    g.arc(
-      position,
-      step * nodeRadius + inputLayerOffset,
-      0,
-      input.arc[0],
-      input.arc[1]
-    ),
-    { stroke: input.color, strokeWidth: arcStrokeWidth }
+  const attribs = {
+    stroke: input.color,
+    weight: arcStrokeWidth
+  }
+
+  const spacing = input.isCircle ? 0 : arcSpacing
+  const radius = nodeRadius + step * inputLayerOffset
+
+  if (input.isCircle) {
+    return g.circle(position, radius, attribs)
+  }
+
+  return g.normalizedPath(
+    g.asPath(
+      g.arc(
+        position,
+        radius,
+        0,
+        input.arc[0] + spacing,
+        input.arc[1] - spacing + TAU * Number(input.arc[1] < input.arc[0])
+      ),
+      attribs
+    )
   )
 }
 
-export const renderNode = (node: NodeData) => {
-  return g.circle(node.position, 10, { fill: "yellow" })
+export const renderNode = (
+  getData: (id: NodeId) => Vec2Like,
+  node: NodeData
+): NodeGeometry => {
+  const inputs = Arc.placeInputs(getData, node)
+
+  const inputGeom = inputs.flatMap((arr, index) =>
+    arr.map((input) => renderInput(node.position, index, input))
+  )
+
+  const output = g.circle(node.position, 10, { fill: "yellow" })
+
+  return { inputs: inputGeom, output }
 }
 
 export const renderScene = (
@@ -58,9 +91,12 @@ export const renderScene = (
     1
   )
 
-  const shapes = g.group({ transform: matrix }, [...cache.values()]).toHiccup()
+  const nodes = [...cache.nodes.values()].flatMap(({ inputs, output }) => [
+    ...inputs,
+    output
+  ])
 
-  ctx.fillRect(0, 0, 100, 100)
+  const shapes = g.group({ transform: matrix }, nodes).toHiccup()
 
   walk(ctx, [shapes], {
     attribs: {},
