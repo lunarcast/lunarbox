@@ -14,7 +14,8 @@ import {
   nodeRadius,
   inputLayerOffset,
   arcStrokeWidth,
-  arcSpacing
+  arcSpacing,
+  constantInputStroke
 } from "./constants"
 import { TAU } from "@thi.ng/math"
 
@@ -22,6 +23,21 @@ import { TAU } from "@thi.ng/math"
 export const emptyGeometryCache: GeometryCache = {
   nodes: new Map(),
   camera: transform23(null, [0, 0], 0, 1) as Mat23Like
+}
+/**
+ * Create the geometry for a node input.
+ *
+ * @param position The position of the input
+ */
+export const dottedInput = (position: Vec2Like) => {
+  const attribs = {
+    stroke: constantInputStroke,
+    weight: arcStrokeWidth,
+    lineCap: "butt",
+    dash: [(Math.PI * nodeRadius) / 20]
+  }
+
+  return g.circle(position, nodeRadius, attribs)
 }
 
 /**
@@ -48,17 +64,17 @@ export const renderInput = (
     return g.circle(position, radius, attribs)
   }
 
-  return g.normalizedPath(
-    g.asPath(
+  return g.pathFromCubics(
+    g.cubicFromArc(
       g.arc(
         position,
         radius,
         0,
         input.arc[0] + spacing,
         input.arc[1] - spacing + TAU * Number(input.arc[1] < input.arc[0])
-      ),
-      attribs
-    )
+      )
+    ),
+    attribs
   )
 }
 
@@ -68,9 +84,12 @@ export const renderNode = (
 ): NodeGeometry => {
   const inputs = Arc.placeInputs(getData, node)
 
-  const inputGeom = inputs.flatMap((arr, index) =>
-    arr.map((input) => renderInput(node.position, index, input))
-  )
+  const inputGeom =
+    inputs[0].length === 0
+      ? [dottedInput(node.position)]
+      : inputs.flatMap((arr, index) =>
+          arr.map((input) => renderInput(node.position, index, input))
+        )
 
   const output = g.circle(node.position, 10, { fill: "yellow" })
 
