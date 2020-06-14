@@ -9427,6 +9427,11 @@ trim-off-newlines@^1.0.0:
   resolved "https://registry.yarnpkg.com/trim-off-newlines/-/trim-off-newlines-1.0.1.tgz#9f9ba9d9efa8764c387698bcbfeb2c848f11adb3"
   integrity sha1-n5up2e+odkw4dpi8v+sshI8RrbM=
 
+ts-adt@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/ts-adt/-/ts-adt-1.0.1.tgz#9367b495649bc1f21fbdeacec2a3e58aff8bcf97"
+  integrity sha512-MfSct+iluJ4u6EjJZL5L6J9ebp1oZz2xdBK2+Y522SFK7MIg8GP7QDFrry/g4CjVEqPfKsg1IQOgwMOE+8xRIg==
+
 ts-jest@^24.1.0:
   version "24.3.0"
   resolved "https://registry.yarnpkg.com/ts-jest/-/ts-jest-24.3.0.tgz#b97814e3eab359ea840a1ac112deae68aa440869"

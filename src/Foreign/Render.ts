@@ -41,3 +41,5 @@ export const resizeCanvas = (canvas: HTMLCanvasElement) => () => {
 // Same as the above thing but works with rendering contexts instead
 export const resizeContext = (ctx: CanvasRenderingContext2D) =>
   resizeCanvas(ctx.canvas)
+
+export const handleMouseMove = Native.onMouseMove

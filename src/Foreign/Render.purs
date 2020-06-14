@@ -2,7 +2,6 @@ module Lunarbox.Foreign.Render where
 
 import Prelude
 import Control.Apply (applyFirst)
-import Data.Array as Array
 import Data.Default (class Default)
 import Data.Lens (view)
 import Data.List (List, foldr)
@@ -16,6 +15,7 @@ import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Vector (Vec2)
 import Web.HTML (HTMLCanvasElement)
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 -- Foreign data types
 -- This is the rendering context used to render on a canvas
@@ -36,6 +36,8 @@ foreign import renderScene :: Context2d -> GeomteryCache -> Effect Unit
 foreign import loadNode :: GeomteryCache -> NodeId -> NodeRenderingData -> Effect Unit
 
 foreign import emptyGeometryCache :: GeomteryCache
+
+foreign import handleMouseMove :: Context2d -> MouseEvent -> GeomteryCache -> Effect Unit
 
 instance defaultGeomtryCache :: Default GeomteryCache where
   def = emptyGeometryCache

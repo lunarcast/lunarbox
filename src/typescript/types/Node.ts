@@ -19,6 +19,7 @@ export type Effect<T> = () => T
 export interface NodeGeometry {
   output: Circle
   inputs: IHiccupShape[]
+  selected: Boolean
 }
 
 export type GeometryCache = {

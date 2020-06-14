@@ -10,15 +10,17 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, subscribe)
 import Halogen.HTML as HH
+import Halogen.HTML.Events (onMouseMove)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Foreign.Render (Context2d, GeomteryCache, NodeRenderingData, getContext, loadNodes, renderScene, resizeCanvas, resizeContext)
+import Lunarbox.Foreign.Render (Context2d, GeomteryCache, NodeRenderingData, getContext, handleMouseMove, loadNodes, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
 import Web.HTML.Window as Window
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 type State
   = { context :: Maybe Context2d, geometryCache :: GeomteryCache }
@@ -27,6 +29,7 @@ data Action
   = Init
   | Render
   | ResizeCanvas
+  | MouseMove MouseEvent
 
 type ChildSlots
   = ()
@@ -87,6 +90,10 @@ component =
     ResizeCanvas -> do
       withContext $ liftEffect <<< resizeContext
       handleAction Render
+    MouseMove event ->
+      withContext \ctx -> do
+        cache <- gets _.geometryCache
+        liftEffect $ handleMouseMove ctx event cache
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)
   handleQuery = case _ of
@@ -97,4 +104,4 @@ component =
       pure $ Just a
 
   -- This only renders the canvas, the rest of the rendering is done via some typescript code
-  render = const $ HH.canvas [ HP.ref canvasRef ]
+  render = const $ HH.canvas [ HP.ref canvasRef, onMouseMove $ Just <<< MouseMove ]

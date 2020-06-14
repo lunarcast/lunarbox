@@ -21,6 +21,7 @@
     "normalize.css": "^8.0.1",
     "seedrandom": "^3.0.5",
     "src": "^1.1.2",
+    "ts-adt": "^1.0.1",
     "tslib": "^1.13.0"
   },
   "devDependencies": {
