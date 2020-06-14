@@ -1,6 +1,6 @@
 import type { IHiccupShape, IShape } from "@thi.ng/geom-api"
 import type { Mat23Like } from "@thi.ng/matrices"
-import { Circle } from "@thi.ng/geom"
+import { Circle, Arc } from "@thi.ng/geom"
 
 export interface InputData {
   color: string
@@ -26,4 +26,5 @@ export type GeometryCache = {
   nodes: Map<NodeId, NodeGeometry>
   camera: Mat23Like
   selectedOutput: NodeGeometry | null
+  selectedInput: Arc | null
 }

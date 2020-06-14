@@ -16,7 +16,7 @@ import type {
   NodeId,
   NodeGeometry
 } from "./types/Node"
-import { Vec2Like, distSq2, Vec } from "@thi.ng/vectors"
+import { Vec2Like, distSq2, Vec, dist } from "@thi.ng/vectors"
 import * as Arc from "./arcs"
 import {
   nodeRadius,
@@ -24,17 +24,21 @@ import {
   arcStrokeWidth,
   arcSpacing,
   constantInputStroke,
-  nodeOutputRadius
+  nodeOutputRadius,
+  pickDistance
 } from "./constants"
 import { TAU } from "@thi.ng/math"
 import { isPressed, MouseButtons } from "./mouse"
 import { ADT } from "ts-adt"
+import { Type, IHiccupShape } from "@thi.ng/geom-api"
+import { closestPoint, withAttribs } from "@thi.ng/geom"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
   nodes: new Map(),
   camera: transform23(null, [0, 0], 0, 1) as Mat23Like,
-  selectedOutput: null
+  selectedOutput: null,
+  selectedInput: null
 }
 /**
  * Create the geometry for a node input.
@@ -44,7 +48,7 @@ export const emptyGeometryCache: GeometryCache = {
 export const dottedInput = (position: Vec2Like) => {
   const attribs = {
     stroke: constantInputStroke,
-    weight: arcStrokeWidth,
+    weight: arcStrokeWidth.normal,
     lineCap: "butt",
     dash: [(Math.PI * nodeRadius) / 20]
   }
@@ -66,7 +70,8 @@ export const renderInput = (
 ) => {
   const attribs = {
     stroke: input.color,
-    weight: arcStrokeWidth
+    weight: arcStrokeWidth.normal,
+    selectable: true
   }
 
   const spacing = input.isCircle ? 0 : arcSpacing
@@ -76,18 +81,15 @@ export const renderInput = (
     return g.circle(position, radius, attribs)
   }
 
-  return g.pathFromCubics(
-    g.cubicFromArc(
-      g.arc(
-        position,
-        radius,
-        0,
-        input.arc[0] + spacing,
-        input.arc[1] - spacing + TAU * Number(input.arc[1] < input.arc[0])
-      )
-    ),
-    attribs
+  const arc = g.arc(
+    position,
+    radius,
+    0,
+    input.arc[0] + spacing,
+    input.arc[1] - spacing + TAU * Number(input.arc[1] < input.arc[0])
   )
+
+  return withAttribs(arc, attribs)
 }
 
 export const renderNode = (
@@ -143,7 +145,9 @@ export const renderScene = (
   const matrix = getTransform(ctx)
 
   const nodes = [...cache.nodes.values()].flatMap(({ inputs, output }) => [
-    ...inputs,
+    ...inputs.map((input) =>
+      input.type === Type.CIRCLE ? input : g.pathFromCubics(g.asCubic(input))
+    ),
     output
   ])
 
@@ -160,10 +164,10 @@ interface IHasNode {
 }
 
 type MouseTarget = ADT<{
-  nodeInput: IHasNode & { index: number }
+  nodeInput: IHasNode & { index: number; geom: g.Arc }
   node: IHasNode
   nodeOutput: IHasNode
-  nothing: { node: null }
+  nothing: {}
 }>
 
 /**
@@ -188,14 +192,15 @@ const getMouseTarget = (
 ): MouseTarget => {
   if (cache.nodes.size === 0) {
     return {
-      _type: "nothing",
-      node: null
+      _type: "nothing"
     }
   }
 
   const nodes = [...cache.nodes.values()]
 
-  const distanceToMouse = (position: Vec) => distSq2(mousePosition, position)
+  const distanceToMouse = (position: Vec) => dist(mousePosition, position)
+
+  const distanceToMouseSq = (position: Vec) => distSq2(mousePosition, position)
 
   const closestOutput = minBy(
     (a, b) => {
@@ -207,7 +212,7 @@ const getMouseTarget = (
         return true
       }
 
-      return distanceToMouse(a.output!.pos) < distanceToMouse(b.output!.pos)
+      return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
     },
     nodes,
     null
@@ -215,7 +220,7 @@ const getMouseTarget = (
 
   if (
     closestOutput !== null &&
-    distanceToMouse(closestOutput.output.pos) < nodeOutputRadius.onHover ** 2
+    distanceToMouse(closestOutput.output.pos) < pickDistance.output
   ) {
     return {
       _type: "nodeOutput",
@@ -223,17 +228,44 @@ const getMouseTarget = (
     }
   }
 
-  return {
-    _type: "nothing",
-    node: null
+  const closestInput = minBy(
+    (a, b) => {
+      if (a === null) {
+        return false
+      }
+
+      if (b === null) {
+        return true
+      }
+
+      return distanceToMouse(a.closest) < distanceToMouse(b.closest)
+    },
+    nodes.flatMap((node) =>
+      node.inputs[0].attribs?.selectable
+        ? node.inputs.map((input, index) => ({
+            index,
+            node,
+            closest: closestPoint(input, mousePosition)!
+          }))
+        : []
+    ),
+    null
+  )
+
+  if (
+    closestInput &&
+    distanceToMouse(closestInput.closest) < pickDistance.input
+  ) {
+    return {
+      _type: "nodeInput",
+      node: closestInput.node,
+      index: closestInput.index,
+      geom: closestInput.node.inputs[closestInput.index] as g.Arc
+    }
   }
-}
 
-export const onClick = (event: MouseEvent) => (cache: GeometryCache) => () => {
-  const pressed = isPressed(event.buttons)
-
-  // Select the node we clicked on
-  if (pressed(MouseButtons.LeftButton)) {
+  return {
+    _type: "nothing"
   }
 }
 
@@ -252,25 +284,33 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
   const target = getMouseTarget(mousePosition, cache)
   const nodes = [...cache.nodes.values()]
 
-  // Unselect all node outputs
-  const targetingOutput = target._type === "nodeOutput"
-
-  if (cache.selectedOutput !== target.node) {
+  if (target._type === "nodeOutput" && cache.selectedOutput !== target.node) {
     if (cache.selectedOutput) {
-      // This resets the radius of the old selected output
       cache.selectedOutput.output.r = nodeOutputRadius.normal
     }
 
-    if (!targetingOutput) {
-      // This branch clears the old selected output
-      cache.selectedOutput = null
+    cache.selectedOutput = target.node
+    target.node!.output.r = nodeOutputRadius.onHover
+  }
+
+  if (target._type === "nodeInput" && cache.selectedInput !== target.geom) {
+    if (cache.selectedInput) {
+      cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
     }
 
-    if (targetingOutput && cache.selectedOutput !== target.node!) {
-      // This branch modifies the current output
-      cache.selectedOutput = target.node
-      target.node!.output.r = nodeOutputRadius.onHover
-    }
+    cache.selectedInput = target.geom
+    target.geom.attribs!.weight = arcStrokeWidth.onHover
+  }
+
+  // Clear old data from the cache
+  if (target._type !== "nodeOutput" && cache.selectedOutput) {
+    cache.selectedOutput.output.r = nodeOutputRadius.normal
+    cache.selectedOutput = null
+  }
+
+  if (target._type !== "nodeInput" && cache.selectedInput) {
+    cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
+    cache.selectedInput = null
   }
 
   renderScene(ctx, cache)
