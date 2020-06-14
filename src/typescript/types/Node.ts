@@ -17,6 +17,7 @@ export type NodeId = { readonly brand: unique symbol } & string
 export type Effect<T> = () => T
 
 export interface NodeGeometry {
+  background: Circle
   output: Circle
   inputs: IHiccupShape[]
   selected: Boolean
@@ -26,5 +27,6 @@ export type GeometryCache = {
   nodes: Map<NodeId, NodeGeometry>
   camera: Mat23Like
   selectedOutput: NodeGeometry | null
+  selectedNode: NodeGeometry | null
   selectedInput: Arc | null
 }

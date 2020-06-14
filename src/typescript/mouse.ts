@@ -1,7 +1,7 @@
 /**
  * Enum containing mouse buttons we can check for.
  */
-export enum MouseButtons {
+export const enum MouseButtons {
   LeftButton = 1,
   Wheel = -1, // Todo: find the correct code for this
   RightButton = 2

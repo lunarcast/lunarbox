@@ -1,15 +1,6 @@
 import * as g from "@thi.ng/geom"
 import { walk } from "@thi.ng/hdom-canvas"
-import {
-  Mat23Like,
-  transform23,
-  mulV23,
-  invert,
-  viewport,
-  invert23,
-  scale23,
-  concat
-} from "@thi.ng/matrices"
+import { Mat23Like, transform23, mulV23 } from "@thi.ng/matrices"
 import type {
   GeometryCache,
   NodeData,
@@ -25,12 +16,13 @@ import {
   arcSpacing,
   constantInputStroke,
   nodeOutputRadius,
-  pickDistance
+  pickDistance,
+  onHoverNodeBackground,
+  nodeBackgroundOpacity
 } from "./constants"
 import { TAU } from "@thi.ng/math"
-import { isPressed, MouseButtons } from "./mouse"
 import { ADT } from "ts-adt"
-import { Type, IHiccupShape } from "@thi.ng/geom-api"
+import { Type } from "@thi.ng/geom-api"
 import { closestPoint, withAttribs } from "@thi.ng/geom"
 
 // Used in the Default purescript implementation of GeomCache
@@ -38,7 +30,8 @@ export const emptyGeometryCache: GeometryCache = {
   nodes: new Map(),
   camera: transform23(null, [0, 0], 0, 1) as Mat23Like,
   selectedOutput: null,
-  selectedInput: null
+  selectedInput: null,
+  selectedNode: null
 }
 /**
  * Create the geometry for a node input.
@@ -107,7 +100,11 @@ export const renderNode = (
 
   const output = g.circle(node.position, 10, { fill: "yellow" })
 
-  return { inputs: inputGeom, output, selected: false }
+  const background = g.withAttribs(g.circle(node.position, nodeRadius), {
+    alpha: nodeBackgroundOpacity
+  })
+
+  return { inputs: inputGeom, output, selected: false, background }
 }
 
 /**
@@ -144,7 +141,10 @@ export const renderScene = (
 
   const matrix = getTransform(ctx)
 
-  const nodes = [...cache.nodes.values()].flatMap(({ inputs, output }) => [
+  const nodes = [
+    ...cache.nodes.values()
+  ].flatMap(({ inputs, output, background }) => [
+    ...(background.attribs!.fill ? [background] : []),
     ...inputs.map((input) =>
       input.type === Type.CIRCLE ? input : g.pathFromCubics(g.asCubic(input))
     ),
@@ -163,11 +163,18 @@ interface IHasNode {
   node: NodeGeometry
 }
 
+const enum MouseTargetKind {
+  Nothing,
+  Node,
+  NodeInput,
+  NodeOutput
+}
+
 type MouseTarget = ADT<{
-  nodeInput: IHasNode & { index: number; geom: g.Arc }
-  node: IHasNode
-  nodeOutput: IHasNode
-  nothing: {}
+  [MouseTargetKind.NodeInput]: IHasNode & { index: number; geom: g.Arc }
+  [MouseTargetKind.Node]: IHasNode
+  [MouseTargetKind.NodeOutput]: IHasNode
+  [MouseTargetKind.Nothing]: {}
 }>
 
 /**
@@ -177,8 +184,18 @@ type MouseTarget = ADT<{
  * @param arr The array to search trough
  * @param def Fallback in case of empty arrays
  */
-const minBy = <T>(isSmaller: (a: T, b: T) => boolean, arr: T[], def: T) =>
-  arr.reduce((acc, curr) => (isSmaller(curr, acc) ? curr : acc), def)
+const minBy = <T>(isSmaller: (a: T, b: T) => boolean, arr: T[]): T | null =>
+  arr.reduce((acc, curr) => {
+    if (acc === null) {
+      return curr
+    }
+
+    if (curr === null) {
+      return acc
+    }
+
+    return isSmaller(curr, acc) ? curr : acc
+  }, null as T | null)
 
 /**
  * Finds the object in the scene the mouse is hovering over
@@ -192,7 +209,7 @@ const getMouseTarget = (
 ): MouseTarget => {
   if (cache.nodes.size === 0) {
     return {
-      _type: "nothing"
+      _type: MouseTargetKind.Nothing
     }
   }
 
@@ -202,42 +219,22 @@ const getMouseTarget = (
 
   const distanceToMouseSq = (position: Vec) => distSq2(mousePosition, position)
 
-  const closestOutput = minBy(
-    (a, b) => {
-      if (a === null || a.output === undefined) {
-        return false
-      }
-
-      if (b === null || b.output === undefined) {
-        return true
-      }
-
-      return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
-    },
-    nodes,
-    null
-  )
+  const closestOutput = minBy((a, b) => {
+    return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
+  }, nodes)
 
   if (
     closestOutput !== null &&
     distanceToMouse(closestOutput.output.pos) < pickDistance.output
   ) {
     return {
-      _type: "nodeOutput",
+      _type: MouseTargetKind.NodeOutput,
       node: closestOutput
     }
   }
 
   const closestInput = minBy(
     (a, b) => {
-      if (a === null) {
-        return false
-      }
-
-      if (b === null) {
-        return true
-      }
-
       return distanceToMouse(a.closest) < distanceToMouse(b.closest)
     },
     nodes.flatMap((node) =>
@@ -248,8 +245,7 @@ const getMouseTarget = (
             closest: closestPoint(input, mousePosition)!
           }))
         : []
-    ),
-    null
+    )
   )
 
   if (
@@ -257,15 +253,30 @@ const getMouseTarget = (
     distanceToMouse(closestInput.closest) < pickDistance.input
   ) {
     return {
-      _type: "nodeInput",
+      _type: MouseTargetKind.NodeInput,
       node: closestInput.node,
       index: closestInput.index,
       geom: closestInput.node.inputs[closestInput.index] as g.Arc
     }
   }
 
+  // Rn this is the same as the output one but in the future nodes might not have outputs.
+  const closestNode = minBy((a, b) => {
+    return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
+  }, nodes)
+
+  if (
+    closestNode &&
+    distanceToMouse(closestNode.output!.pos) < pickDistance.node
+  ) {
+    return {
+      _type: MouseTargetKind.Node,
+      node: closestNode
+    }
+  }
+
   return {
-    _type: "nothing"
+    _type: MouseTargetKind.Nothing
   }
 }
 
@@ -284,7 +295,11 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
   const target = getMouseTarget(mousePosition, cache)
   const nodes = [...cache.nodes.values()]
 
-  if (target._type === "nodeOutput" && cache.selectedOutput !== target.node) {
+  // On hover effects for outputs
+  if (
+    target._type === MouseTargetKind.NodeOutput &&
+    cache.selectedOutput !== target.node
+  ) {
     if (cache.selectedOutput) {
       cache.selectedOutput.output.r = nodeOutputRadius.normal
     }
@@ -293,7 +308,11 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
     target.node!.output.r = nodeOutputRadius.onHover
   }
 
-  if (target._type === "nodeInput" && cache.selectedInput !== target.geom) {
+  // On hover effect for inputs
+  if (
+    target._type === MouseTargetKind.NodeInput &&
+    cache.selectedInput !== target.geom
+  ) {
     if (cache.selectedInput) {
       cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
     }
@@ -302,15 +321,33 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
     target.geom.attribs!.weight = arcStrokeWidth.onHover
   }
 
+  // On hover effects for nodes
+  if (
+    target._type === MouseTargetKind.Node &&
+    cache.selectedNode !== target.node
+  ) {
+    if (cache.selectedNode) {
+      cache.selectedNode.background.attribs!.fill = undefined
+    }
+
+    cache.selectedNode = target.node
+    target.node.background.attribs!.fill = onHoverNodeBackground
+  }
+
   // Clear old data from the cache
-  if (target._type !== "nodeOutput" && cache.selectedOutput) {
+  if (target._type !== MouseTargetKind.NodeOutput && cache.selectedOutput) {
     cache.selectedOutput.output.r = nodeOutputRadius.normal
     cache.selectedOutput = null
   }
 
-  if (target._type !== "nodeInput" && cache.selectedInput) {
+  if (target._type !== MouseTargetKind.NodeInput && cache.selectedInput) {
     cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
     cache.selectedInput = null
+  }
+
+  if (target._type !== MouseTargetKind.Node && cache.selectedNode) {
+    cache.selectedNode.background.attribs!.fill = undefined
+    cache.selectedNode = null
   }
 
   renderScene(ctx, cache)
