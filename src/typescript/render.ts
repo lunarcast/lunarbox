@@ -6,7 +6,9 @@ import {
   mulV23,
   invert,
   viewport,
-  invert23
+  invert23,
+  scale23,
+  concat
 } from "@thi.ng/matrices"
 import type {
   GeometryCache,
@@ -31,7 +33,8 @@ import { ADT } from "ts-adt"
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
   nodes: new Map(),
-  camera: transform23(null, [0, 0], 0, 1) as Mat23Like
+  camera: transform23(null, [0, 0], 0, 1) as Mat23Like,
+  selectedOutput: null
 }
 /**
  * Create the geometry for a node input.
@@ -122,11 +125,12 @@ const getTransform = (ctx: CanvasRenderingContext2D) => {
 const getMouseTransform = (ctx: CanvasRenderingContext2D) => {
   const bounds = ctx.canvas.getBoundingClientRect()
 
-  const m = viewport(null, bounds.left, bounds.right, bounds.bottom, bounds.top)
-
-  invert(m, m)
-
-  return m
+  return transform23(
+    null,
+    [-bounds.left - bounds.width / 2, -bounds.height / 2],
+    0,
+    1
+  )
 }
 
 export const renderScene = (
@@ -159,7 +163,7 @@ type MouseTarget = ADT<{
   nodeInput: IHasNode & { index: number }
   node: IHasNode
   nodeOutput: IHasNode
-  nothing: {}
+  nothing: { node: null }
 }>
 
 /**
@@ -184,7 +188,8 @@ const getMouseTarget = (
 ): MouseTarget => {
   if (cache.nodes.size === 0) {
     return {
-      _type: "nothing"
+      _type: "nothing",
+      node: null
     }
   }
 
@@ -208,16 +213,9 @@ const getMouseTarget = (
     null
   )
 
-  if (closestOutput !== null) {
-    console.log(mousePosition)
-    console.log(closestOutput.output.pos)
-
-    console.log(distanceToMouse(closestOutput.output.pos))
-  }
-
   if (
     closestOutput !== null &&
-    distanceToMouse(closestOutput.output.pos) < 30
+    distanceToMouse(closestOutput.output.pos) < nodeOutputRadius.onHover ** 2
   ) {
     return {
       _type: "nodeOutput",
@@ -226,7 +224,8 @@ const getMouseTarget = (
   }
 
   return {
-    _type: "nothing"
+    _type: "nothing",
+    node: null
   }
 }
 
@@ -246,28 +245,33 @@ export const onClick = (event: MouseEvent) => (cache: GeometryCache) => () => {
 export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
   event: MouseEvent
 ) => (cache: GeometryCache) => () => {
+  const mouse = [event.pageX, event.pageY]
   const transform = getMouseTransform(ctx)
-  const mousePosition = mulV23(null, invert23(null, transform)!, [
-    event.pageX,
-    event.pageY
-  ])
+  const mousePosition = mulV23(null, transform, mouse)
 
   const target = getMouseTarget(mousePosition, cache)
   const nodes = [...cache.nodes.values()]
 
-  if (target._type === "nothing") {
-    return
-  }
+  // Unselect all node outputs
+  const targetingOutput = target._type === "nodeOutput"
 
-  for (const node of nodes) {
-    node.output.r = nodeOutputRadius.normal
-  }
+  if (cache.selectedOutput !== target.node) {
+    if (cache.selectedOutput) {
+      // This resets the radius of the old selected output
+      cache.selectedOutput.output.r = nodeOutputRadius.normal
+    }
 
-  if (target._type === "nodeOutput") {
-    target.node.output.r = nodeOutputRadius.onHover
+    if (!targetingOutput) {
+      // This branch clears the old selected output
+      cache.selectedOutput = null
+    }
+
+    if (targetingOutput && cache.selectedOutput !== target.node!) {
+      // This branch modifies the current output
+      cache.selectedOutput = target.node
+      target.node!.output.r = nodeOutputRadius.onHover
+    }
   }
 
   renderScene(ctx, cache)
-
-  // const pressed = isPressed(event.buttons)
 }

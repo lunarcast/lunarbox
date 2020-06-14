@@ -25,4 +25,5 @@ export interface NodeGeometry {
 export type GeometryCache = {
   nodes: Map<NodeId, NodeGeometry>
   camera: Mat23Like
+  selectedOutput: NodeGeometry | null
 }
