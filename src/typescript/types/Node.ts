@@ -1,7 +1,6 @@
-import type { IHiccupShape, IShape } from "@thi.ng/geom-api"
 import type { Mat23Like } from "@thi.ng/matrices"
 import { Circle, Arc } from "@thi.ng/geom"
-import { Vec } from "@thi.ng/vectors"
+import { Vec, Vec2Like } from "@thi.ng/vectors"
 
 export interface InputData {
   color: string
@@ -9,7 +8,7 @@ export interface InputData {
 }
 
 export interface NodeData {
-  position: [number, number]
+  position: Vec2Like
   inputs: InputData[]
 }
 

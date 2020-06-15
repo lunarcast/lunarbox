@@ -46,3 +46,10 @@ export const resizeContext = (ctx: CanvasRenderingContext2D) =>
 export const handleMouseMove = Native.onMouseMove
 export const handleMouseUp = Native.onMouseUp
 export const handleMouseDown = Native.onMouseDown
+
+// We cannot do
+// export * from "../typescript/save"
+// because purescript cannot understand it yet
+import * as Save from "src/typescript/save"
+export const geometryCacheToJson = Save.geometryCacheToJson
+export const geometryCacheFromJsonImpl = Save.geometryCacheFromJson

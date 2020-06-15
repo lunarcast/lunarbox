@@ -2,7 +2,9 @@ module Lunarbox.Foreign.Render where
 
 import Prelude
 import Control.Apply (applyFirst)
+import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
 import Data.Default (class Default)
+import Data.Either (Either(..))
 import Data.Lens (view)
 import Data.List (List, foldr)
 import Data.List as List
@@ -43,8 +45,23 @@ foreign import handleMouseUp :: GeomEventHandler
 
 foreign import handleMouseDown :: GeomEventHandler
 
+foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeomteryCache -> Json -> Either String GeomteryCache
+
+foreign import geometryCacheToJson :: GeomteryCache -> Json
+
 instance defaultGeomtryCache :: Default GeomteryCache where
   def = emptyGeometryCache
+
+instance decodeJsonGeometryCache :: DecodeJson GeomteryCache where
+  decodeJson = geometryCacheFromJsonImpl { left: Left, right: Right }
+
+instance encodeJsonGeometryCache :: EncodeJson GeomteryCache where
+  encodeJson = geometryCacheToJson
+
+type ForeignEitherConfig e a
+  = { left :: e -> Either e a
+    , right :: a -> Either e a
+    }
 
 type GeomEventHandler
   = Context2d -> MouseEvent -> GeomteryCache -> Effect Unit

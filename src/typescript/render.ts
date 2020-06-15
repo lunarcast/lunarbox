@@ -30,7 +30,7 @@ import {
 import { TAU } from "@thi.ng/math"
 import { ADT } from "ts-adt"
 import { Type } from "@thi.ng/geom-api"
-import { closestPoint, withAttribs, translate } from "@thi.ng/geom"
+import { closestPoint, withAttribs } from "@thi.ng/geom"
 import { isPressed, MouseButtons } from "./mouse"
 
 // Used in the Default purescript implementation of GeomCache
@@ -47,7 +47,7 @@ export const emptyGeometryCache: GeometryCache = {
  *
  * @param position The position of the input
  */
-export const dottedInput = (position: Vec2Like) => {
+const dottedInput = (position: Vec2Like) => {
   const attribs = {
     stroke: constantInputStroke,
     weight: arcStrokeWidth.normal,
@@ -65,7 +65,7 @@ export const dottedInput = (position: Vec2Like) => {
  * @param step The layer the input lays on.
  * @param input The input-specific data
  */
-export const renderInput = (
+const renderInput = (
   position: Vec2Like,
   step: number,
   input: Arc.InputWithArc
@@ -190,7 +190,7 @@ interface IHasNode {
   node: NodeGeometry
 }
 
-const enum MouseTargetKind {
+enum MouseTargetKind {
   Nothing,
   Node,
   NodeInput,
@@ -352,9 +352,6 @@ export const onMouseUp = (ctx: CanvasRenderingContext2D) => (
   const mouse = [event.pageX, event.pageY]
   const transform = getMouseTransform(ctx, cache)
   const mousePosition = mulV23(null, transform, mouse)
-
-  // const target = getMouseTarget(mousePosition, cache)
-  // const nodes = [...cache.nodes.values()]
 
   for (const [id, node] of cache.nodes) {
     unselectNode(cache, node, id)
