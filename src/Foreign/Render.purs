@@ -37,10 +37,15 @@ foreign import loadNode :: GeomteryCache -> NodeId -> NodeRenderingData -> Effec
 
 foreign import emptyGeometryCache :: GeomteryCache
 
-foreign import handleMouseMove :: Context2d -> MouseEvent -> GeomteryCache -> Effect Unit
+foreign import handleMouseMove :: GeomEventHandler
+
+foreign import handleMouseUp :: GeomEventHandler
 
 instance defaultGeomtryCache :: Default GeomteryCache where
   def = emptyGeometryCache
+
+type GeomEventHandler
+  = Context2d -> MouseEvent -> GeomteryCache -> Effect Unit
 
 type InputData
   = { output :: Nullable NodeId

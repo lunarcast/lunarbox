@@ -17,8 +17,8 @@ import {
   constantInputStroke,
   nodeOutputRadius,
   pickDistance,
-  onHoverNodeBackground,
-  nodeBackgroundOpacity
+  nodeBackgroundOpacity,
+  nodeBackgrounds
 } from "./constants"
 import { TAU } from "@thi.ng/math"
 import { ADT } from "ts-adt"
@@ -31,7 +31,8 @@ export const emptyGeometryCache: GeometryCache = {
   camera: transform23(null, [0, 0], 0, 1) as Mat23Like,
   selectedOutput: null,
   selectedInput: null,
-  selectedNode: null
+  selectedNode: null,
+  selectedNodes: new Set()
 }
 /**
  * Create the geometry for a node input.
@@ -104,7 +105,7 @@ export const renderNode = (
     alpha: nodeBackgroundOpacity
   })
 
-  return { inputs: inputGeom, output, selected: false, background }
+  return { inputs: inputGeom, output, background }
 }
 
 /**
@@ -172,7 +173,7 @@ const enum MouseTargetKind {
 
 type MouseTarget = ADT<{
   [MouseTargetKind.NodeInput]: IHasNode & { index: number; geom: g.Arc }
-  [MouseTargetKind.Node]: IHasNode
+  [MouseTargetKind.Node]: IHasNode & { id: NodeId }
   [MouseTargetKind.NodeOutput]: IHasNode
   [MouseTargetKind.Nothing]: {}
 }>
@@ -261,23 +262,63 @@ const getMouseTarget = (
   }
 
   // Rn this is the same as the output one but in the future nodes might not have outputs.
-  const closestNode = minBy((a, b) => {
-    return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
-  }, nodes)
+  const closestNode = minBy(
+    ([, a], [, b]) => {
+      return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
+    },
+    [...cache.nodes.entries()]
+  )
 
   if (
     closestNode &&
-    distanceToMouse(closestNode.output!.pos) < pickDistance.node
+    distanceToMouse(closestNode[1].output!.pos) < pickDistance.node
   ) {
     return {
       _type: MouseTargetKind.Node,
-      node: closestNode
+      node: closestNode[1],
+      id: closestNode[0]
     }
   }
 
   return {
     _type: MouseTargetKind.Nothing
   }
+}
+
+export const selectNode = (
+  cache: GeometryCache,
+  node: NodeGeometry,
+  id: NodeId
+) => {
+  cache.selectedNodes.add(id)
+
+  if (cache.selectedNode === node) {
+    cache.selectedNode = null
+  }
+
+  node.background.attribs!.fill = nodeBackgrounds.selected
+}
+
+/**
+ * Handle a mouseMove event
+ *
+ * @param ctx The context to re-render to.
+ */
+export const onMouseUp = (ctx: CanvasRenderingContext2D) => (
+  event: MouseEvent
+) => (cache: GeometryCache) => () => {
+  const mouse = [event.pageX, event.pageY]
+  const transform = getMouseTransform(ctx)
+  const mousePosition = mulV23(null, transform, mouse)
+
+  const target = getMouseTarget(mousePosition, cache)
+  const nodes = [...cache.nodes.values()]
+
+  if (target._type === MouseTargetKind.Node) {
+    selectNode(cache, target.node, target.id)
+  }
+
+  renderScene(ctx, cache)
 }
 
 /**
@@ -330,8 +371,10 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
       cache.selectedNode.background.attribs!.fill = undefined
     }
 
-    cache.selectedNode = target.node
-    target.node.background.attribs!.fill = onHoverNodeBackground
+    if (target.node.background.attribs!.fill === undefined) {
+      cache.selectedNode = target.node
+      target.node.background.attribs!.fill = nodeBackgrounds.onHover
+    }
   }
 
   // Clear old data from the cache
@@ -345,7 +388,11 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
     cache.selectedInput = null
   }
 
-  if (target._type !== MouseTargetKind.Node && cache.selectedNode) {
+  if (
+    target._type !== MouseTargetKind.Node &&
+    cache.selectedNode &&
+    cache.selectedNode.background.attribs!.fill === nodeBackgrounds.onHover
+  ) {
     cache.selectedNode.background.attribs!.fill = undefined
     cache.selectedNode = null
   }

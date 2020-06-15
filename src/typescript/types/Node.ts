@@ -20,7 +20,6 @@ export interface NodeGeometry {
   background: Circle
   output: Circle
   inputs: IHiccupShape[]
-  selected: Boolean
 }
 
 export type GeometryCache = {
@@ -29,4 +28,5 @@ export type GeometryCache = {
   selectedOutput: NodeGeometry | null
   selectedNode: NodeGeometry | null
   selectedInput: Arc | null
+  selectedNodes: Set<NodeId>
 }
