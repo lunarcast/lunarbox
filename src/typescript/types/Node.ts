@@ -1,6 +1,7 @@
 import type { IHiccupShape, IShape } from "@thi.ng/geom-api"
 import type { Mat23Like } from "@thi.ng/matrices"
 import { Circle, Arc } from "@thi.ng/geom"
+import { Vec } from "@thi.ng/vectors"
 
 export interface InputData {
   color: string
@@ -19,7 +20,8 @@ export type Effect<T> = () => T
 export interface NodeGeometry {
   background: Circle
   output: Circle
-  inputs: IHiccupShape[]
+  inputs: (Circle | Arc)[]
+  position: Vec
 }
 
 export type GeometryCache = {

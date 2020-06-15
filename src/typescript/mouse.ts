@@ -14,4 +14,4 @@ export const enum MouseButtons {
  * @param bits The bits from the event object.
  */
 export const isPressed = (bits: number) => (button: MouseButtons) =>
-  bits !== (0 & button)
+  bits & button

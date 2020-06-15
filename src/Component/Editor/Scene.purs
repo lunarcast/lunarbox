@@ -10,12 +10,12 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, subscribe)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onMouseMove, onMouseUp)
+import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Foreign.Render (Context2d, GeomEventHandler, GeomteryCache, NodeRenderingData, getContext, handleMouseMove, handleMouseUp, loadNodes, renderScene, resizeCanvas, resizeContext)
+import Lunarbox.Foreign.Render (Context2d, GeomEventHandler, GeomteryCache, NodeRenderingData, getContext, handleMouseDown, handleMouseMove, handleMouseUp, loadNodes, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -110,4 +110,5 @@ component =
           [ HP.ref canvasRef
           , onMouseMove $ Just <<< HandleEvent handleMouseMove
           , onMouseUp $ Just <<< HandleEvent handleMouseUp
+          , onMouseDown $ Just <<< HandleEvent handleMouseDown
           ]

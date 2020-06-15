@@ -41,6 +41,8 @@ foreign import handleMouseMove :: GeomEventHandler
 
 foreign import handleMouseUp :: GeomEventHandler
 
+foreign import handleMouseDown :: GeomEventHandler
+
 instance defaultGeomtryCache :: Default GeomteryCache where
   def = emptyGeometryCache
 

@@ -45,3 +45,4 @@ export const resizeContext = (ctx: CanvasRenderingContext2D) =>
 // Reexports with a few changed names
 export const handleMouseMove = Native.onMouseMove
 export const handleMouseUp = Native.onMouseUp
+export const handleMouseDown = Native.onMouseDown
