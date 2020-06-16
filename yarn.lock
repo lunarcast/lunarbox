@@ -1142,6 +1142,13 @@
   dependencies:
     tslib "^1.12.0"
 
+"@thi.ng/api@^6.11.1":
+  version "6.11.1"
+  resolved "https://registry.yarnpkg.com/@thi.ng/api/-/api-6.11.1.tgz#bb084ced047641b0855ddaad4b1c64daeeb34943"
+  integrity sha512-EgcO2CZPLybbv5+EK0KFd+tvJMfGSqnsaLYJSYB7ulCLzmCmkkLr+eRPTjoBo/xKAR8htGOqMywu4JI+P6/LIA==
+  dependencies:
+    tslib "^1.12.0"
+
 "@thi.ng/arrays@^0.6.8":
   version "0.6.8"
   resolved "https://registry.yarnpkg.com/@thi.ng/arrays/-/arrays-0.6.8.tgz#7325c25857b31e5dc57f8c4645b8e0ef276f5913"
@@ -1155,6 +1162,19 @@
     "@thi.ng/random" "^1.4.10"
     tslib "^1.12.0"
 
+"@thi.ng/arrays@^0.6.9":
+  version "0.6.9"
+  resolved "https://registry.yarnpkg.com/@thi.ng/arrays/-/arrays-0.6.9.tgz#e80d0b461e7e3aa5a72126a2dc79c08e63aaf327"
+  integrity sha512-hXKJDOwI/KV723bzqW7LTo77KkvnNiLk+aCb8QG+bkvamIVJzVOfKytJfBj+gNhkvfwBwG0LDWxEhOwtwlGLFw==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    "@thi.ng/checks" "^2.7.1"
+    "@thi.ng/compare" "^1.3.8"
+    "@thi.ng/equiv" "^1.0.23"
+    "@thi.ng/errors" "^1.2.14"
+    "@thi.ng/random" "^1.4.11"
+    tslib "^1.12.0"
+
 "@thi.ng/binary@^2.0.7":
   version "2.0.7"
   resolved "https://registry.yarnpkg.com/@thi.ng/binary/-/binary-2.0.7.tgz#d7fb98e1cd3d5e4d079d5c4c9271574311737e9b"
@@ -1166,6 +1186,13 @@
   version "2.7.0"
   resolved "https://registry.yarnpkg.com/@thi.ng/checks/-/checks-2.7.0.tgz#6fdf9307a3cbf5d019556112e71fa9c4bffc4181"
   integrity sha512-xdpelI5UNW94+IZ3Tyi34H/NmNTXjBaoVDD4iZumDfffBpGi9ZGdZy8W5jiIyfDbIXo769+KtG2EQxOEDhJwrA==
+  dependencies:
+    tslib "^1.12.0"
+
+"@thi.ng/checks@^2.7.1":
+  version "2.7.1"
+  resolved "https://registry.yarnpkg.com/@thi.ng/checks/-/checks-2.7.1.tgz#95e73bf6e156fe88f1265496adc05cdb87ee1fbe"
+  integrity sha512-INgTg5VZt076P2wg+3n19Kw9eF/uIBK0PdsGQeZ6T3wvahWYJtF8VRAFNn7sAya6p4FsiQIhHk+S5sMgN4v2Rg==
   dependencies:
     tslib "^1.12.0"
 
@@ -1193,6 +1220,14 @@
     "@thi.ng/api" "^6.11.0"
     tslib "^1.12.0"
 
+"@thi.ng/compare@^1.3.8":
+  version "1.3.8"
+  resolved "https://registry.yarnpkg.com/@thi.ng/compare/-/compare-1.3.8.tgz#d8796645d085edbc631a8660b778fb004947e962"
+  integrity sha512-cXxNV8gnizQWjdS1oyxIW17B1yTV+J3yDh+1fnQUulQ8chC59Tv9hCA+yGS7WAuSAhQ2MQ/WUS443jMBumymIQ==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    tslib "^1.12.0"
+
 "@thi.ng/compose@^1.4.8":
   version "1.4.8"
   resolved "https://registry.yarnpkg.com/@thi.ng/compose/-/compose-1.4.8.tgz#a839392092d95838aae58799c537fcce3b73e383"
@@ -1200,6 +1235,29 @@
   dependencies:
     "@thi.ng/api" "^6.11.0"
     "@thi.ng/errors" "^1.2.14"
+    tslib "^1.12.0"
+
+"@thi.ng/compose@^1.4.9":
+  version "1.4.9"
+  resolved "https://registry.yarnpkg.com/@thi.ng/compose/-/compose-1.4.9.tgz#e8dc3c6f21a3e1f7d432d2001b6353e4a7e38c09"
+  integrity sha512-ZtHhwWuLwHCIVsNSEw1xN7wbdRaTdb3JQliLiD2jyhSIWM53N50GhndJmRAsgW2qa+jfuYdDxS3zeV5crwk5Lw==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    "@thi.ng/errors" "^1.2.14"
+    tslib "^1.12.0"
+
+"@thi.ng/dcons@^2.2.20":
+  version "2.2.20"
+  resolved "https://registry.yarnpkg.com/@thi.ng/dcons/-/dcons-2.2.20.tgz#7165ccad3372a6d9cb70ff544bfb7d09a2e69155"
+  integrity sha512-nckGq4RJYh2ON09KQ9//1iB46O37nidyCiqybfJLEIdxzvMcRJv7knoqTonT3Sf7ZqoslPp+9j8SjvuMIJFTfA==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    "@thi.ng/checks" "^2.7.1"
+    "@thi.ng/compare" "^1.3.8"
+    "@thi.ng/equiv" "^1.0.23"
+    "@thi.ng/errors" "^1.2.14"
+    "@thi.ng/random" "^1.4.11"
+    "@thi.ng/transducers" "^7.1.0"
     tslib "^1.12.0"
 
 "@thi.ng/defmulti@^1.2.16":
@@ -1449,6 +1507,13 @@
   dependencies:
     tslib "^1.12.0"
 
+"@thi.ng/math@^1.7.11":
+  version "1.7.11"
+  resolved "https://registry.yarnpkg.com/@thi.ng/math/-/math-1.7.11.tgz#77e5b1c826b14b35fac8a98e58282e20039ccf77"
+  integrity sha512-EZ29SOPlhSkAT86bLr0UURAuACXB6uiX9BslwfkTzae/DHNDYa96342OQ0kSvUg1ECFaKVlVLoyEodtvxZgXww==
+  dependencies:
+    tslib "^1.12.0"
+
 "@thi.ng/matrices@^0.6.18":
   version "0.6.18"
   resolved "https://registry.yarnpkg.com/@thi.ng/matrices/-/matrices-0.6.18.tgz#2ac793abe7db7c6c47e9aa3228c24a8a57ffe63e"
@@ -1468,6 +1533,14 @@
     "@thi.ng/api" "^6.11.0"
     tslib "^1.12.0"
 
+"@thi.ng/memoize@^2.0.13":
+  version "2.0.13"
+  resolved "https://registry.yarnpkg.com/@thi.ng/memoize/-/memoize-2.0.13.tgz#ae3becb7d748f7426ce7c9cd73696e24556e7541"
+  integrity sha512-51ScKmBj8UU21szd9GcJFisUYiWU9n+lEWsAPbkm+PMqjSAZkg6QTs+qeEMVORdERYtAdbVZ71RQtNzYdhHb1g==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    tslib "^1.12.0"
+
 "@thi.ng/random@^1.4.10":
   version "1.4.10"
   resolved "https://registry.yarnpkg.com/@thi.ng/random/-/random-1.4.10.tgz#3059518f04b51085fdabccebb766f27e0cf3ebd4"
@@ -1475,6 +1548,25 @@
   dependencies:
     "@thi.ng/api" "^6.11.0"
     "@thi.ng/checks" "^2.7.0"
+    tslib "^1.12.0"
+
+"@thi.ng/random@^1.4.11":
+  version "1.4.11"
+  resolved "https://registry.yarnpkg.com/@thi.ng/random/-/random-1.4.11.tgz#8836f99cda8fe2481890f31220bd0b66af2cf6a3"
+  integrity sha512-KVdb3nBvzIsSDSuggju0wRbRmY7OQRw5d6JALzeRl+l9CTyRyNy7WLN3XkCNSnpod7PWdqPb47E9Gb74nSyg0g==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    "@thi.ng/checks" "^2.7.1"
+    tslib "^1.12.0"
+
+"@thi.ng/strings@^1.8.10":
+  version "1.8.10"
+  resolved "https://registry.yarnpkg.com/@thi.ng/strings/-/strings-1.8.10.tgz#8e313ab46675201bfe2c3555913d15620652a040"
+  integrity sha512-uueK8XMRLME6shnrmd+u84k8nBzK7Asl/f7rgchaODdv5dJK0SrTOqOdBYz0zmIRznT9M33YyFIaUd1KIJEj8w==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    "@thi.ng/errors" "^1.2.14"
+    "@thi.ng/memoize" "^2.0.13"
     tslib "^1.12.0"
 
 "@thi.ng/strings@^1.8.9":
@@ -1502,6 +1594,23 @@
     "@thi.ng/math" "^1.7.10"
     "@thi.ng/random" "^1.4.10"
     "@thi.ng/strings" "^1.8.9"
+    tslib "^1.12.0"
+
+"@thi.ng/transducers@^7.1.0":
+  version "7.1.0"
+  resolved "https://registry.yarnpkg.com/@thi.ng/transducers/-/transducers-7.1.0.tgz#a70eb030f8d3b5d4186256756f6e68979aebe6db"
+  integrity sha512-jfAe+48SRcDP1bB1k2GpZdQSDRXzvYco5ZGpPX2WW1UJYLDKnfQA2LRAkHXzE07cQFZAX7vv0/YLcxAeASkoPQ==
+  dependencies:
+    "@thi.ng/api" "^6.11.1"
+    "@thi.ng/arrays" "^0.6.9"
+    "@thi.ng/checks" "^2.7.1"
+    "@thi.ng/compare" "^1.3.8"
+    "@thi.ng/compose" "^1.4.9"
+    "@thi.ng/equiv" "^1.0.23"
+    "@thi.ng/errors" "^1.2.14"
+    "@thi.ng/math" "^1.7.11"
+    "@thi.ng/random" "^1.4.11"
+    "@thi.ng/strings" "^1.8.10"
     tslib "^1.12.0"
 
 "@thi.ng/vectors@^4.4.3":

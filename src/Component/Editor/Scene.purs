@@ -2,13 +2,10 @@ module Lunarbox.Component.Editor.Scene (component, Query(..)) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
-import Data.Argonaut (decodeJson, encodeJson)
 import Data.Default (def)
-import Data.Either (Either)
 import Data.List (List)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple)
-import Debug.Trace (trace)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, subscribe)
@@ -17,10 +14,8 @@ import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Foreign.Render (Context2d, GeomEventHandler, GeomteryCache, NodeRenderingData, getContext, handleMouseDown, handleMouseMove, handleMouseUp, loadNodes, renderScene, resizeCanvas, resizeContext)
-import Unsafe.Coerce (unsafeCoerce)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -98,7 +93,6 @@ component =
     HandleEvent handler event ->
       withContext \ctx -> do
         cache <- gets _.geometryCache
-        trace (decodeJson $ encodeJson cache :: Either _ GeomteryCache) \_ -> pure unit
         liftEffect $ handler ctx event cache
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)

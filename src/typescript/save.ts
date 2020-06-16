@@ -2,6 +2,7 @@ import { GeometryCache, NodeId } from "./types/Node"
 import { emptyGeometryCache, renderNode } from "./render"
 import { Mat23Like } from "@thi.ng/matrices"
 import { Vec2Like } from "@thi.ng/vectors"
+import { DCons } from "@thi.ng/dcons"
 
 // The following section is for stuff related to saving / loading caches from / to json
 interface SavedData {
@@ -43,6 +44,7 @@ export const geometryCacheFromJson = (
     return config.right({
       ...emptyGeometryCache,
       camera: camera,
+      zOrder: new DCons(nodes.map(([id]) => id)),
       nodes: new Map(
         nodes.map(([id, data]) => [
           id,
@@ -63,10 +65,10 @@ export const geometryCacheFromJson = (
 export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
   const saved: SavedData = {
     camera: cache.camera,
-    nodes: [...cache.nodes.entries()].map(([id, node]) => [
+    nodes: [...cache.zOrder].map((id) => [
       id,
       {
-        position: node.position as Vec2Like
+        position: (cache.nodes.get(id)?.position ?? [0, 0]) as Vec2Like
       }
     ])
   }

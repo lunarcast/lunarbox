@@ -10,6 +10,7 @@
     "test": "spago test"
   },
   "dependencies": {
+    "@thi.ng/dcons": "^2.2.20",
     "@thi.ng/geom": "^1.9.7",
     "@thi.ng/geom-api": "^1.0.20",
     "@thi.ng/hdom": "^8.0.27",

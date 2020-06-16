@@ -32,6 +32,7 @@ import { ADT } from "ts-adt"
 import { Type } from "@thi.ng/geom-api"
 import { closestPoint, withAttribs } from "@thi.ng/geom"
 import { isPressed, MouseButtons } from "./mouse"
+import { DCons } from "@thi.ng/dcons"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
@@ -40,7 +41,8 @@ export const emptyGeometryCache: GeometryCache = {
   selectedOutput: null,
   selectedInput: null,
   selectedNode: null,
-  selectedNodes: new Set()
+  selectedNodes: new Set(),
+  zOrder: new DCons()
 }
 /**
  * Create the geometry for a node input.
@@ -168,15 +170,15 @@ export const renderScene = (
 
   const matrix = getTransform(ctx, cache)
 
-  const nodes = [
-    ...cache.nodes.values()
-  ].flatMap(({ inputs, output, background }) => [
-    ...(background.attribs!.fill ? [background] : []),
-    ...inputs.map((input) =>
-      input.type === Type.CIRCLE ? input : g.pathFromCubics(g.asCubic(input))
-    ),
-    output
-  ])
+  const nodes = [...cache.zOrder]
+    .map((id) => cache.nodes.get(id)!)
+    .flatMap(({ inputs, output, background }) => [
+      ...(background.attribs!.fill ? [background] : []),
+      ...inputs.map((input) =>
+        input.type === Type.CIRCLE ? input : g.pathFromCubics(g.asCubic(input))
+      ),
+      output
+    ])
 
   const shapes = g.group({ transform: matrix }, nodes).toHiccup()
 
@@ -325,6 +327,14 @@ const selectNode = (cache: GeometryCache, node: NodeGeometry, id: NodeId) => {
     cache.selectedNode = null
   }
 
+  const old = cache.zOrder.find(id)
+
+  if (old) {
+    cache.zOrder = cache.zOrder.remove(old)
+  }
+
+  cache.zOrder.push(id)
+
   node.background.attribs!.fill = nodeBackgrounds.selected
 }
 
@@ -423,43 +433,45 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
   const nodes = [...cache.nodes.values()]
 
   // On hover effects for outputs
-  if (
-    target._type === MouseTargetKind.NodeOutput &&
-    cache.selectedOutput !== target.node
-  ) {
-    if (cache.selectedOutput) {
-      cache.selectedOutput.output.r = nodeOutputRadius.normal
+  if (event.buttons === 0) {
+    if (
+      target._type === MouseTargetKind.NodeOutput &&
+      cache.selectedOutput !== target.node
+    ) {
+      if (cache.selectedOutput) {
+        cache.selectedOutput.output.r = nodeOutputRadius.normal
+      }
+
+      cache.selectedOutput = target.node
+      target.node!.output.r = nodeOutputRadius.onHover
     }
 
-    cache.selectedOutput = target.node
-    target.node!.output.r = nodeOutputRadius.onHover
-  }
+    // On hover effect for inputs
+    if (
+      target._type === MouseTargetKind.NodeInput &&
+      cache.selectedInput !== target.geom
+    ) {
+      if (cache.selectedInput) {
+        cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
+      }
 
-  // On hover effect for inputs
-  if (
-    target._type === MouseTargetKind.NodeInput &&
-    cache.selectedInput !== target.geom
-  ) {
-    if (cache.selectedInput) {
-      cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
+      cache.selectedInput = target.geom
+      target.geom.attribs!.weight = arcStrokeWidth.onHover
     }
 
-    cache.selectedInput = target.geom
-    target.geom.attribs!.weight = arcStrokeWidth.onHover
-  }
+    // On hover effects for nodes
+    if (
+      target._type === MouseTargetKind.Node &&
+      cache.selectedNode !== target.node
+    ) {
+      if (cache.selectedNode) {
+        cache.selectedNode.background.attribs!.fill = undefined
+      }
 
-  // On hover effects for nodes
-  if (
-    target._type === MouseTargetKind.Node &&
-    cache.selectedNode !== target.node
-  ) {
-    if (cache.selectedNode) {
-      cache.selectedNode.background.attribs!.fill = undefined
-    }
-
-    if (target.node.background.attribs!.fill === undefined) {
-      cache.selectedNode = target.node
-      target.node.background.attribs!.fill = nodeBackgrounds.onHover
+      if (target.node.background.attribs!.fill === undefined) {
+        cache.selectedNode = target.node
+        target.node.background.attribs!.fill = nodeBackgrounds.onHover
+      }
     }
   }
 

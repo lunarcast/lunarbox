@@ -5,18 +5,6 @@ import { Vec2Like } from "@thi.ng/vectors"
 // The initial cache used from purescript
 export const emptyGeometryCache = Native.emptyGeometryCache
 
-// Add a new node to the scene
-export const loadNode = (cache: GeometryCache) => (id: NodeId) => (
-  data: NodeData
-) => () => {
-  const shape = Native.renderNode(
-    (id) => (cache.nodes.get(id)?.output.pos ?? [0, 0]) as Vec2Like,
-    data
-  )
-
-  cache.nodes.set(id, shape)
-}
-
 /**
  * Render  a scene from purescript
  *
@@ -51,5 +39,7 @@ export const handleMouseDown = Native.onMouseDown
 // export * from "../typescript/save"
 // because purescript cannot understand it yet
 import * as Save from "src/typescript/save"
+import * as Sync from "src/typescript/sync"
 export const geometryCacheToJson = Save.geometryCacheToJson
 export const geometryCacheFromJsonImpl = Save.geometryCacheFromJson
+export const loadNode = Sync.loadNode
