@@ -6,6 +6,7 @@
 
 .cache
 pnpm-debug.log
+yarn-error.log
 
 /output/
 dist
