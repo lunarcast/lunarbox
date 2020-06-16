@@ -8,7 +8,7 @@ module Lunarbox.Component.Editor
 
 import Prelude
 import Control.Monad.Reader (class MonadReader, asks)
-import Control.Monad.State (execState, get, gets, modify_)
+import Control.Monad.State (get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
@@ -181,8 +181,7 @@ component =
         sortedFunctions <- gets searchNode
         handleAction $ SelectFunction $ sortedFunctions !! 0
       | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
-    CreateNode name -> do
-      modify_ $ execState $ createNode name
+    CreateNode name -> createNode name
     TogglePanel -> modify_ $ over _panelIsOpen not
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab

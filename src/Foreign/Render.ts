@@ -1,5 +1,5 @@
 import * as Native from "src/typescript/render"
-import { GeometryCache, NodeId, NodeData } from "src/typescript/types/Node"
+import { GeometryCache } from "src/typescript/types/Node"
 import { Vec2Like } from "@thi.ng/vectors"
 
 // The initial cache used from purescript
@@ -43,3 +43,4 @@ import * as Sync from "src/typescript/sync"
 export const geometryCacheToJson = Save.geometryCacheToJson
 export const geometryCacheFromJsonImpl = Save.geometryCacheFromJson
 export const createNode = Sync.createNode
+export const refreshInputArcs = Sync.refreshInputArcs

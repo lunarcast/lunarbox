@@ -47,7 +47,10 @@ export const geometryCacheFromJson = (
       camera: camera,
       zOrder: new DCons(nodes.map(([id]) => id)),
       nodes: new Map(
-        nodes.map(([id, data]) => [id, createNodeGeometry(data.position, 0)])
+        nodes.map(([id, data]) => [
+          id,
+          createNodeGeometry(data.position, data.inputCount)
+        ])
       )
     })
   } catch (err) {

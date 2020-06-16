@@ -256,16 +256,17 @@ export const center = <T extends IArc>(arc: T) =>
   normalizeAngle(arc.arc[0] + length(arc) / 2)
 
 /**
+ * Generate a good looking arc placement for the inputs of an arc.
  *
- * @param getData Function to be able to get the position of any node
- * @param nodeData THe data
+ * @param getData Function to be able to get the position of any node.
+ * @param inputs The inputs to place around.
+ * @param position The position of the current node.
  */
 export const placeInputs = (
   getData: (id: NodeId) => Vec2Like,
-  nodeData: NodeData
+  inputs: InputData[],
+  position: Vec2Like
 ): InputWithArc[][] => {
-  const inputs = nodeData.inputs
-
   const connected = inputs.filter(({ output }) => output !== null)
   const unconnected = inputs.filter(({ output }) => output === null)
 
@@ -275,7 +276,7 @@ export const placeInputs = (
   const connectedOverlapping = connected.map(
     (input): InputWithArc => {
       const other = getData(input.output!)
-      const relative = sub2(null, other, nodeData.position)
+      const relative = sub2(null, other, position)
       const angle = Math.atan2(-relative[0], relative[1])
 
       return {

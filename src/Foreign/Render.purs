@@ -4,6 +4,7 @@ import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
 import Data.Default (class Default)
 import Data.Either (Either(..))
+import Data.Nullable (Nullable)
 import Effect (Effect)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Web.HTML (HTMLCanvasElement)
@@ -39,6 +40,8 @@ foreign import geometryCacheToJson :: GeomteryCache -> Json
 
 foreign import createNode :: GeomteryCache -> NodeId -> Int -> Effect Unit
 
+foreign import refreshInputArcs :: GeomteryCache -> NodeId -> Array InputData -> Effect Unit
+
 instance defaultGeomtryCache :: Default GeomteryCache where
   -- WARNING: this might create spooky actions at a distance!!! 
   -- (This doesn't happen anywhere curently but I should keep it in mind)
@@ -52,6 +55,12 @@ instance decodeJsonGeometryCache :: DecodeJson GeomteryCache where
 
 instance encodeJsonGeometryCache :: EncodeJson GeomteryCache where
   encodeJson = geometryCacheToJson
+
+-- | This is the data the typescript part needs to render the input arcs
+type InputData
+  = { color :: String
+    , output :: Nullable NodeId
+    }
 
 -- | Some foreign stuff might error out 
 -- | so we pass this to it to inform it of how we handle errors 

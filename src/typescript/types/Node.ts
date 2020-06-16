@@ -8,11 +8,6 @@ export interface InputData {
   output: NodeId | null
 }
 
-export interface NodeData {
-  inputs: InputData[]
-  position: [number, number]
-}
-
 export type NodeId = { readonly brand: unique symbol } & string
 
 export type Effect<T> = () => T
