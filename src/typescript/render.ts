@@ -8,19 +8,11 @@ import {
   translation23,
   invert23
 } from "@thi.ng/matrices"
-import type {
-  GeometryCache,
-  NodeData,
-  NodeId,
-  NodeGeometry
-} from "./types/Node"
+import type { GeometryCache, NodeId, NodeGeometry } from "./types/Node"
 import { Vec2Like, distSq2, Vec, dist, add2 } from "@thi.ng/vectors"
-import * as Arc from "./arcs"
 import {
   nodeRadius,
-  inputLayerOffset,
   arcStrokeWidth,
-  arcSpacing,
   constantInputStroke,
   nodeOutputRadius,
   pickDistance,

@@ -1,6 +1,6 @@
 import { Vec2Like, sub2, IVector } from "@thi.ng/vectors"
 import { TAU, HALF_PI } from "@thi.ng/math"
-import { NodeId, NodeData, InputData } from "./types/Node"
+import { NodeId, InputData } from "./types/Node"
 
 export interface IArc {
   arc: Vec2Like
