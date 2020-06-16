@@ -9,8 +9,8 @@ export interface InputData {
 }
 
 export interface NodeData {
-  position: Vec2Like
   inputs: InputData[]
+  position: [number, number]
 }
 
 export type NodeId = { readonly brand: unique symbol } & string

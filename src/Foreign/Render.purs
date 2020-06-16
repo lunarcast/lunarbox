@@ -1,21 +1,11 @@
 module Lunarbox.Foreign.Render where
 
 import Prelude
-import Control.Apply (applyFirst)
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
 import Data.Default (class Default)
 import Data.Either (Either(..))
-import Data.Lens (view)
-import Data.List (List, foldr)
-import Data.List as List
-import Data.Nullable (Nullable)
-import Data.Nullable as Nullable
-import Data.Tuple (Tuple, uncurry)
 import Effect (Effect)
-import Lunarbox.Data.Editor.Node (Node, getInputs)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Vector (Vec2)
 import Web.HTML (HTMLCanvasElement)
 import Web.UIEvent.MouseEvent (MouseEvent)
 
@@ -35,8 +25,6 @@ foreign import getContext :: HTMLCanvasElement -> Effect Context2d
 
 foreign import renderScene :: Context2d -> GeomteryCache -> Effect Unit
 
-foreign import loadNode :: GeomteryCache -> NodeId -> NodeRenderingData -> Effect Unit
-
 foreign import emptyGeometryCache :: GeomteryCache
 
 foreign import handleMouseMove :: GeomEventHandler
@@ -49,15 +37,24 @@ foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeomteryC
 
 foreign import geometryCacheToJson :: GeomteryCache -> Json
 
+foreign import createNode :: GeomteryCache -> NodeId -> Int -> Effect Unit
+
 instance defaultGeomtryCache :: Default GeomteryCache where
+  -- WARNING: this might create spooky actions at a distance!!! 
+  -- (This doesn't happen anywhere curently but I should keep it in mind)
   def = emptyGeometryCache
 
 instance decodeJsonGeometryCache :: DecodeJson GeomteryCache where
+  -- The error messages in for this are just the Error.message from js land
+  -- so idk how clear those are, maybe I should somehow make it check if the structure is right
+  -- and _then_ try parsing it, but that's something to do for the next time
   decodeJson = geometryCacheFromJsonImpl { left: Left, right: Right }
 
 instance encodeJsonGeometryCache :: EncodeJson GeomteryCache where
   encodeJson = geometryCacheToJson
 
+-- | Some foreign stuff might error out 
+-- | so we pass this to it to inform it of how we handle errors 
 type ForeignEitherConfig e a
   = { left :: e -> Either e a
     , right :: a -> Either e a
@@ -65,26 +62,3 @@ type ForeignEitherConfig e a
 
 type GeomEventHandler
   = Context2d -> MouseEvent -> GeomteryCache -> Effect Unit
-
-type InputData
-  = { output :: Nullable NodeId
-    , color :: String
-    }
-
-type NodeRenderingData
-  = { position :: Vec2 Number
-    , inputs :: Array InputData
-    }
-
--- Load more nodes in the same cache
-loadNodes :: GeomteryCache -> List (Tuple NodeId NodeRenderingData) -> Effect Unit
-loadNodes cache = foldr (applyFirst <<< go) $ pure unit
-  where
-  go = uncurry $ loadNode cache
-
--- Get the rendering data from other smaller chunks
-buildRenderingData :: NodeData -> Node -> NodeRenderingData
-buildRenderingData nodeData node =
-  { position: view _NodeDataPosition nodeData
-  , inputs: getInputs node # List.toUnfoldable <#> \output -> { output: Nullable.toNullable output, color: "green" }
-  }

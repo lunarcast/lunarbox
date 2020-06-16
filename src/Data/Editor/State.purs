@@ -1,15 +1,14 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
-import Control.Monad.State (execState, gets, put)
+import Control.Monad.State (execState, gets, put, runState)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
 import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Filterable (filter, filterMap)
-import Data.Foldable (foldMap, foldr, for_)
-import Data.Int (toNumber)
+import Data.Foldable (foldMap, foldr, for_, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
@@ -22,12 +21,10 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype as Newtype
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), snd)
 import Data.Unfoldable (replicate)
-import Data.Vec (vec2)
 import Effect.Class (class MonadEffect)
-import Halogen (HalogenM, RefLabel(..), get, getHTMLElementRef, liftEffect, modify_)
+import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
@@ -36,18 +33,13 @@ import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
-import Lunarbox.Data.Editor.Camera (Camera, toWorldCoordinates)
-import Lunarbox.Data.Editor.Camera as Camera
-import Lunarbox.Data.Editor.Constants (nodeOffset, nodeOffsetGrowthRate, nodeOffsetInitialRadius)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
-import Lunarbox.Data.Editor.Foreign.NodeBoundingdBox (nodeBoundingBox)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData, _NodeDataPosition, _NodeDataSelected)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
@@ -56,15 +48,12 @@ import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectF
 import Lunarbox.Data.Graph (emptyGraph)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
-import Lunarbox.Data.Math (polarToCartesian)
 import Lunarbox.Data.Ord (sortBySearch)
-import Lunarbox.Data.Vector (Vec2)
-import Math (pow)
+import Lunarbox.Foreign.Render (GeomteryCache)
+import Lunarbox.Foreign.Render as Native
 import Svg.Attributes (Color)
-import Web.DOM.Node as WebNode
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
-import Web.HTML.HTMLElement (DOMRect, toNode)
 
 data Tab
   = Settings
@@ -91,16 +80,12 @@ type State a s m
     , typeMap :: Map Location Type
     , colorMap :: Map Location Color
     , expression :: Expression Location
-    , lastMousePosition :: Vec2 Number
-    , nodeData :: Map (Tuple FunctionName NodeId) NodeData
+    , geometries :: Map FunctionName GeomteryCache
     , functionData :: Map FunctionName FunctionData
     , partialConnection :: PartialConnection
     , valueMap :: ValueMap Location
     , functionUis :: Map FunctionName (FunctionUi a s m)
     , runtimeOverwrites :: ValueMap Location
-    , cameras :: Map FunctionName Camera
-    , sceneScale :: Vec2 Number
-    , addedNodes :: Int
     , inputCountMap :: Map FunctionName Int
     , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     , name :: String
@@ -117,7 +102,6 @@ emptyState =
     { currentTab: Settings
     , currentFunction: Nothing
     , nextId: 0
-    , addedNodes: 0
     , panelIsOpen: false
     , typeMap: mempty
     , colorMap: mempty
@@ -125,13 +109,10 @@ emptyState =
     , valueMap: mempty
     , runtimeOverwrites: mempty
     , functionUis: mempty
-    , cameras: mempty
-    , nodeData: mempty
     , inputCountMap: mempty
     , unconnectablePins: mempty
+    , geometries: mempty
     , partialConnection: def
-    , sceneScale: zero
-    , lastMousePosition: zero
     , expression: nothing
     , project: Project { main: FunctionName "main", functions: mempty }
     , name: "Unnamed project"
@@ -152,53 +133,54 @@ createId = do
 inputNodeName :: FunctionName
 inputNodeName = FunctionName "input"
 
-createNode :: forall a s m. FunctionName -> StateM.State (State a s m) Unit
+--
+-- Create a new node and save all the data in the different required places
+createNode :: forall q i o m a s. MonadEffect m => FunctionName -> HalogenM (State a s m) q i o m Unit
 createNode name = do
   let
-    isInput = name == inputNodeName
-  id <- createId
-  maybeCurrentFunction <- gets $ view _currentFunction
-  desiredInputCount <- gets $ preview $ _atInputCount name
-  functionDataInputs <-
-    if isInput then
-      pure []
-    else
-      gets
-        $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
-  addedNodes <- gets $ (toNumber <<< view _addedNodes)
-  center <- gets sceneCenter
-  let
-    node =
-      if isInput then
-        InputNode
-      else
-        ComplexNode
-          { inputs: replicate inputCount Nothing
-          , function: name
-          }
-      where
-      maxInputs = Array.length functionDataInputs
+    create = do
+      let
+        isInput = name == inputNodeName
+      id <- createId
+      maybeCurrentFunction <- gets $ view _currentFunction
+      desiredInputCount <- gets $ preview $ _atInputCount name
+      functionDataInputs <-
+        if isInput then
+          pure []
+        else
+          gets
+            $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
+      let
+        inputCount = fromMaybe maxInputs $ join desiredInputCount
+          where
+          maxInputs = Array.length functionDataInputs
 
-      inputCount = fromMaybe maxInputs $ join desiredInputCount
-
-      inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
-
-    angle = nodeOffset * addedNodes
-
-    radius = nodeOffsetInitialRadius * (nodeOffsetGrowthRate `pow` angle)
-
-    offset = polarToCartesian radius angle
-
-    position = offset + center
-
-    nodeData = set _NodeDataPosition position def
-  for_ maybeCurrentFunction
-    $ \currentFunction -> do
-        modify_ $ over _addedNodes (_ + 1)
-        modify_ $ set (_atNode currentFunction id) $ Just node
-        modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
-        when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
-        modify_ $ compile
+        node =
+          if isInput then
+            InputNode
+          else
+            ComplexNode
+              { inputs: replicate inputCount Nothing
+              , function: name
+              }
+          where
+          inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
+      for_ maybeCurrentFunction
+        $ \currentFunction -> do
+            modify_ $ set (_atNode currentFunction id) $ Just node
+            -- TODO: make this work with the new foreign system
+            -- modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
+            when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
+            -- We need to recompile when we add a new node, 
+            -- but for rendering purpouses we'll disable it for now
+            -- modify_ compile
+            pure unit -- here so the comment before this don't get moved by purty
+      pure $ Tuple id inputCount
+  Tuple (Tuple id inputs) newState <- gets $ runState create
+  gets (view _currentGeometryCache)
+    >>= traverse_ \cache -> do
+        liftEffect $ Native.createNode cache id inputs
+        void $ put newState
 
 -- Get the type of the output a node (Also works for input pins)
 getOutputType :: forall a s m. FunctionName -> NodeId -> State a s m -> Maybe Type
@@ -399,12 +381,11 @@ initializeFunction name state =
       id = NodeId $ show name <> "-output"
 
       function = createFunction name id
-    scale <- gets $ view _sceneScale
     modify_ $ over _project function
     modify_ $ setCurrentFunction (Just name)
-    modify_ $ set (_atNodeData name id) (Just def)
+    -- Todo: make this work with the new foreign system
+    -- modify_ $ set (_atNodeData name id) (Just def)
     modify_ $ set (_atFunctionData name) (Just def)
-    modify_ $ pan $ (_ / 2.0) <$> scale
     modify_ compile
 
 -- Remove a conenction from the current function
@@ -434,26 +415,6 @@ removeConnection from (Tuple toId toIndex) state = compile state''
     else
       state'
 
--- Helper function to set the mouse position relative to the svg element
-setRelativeMousePosition :: forall a s m. DOMRect -> Vec2 Number -> State a s m -> State a s m
-setRelativeMousePosition { top, left } position = set _lastMousePosition sceneCoordinates
-  where
-  sceneCoordinates = position - vec2 left top
-
--- Get the domRect representation of the bounding box of the scene element
-getSceneBoundingBox :: forall q i o a s m. MonadEffect m => HalogenM (State a s m) q i o m (Maybe DOMRect)
-getSceneBoundingBox = do
-  elem <- getHTMLElementRef sceneRef
-  sceneNode <- traverse (liftEffect <<< WebNode.firstChild <<< toNode) elem
-  pure $ nodeBoundingBox <$> join sceneNode
-
--- Helper to update the mouse position of the svg scene
-getSceneMousePosition :: forall q i o a s m. MonadEffect m => Vec2 Number -> HalogenM (State a s m) q i o m (State a s m)
-getSceneMousePosition position = do
-  state <- get
-  maybeBounds <- getSceneBoundingBox
-  pure $ maybe state (\bounds -> setRelativeMousePosition bounds position state) maybeBounds
-
 -- Counts how many times a function is used inside another function
 countFunctionRefs :: FunctionName -> G.Graph NodeId Node -> Int
 countFunctionRefs name = G.size <<< G.filterVertices ((_ == name) <<< getFunctionName)
@@ -477,7 +438,8 @@ deleteNode functionName id state =
           $ over _nodeInputs
           $ map \input -> if input == Just id then Nothing else input
         modify_ $ over (_nodes functionName) $ G.delete id
-        modify_ $ set (_atNodeData functionName id) Nothing
+        -- Todo: make this work with the new foreign system
+        -- modify_ $ set (_atNodeData functionName id) Nothing
         modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id /= _)
         modify_ compile
   where
@@ -520,29 +482,12 @@ deleteFunction toDelete state =
           visualFunctions
     modify_ $ set (_atFunctionData toDelete) Nothing
     modify_ $ set (_function toDelete) Nothing
-    modify_ $ over _nodeData $ Map.filterKeys $ (_ /= toDelete) <<< fst
+    -- Todo: make this work with the new foreign system
+    -- modify_ $ over _nodeData $ Map.filterKeys $ (_ /= toDelete) <<< fst
     modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< preview _ExtendedLocation
-    modify_ $ set (_camera toDelete) Nothing
     modify_ $ set (_atInputCount toDelete) Nothing
     when (view _currentFunction state == Just toDelete) $ modify_ $ set _currentFunction Nothing
     modify_ compile
-
--- Delete all selected nodes
-deleteSelection :: forall a s m. State a s m -> State a s m
-deleteSelection state =
-  fromMaybe state do
-    currentFunction <- view _currentFunction state
-    nodes <- preview _currentNodes state
-    let
-      selectedNodes =
-        Set.mapMaybe
-          ( \id -> do
-              selected <- preview (_isSelected currentFunction id) state
-              guard selected
-              pure id
-          )
-          $ G.keys nodes
-    pure $ compile $ foldr (deleteNode currentFunction) state selectedNodes
 
 -- Sets the runtime value at a location to any runtime value
 setRuntimeValue :: forall a s m. FunctionName -> NodeId -> RuntimeValue -> State a s m -> State a s m
@@ -555,33 +500,10 @@ setRuntimeValue functionName nodeId value =
 visualFunctionCount :: forall a s m. State a s m -> Int
 visualFunctionCount = Map.size <<< filter (is _VisualFunction) <<< view _functions
 
--- This makes the node start from the middle again
-resetNodeOffset :: forall a s m. State a s m -> State a s m
-resetNodeOffset = set _addedNodes 0
-
--- Set the scale of the scene
-setScale :: forall a s m. DOMRect -> State a s m -> State a s m
-setScale { height, width } = resetNodeOffset <<< (set _sceneScale $ vec2 width height)
-
--- Ref to access the scene svg
-sceneRef :: RefLabel
-sceneRef = RefLabel "scene"
-
--- Pan the current camera in  screen coordinates
-pan :: forall a s m. Vec2 Number -> State a s m -> State a s m
-pan = over _currentCamera <<< Camera.pan
-
--- Get the coordinates of the center of the scene in world coordinates
-sceneCenter :: forall a s m. State a s m -> Vec2 Number
-sceneCenter state = toWorldCoordinates camera $ (_ / 2.0) <$> scale
-  where
-  scale = view _sceneScale state
-
-  camera = view _currentCamera state
-
 -- Get the number of nodes in a state
+-- TODO: make this actually work again
 nodeCount :: forall a s m. State a s m -> Int
-nodeCount = Map.size <<< view _nodeData
+nodeCount _ = 777
 
 -- Search using the current search term in the state
 searchNode :: forall a s m. State a s m -> Array FunctionName
@@ -606,29 +528,17 @@ _inputCountMap = prop (SProxy :: _ "inputCountMap")
 _atInputCount :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Int)
 _atInputCount name = _inputCountMap <<< at name
 
-_addedNodes :: forall a s m. Lens' (State a s m) Int
-_addedNodes = prop (SProxy :: _ "addedNodes")
-
-_cameras :: forall a s m. Lens' (State a s m) (Map FunctionName Camera)
-_cameras = prop (SProxy :: _ "cameras")
-
-_camera :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Camera)
-_camera name = _cameras <<< at name
-
-_sceneScale :: forall a s m. Lens' (State a s m) (Vec2 Number)
-_sceneScale = prop (SProxy :: _ "sceneScale")
-
 _runtimeOverwrites :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
 _valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
-_nodeData :: forall a s m. Lens' (State a s m) (Map (Tuple FunctionName NodeId) NodeData)
-_nodeData = prop (SProxy :: _ "nodeData")
+_geometries :: forall a s m. Lens' (State a s m) (Map FunctionName GeomteryCache)
+_geometries = prop (SProxy :: _ "geometries")
 
-_atNodeData :: forall a s m. FunctionName -> NodeId -> Lens' (State a s m) (Maybe NodeData)
-_atNodeData name id = _nodeData <<< at (Tuple name id)
+_atGeometry :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe GeomteryCache)
+_atGeometry name = _geometries <<< at name
 
 _functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
 _functionData = prop (SProxy :: _ "functionData")
@@ -644,9 +554,6 @@ _colorMap = prop (SProxy :: _ "colorMap")
 
 _atColorMap :: forall a s m. Location -> Traversal' (State a s m) (Maybe Color)
 _atColorMap location = _colorMap <<< at location
-
-_lastMousePosition :: forall a s m. Lens' (State a s m) (Vec2 Number)
-_lastMousePosition = prop (SProxy :: _ "lastMousePosition")
 
 _expression :: forall a s m. Lens' (State a s m) (Expression Location)
 _expression = prop (SProxy :: _ "expression")
@@ -668,9 +575,6 @@ _nodes name = _nodeGroup name <<< _NodeGroupNodes
 
 _atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) (Maybe Node)
 _atNode name id = _project <<< _atProjectNode name id
-
-_isSelected :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) Boolean
-_isSelected name id = _atNodeData name id <<< _Just <<< _NodeDataSelected
 
 _function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
 _function name = _project <<< _atProjectFunction name
@@ -708,18 +612,19 @@ _currentNodeGroup =
       )
   )
 
-_atCurrentNodeData :: forall a s m. NodeId -> Traversal' (State a s m) (Maybe NodeData)
-_atCurrentNodeData id =
-  lens
-    ( \state -> do
-        currentFunction <- view _currentFunction state
-        view (_atNodeData currentFunction id) state
-    )
-    ( \state value ->
-        fromMaybe state do
+_currentGeometryCache :: forall a s m. Lens' (State a s m) (Maybe GeomteryCache)
+_currentGeometryCache =
+  ( lens
+      ( \state -> do
           currentFunction <- view _currentFunction state
-          pure $ set (_atNodeData currentFunction id) value state
-    )
+          view (_atGeometry currentFunction) state
+      )
+      ( \state maybeValue ->
+          fromMaybe state do
+            currentFunction <- view _currentFunction state
+            pure $ set (_atGeometry currentFunction) maybeValue state
+      )
+  )
 
 _currentNodes :: forall a s m. Traversal' (State a s m) (G.Graph NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
@@ -732,20 +637,6 @@ _functionUis = prop (SProxy :: _ "functionUis")
 
 _ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
 _ui functionName = _functionUis <<< at functionName
-
-_currentCamera :: forall a s m. Lens' (State a s m) Camera
-_currentCamera =
-  lens
-    ( \state ->
-        fromMaybe def do
-          currentFunction <- view _currentFunction state
-          join $ preview (_camera currentFunction) state
-    )
-    ( \state value ->
-        fromMaybe state do
-          currentFunction <- view _currentFunction state
-          pure $ set (_camera currentFunction) (Just value) state
-    )
 
 _unconnectablePins :: forall a s m. Lens' (State a s m) (Set.Set (ExtendedLocation NodeId Pin))
 _unconnectablePins = prop (SProxy :: _ "unconnectablePins")

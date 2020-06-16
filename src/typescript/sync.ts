@@ -1,14 +1,13 @@
-import { GeometryCache, NodeId, NodeData } from "./types/Node"
-import { Vec2Like } from "@thi.ng/vectors"
+import { GeometryCache, NodeId } from "./types/Node"
 import * as Native from "./render"
 
 // Add a new node to the scene
-export const loadNode = (cache: GeometryCache) => (id: NodeId) => (
-  data: NodeData
+export const createNode = (cache: GeometryCache) => (id: NodeId) => (
+  inputCount: number
 ) => () => {
-  const shape = Native.renderNode(
-    (id) => (cache.nodes.get(id)?.output.pos ?? [0, 0]) as Vec2Like,
-    data
+  const shape = Native.createNodeGeometry(
+    [0, 0], // TODO: find a better way to place nodes
+    inputCount
   )
 
   cache.zOrder.push(id)

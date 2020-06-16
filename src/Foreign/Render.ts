@@ -42,4 +42,4 @@ import * as Save from "src/typescript/save"
 import * as Sync from "src/typescript/sync"
 export const geometryCacheToJson = Save.geometryCacheToJson
 export const geometryCacheFromJsonImpl = Save.geometryCacheFromJson
-export const loadNode = Sync.loadNode
+export const createNode = Sync.createNode

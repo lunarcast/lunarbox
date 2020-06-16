@@ -67,55 +67,36 @@ const dottedInput = (position: Vec2Like) => {
  * @param step The layer the input lays on.
  * @param input The input-specific data
  */
-const renderInput = (
-  position: Vec2Like,
-  step: number,
-  input: Arc.InputWithArc
-) => {
+const renderInput = (position: Vec2Like) => {
   const attribs = {
-    stroke: input.color,
+    stroke: "black",
     weight: arcStrokeWidth.normal,
     selectable: true
   }
 
-  const spacing = input.isCircle ? 0 : arcSpacing
-  const radius = nodeRadius + step * inputLayerOffset
-
-  if (input.isCircle) {
-    return g.circle(position, radius, attribs)
-  }
-
-  const arc = g.arc(
-    position,
-    radius,
-    0,
-    input.arc[0] + spacing,
-    input.arc[1] - spacing + TAU * Number(input.arc[1] < input.arc[0])
-  )
+  const arc = g.arc(position, nodeRadius, 0, 0, TAU)
 
   return withAttribs(arc, attribs)
 }
 
-export const renderNode = (
-  getData: (id: NodeId) => Vec2Like,
-  node: NodeData
+export const createNodeGeometry = (
+  position: Vec2Like,
+  numberOfInputs: number
 ): NodeGeometry => {
-  const inputs = Arc.placeInputs(getData, node)
-
   const inputGeom =
-    inputs[0].length === 0
-      ? [dottedInput(node.position)]
-      : inputs.flatMap((arr, index) =>
-          arr.map((input) => renderInput(node.position, index, input))
-        )
+    numberOfInputs === 0
+      ? [dottedInput(position)]
+      : Array(numberOfInputs)
+          .fill(1)
+          .map(() => renderInput(position))
 
-  const output = g.circle(node.position, 10, { fill: "yellow" })
+  const output = g.circle(position, 10, { fill: "yellow" })
 
-  const background = g.withAttribs(g.circle(node.position, nodeRadius), {
+  const background = g.withAttribs(g.circle(position, nodeRadius), {
     alpha: nodeBackgroundOpacity
   })
 
-  return { inputs: inputGeom, output, background, position: node.position }
+  return { inputs: inputGeom, output, background, position }
 }
 
 /**

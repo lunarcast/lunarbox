@@ -8,21 +8,19 @@ module Lunarbox.Component.Editor
 
 import Prelude
 import Control.Monad.Reader (class MonadReader, asks)
-import Control.Monad.State (execState, get, gets, modify_, put)
+import Control.Monad.State (execState, get, gets, modify_)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
-import Data.Foldable (find, foldr, for_, traverse_)
-import Data.Int (toNumber)
-import Data.Lens (_Just, over, preview, set, view)
-import Data.List as List
+import Data.Foldable (find, for_, traverse_)
+import Data.Lens (over, set, view)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
+import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Set as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..), uncurry)
-import Data.Vec (vec2)
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -44,22 +42,15 @@ import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.Project (_projectNodeGroup)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _isAdmin, _isExample, _isSelected, _isVisible, _lastMousePosition, _name, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, clearPartialConnection, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, preventDefaults, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _unconnectablePins, compile, createNode, deleteFunction, functionExists, initializeFunction, makeUnconnetacbleList, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
 import Lunarbox.Data.Graph (wouldCreateCycle)
-import Lunarbox.Data.Graph as G
-import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
 import Lunarbox.Data.Route (Route(..))
-import Lunarbox.Foreign.Render (buildRenderingData)
-import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
 import Web.Event.Event (Event, preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
@@ -70,8 +61,6 @@ import Web.HTML.Window (document) as Web
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
-import Web.UIEvent.MouseEvent (MouseEvent)
-import Web.UIEvent.MouseEvent as MouseEvent
 
 data Action
   = Init
@@ -81,13 +70,8 @@ data Action
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | StartFunctionCreation
-  | SceneMouseUp
-  | SceneMouseDown MouseEvent
-  | SceneMouseMove MouseEvent
   | SelectInput NodeId Int Event
   | SelectOutput NodeId Event
-  | SelectNode NodeId Event
-  | SceneZoom Number
   | RemoveConnection NodeId (Tuple NodeId Int) Event
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | TogglePanel
@@ -101,7 +85,7 @@ data Action
   | Autosave Json
   | PreventDefaults Event
   | Navigate Route
-  | LoadNodes
+  | LoadScene
 
 data Output
   = Save Json
@@ -142,11 +126,7 @@ component =
       window <- liftEffect Web.window
       document <- liftEffect $ Web.document window
       -- Stuff which we need to run at the start
-      handleAction LoadNodes
-      scale <- gets $ view _sceneScale
-      currentCameraPosition <- gets $ view $ _currentCamera <<< _CameraPosition
-      -- We pan only when the state generation was done without knowing the scale of the scene
-      when (currentCameraPosition == zero) $ modify_ $ pan $ (_ / 2.0) <$> scale
+      handleAction LoadScene
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
@@ -155,8 +135,9 @@ component =
           (map (HandleKey sid) <<< KE.fromEvent)
       void <<< fork <<< handleAction <<< Autosave <<< stateToJson =<< get
     HandleKey sid event
-      | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
-        modify_ deleteSelection
+      -- TODO: readd this with the new foreign system
+      -- | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
+      --   modify_ deleteSelection
       | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
       | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
       | KE.key event == "s" -> do
@@ -215,59 +196,9 @@ component =
     SelectFunction name -> do
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
-      handleAction LoadNodes
+      handleAction LoadScene
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SceneMouseDown event -> do
-      let
-        bits = MouseEvent.buttons event
-      when (isPressed LeftButton bits) $ modify_ clearPartialConnection
-    SceneMouseMove event -> do
-      let
-        bits = MouseEvent.buttons event
-
-        position = toNumber <$> vec2 (MouseEvent.clientX event) (MouseEvent.clientY event)
-      liftEffect $ preventDefault $ MouseEvent.toEvent event
-      state@{ lastMousePosition } <- get
-      state' <- getSceneMousePosition position
-      camera <- gets $ view _currentCamera
-      let
-        oldPosition = toWorldCoordinates camera lastMousePosition
-
-        newPosition = toWorldCoordinates camera $ view _lastMousePosition state'
-
-        offset = newPosition - oldPosition
-
-        update =
-          if isPressed RightButton bits then
-            pan offset
-          else
-            over _nodeData
-              $ map \node@(NodeData { selected }) ->
-                  if selected then
-                    over _NodeDataPosition (_ + offset) node
-                  else
-                    node
-      put $ update state'
-    SceneMouseUp -> do
-      modify_ $ resetNodeOffset <<< (over _nodeData $ map $ set _NodeDataSelected false)
-    SelectNode id event -> do
-      preventDefaults event
-      maybeCurrentFunction <- gets $ view _currentFunction
-      nodes <- gets $ preview _currentNodes
-      state <- get
-      let
-        nodeIds = Set.toUnfoldable $ G.keys $ fromMaybe G.emptyGraph nodes
-
-        nodeData = List.catMaybes $ (\nodeId -> join $ preview (_atCurrentNodeData nodeId) state) <$> nodeIds
-
-        zPositions = (view _NodeDataZPosition) <$> nodeData
-
-        zPosition = 1 + foldr max (-1) zPositions
-      for_ maybeCurrentFunction \currentFunction -> do
-        modify_
-          $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
-          <<< set (_isSelected currentFunction id) true
     SelectInput id index event -> do
       unconnectableList <- gets $ view _unconnectablePins
       let
@@ -290,9 +221,6 @@ component =
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
-    SceneZoom amount -> do
-      mousePosition <- gets $ view _lastMousePosition
-      modify_ $ over _currentCamera $ zoomOn mousePosition amount
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
     SetName name -> modify_ $ set _name name
@@ -316,21 +244,16 @@ component =
         handleAction $ Autosave oldState
     PreventDefaults event -> preventDefaults event
     Navigate route -> navigate route
-    LoadNodes -> do
-      maybeNodes <- gets $ preview _currentNodes
-      for_ maybeNodes \nodes -> do
-        state <- get
-        let
-          (nodes' :: List.List _) = G.toUnfoldable $ nodes
-
-          nodes'' =
-            nodes'
-              <#> uncurry \id node -> do
-                  nodeData <- join $ preview (_atCurrentNodeData id) state
-                  pure $ Tuple id $ buildRenderingData nodeData node
-
-          nodes''' = List.catMaybes nodes''
-        void $ query (SProxy :: _ "scene") unit $ tell $ Scene.LoadNodes nodes'''
+    LoadScene -> do
+      gets (view _currentFunction)
+        >>= traverse (\name -> gets $ view $ _atGeometry name)
+        <#> join
+        >>= traverse_
+            ( void
+                <<< query (SProxy :: _ "scene") unit
+                <<< tell
+                <<< Scene.LoadScene
+            )
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -437,28 +360,8 @@ component =
             ]
         ]
 
-  scene :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  scene { project
-  , currentFunction: maybeCurrentFunction
-  , typeMap
-  , lastMousePosition
-  , functionData
-  , nodeData
-  , colorMap
-  , cameras
-  , partialConnection
-  , valueMap
-  , functionUis
-  , sceneScale
-  , unconnectablePins
-  } =
-    fromMaybe
-      emptyEditor do
-      currentFunction <- maybeCurrentFunction
-      group <-
-        preview (_projectNodeGroup currentFunction) project
-      pure
-        $ HH.slot (SProxy :: _ "scene") unit Scene.component unit absurd
+  scene :: HH.ComponentHTML Action ChildSlots m
+  scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit absurd
 
   logoElement =
     container "sidebar-logo-container"
@@ -480,6 +383,6 @@ component =
           [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
           [ panel state ]
       , container "scene"
-          [ scene state
+          [ scene
           ]
       ]

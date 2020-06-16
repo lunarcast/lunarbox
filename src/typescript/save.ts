@@ -1,5 +1,5 @@
 import { GeometryCache, NodeId } from "./types/Node"
-import { emptyGeometryCache, renderNode } from "./render"
+import { emptyGeometryCache, createNodeGeometry } from "./render"
 import { Mat23Like } from "@thi.ng/matrices"
 import { Vec2Like } from "@thi.ng/vectors"
 import { DCons } from "@thi.ng/dcons"
@@ -12,6 +12,7 @@ interface SavedData {
       NodeId,
       {
         position: Vec2Like
+        inputCount: number
       }
     ]
   >
@@ -46,10 +47,7 @@ export const geometryCacheFromJson = (
       camera: camera,
       zOrder: new DCons(nodes.map(([id]) => id)),
       nodes: new Map(
-        nodes.map(([id, data]) => [
-          id,
-          renderNode(getPosition, { inputs: [], position: data.position })
-        ])
+        nodes.map(([id, data]) => [id, createNodeGeometry(data.position, 0)])
       )
     })
   } catch (err) {
@@ -65,12 +63,18 @@ export const geometryCacheFromJson = (
 export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
   const saved: SavedData = {
     camera: cache.camera,
-    nodes: [...cache.zOrder].map((id) => [
-      id,
-      {
-        position: (cache.nodes.get(id)?.position ?? [0, 0]) as Vec2Like
-      }
-    ])
+    nodes: [...cache.zOrder].map((id) => {
+      const node = cache.nodes.get(id)!
+      return [
+        id,
+        {
+          position: node.position as Vec2Like,
+          inputCount: node.inputs[0].attribs!.selectable
+            ? node.inputs.length
+            : 0
+        }
+      ]
+    })
   }
 
   return saved
