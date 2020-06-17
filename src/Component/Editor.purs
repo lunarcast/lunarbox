@@ -13,7 +13,7 @@ import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Foldable (find, for_, traverse_)
-import Data.Lens (over, set, view)
+import Data.Lens (over, preview, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Set as Set
@@ -48,8 +48,9 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _unconnectablePins, compile, createNode, deleteFunction, functionExists, initializeFunction, makeUnconnetacbleList, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, _partialFrom, _partialTo, _unconnectablePins, compile, createNode, deleteFunction, functionExists, initializeFunction, makeUnconnetacbleList, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting, updateNode)
 import Lunarbox.Data.Graph (wouldCreateCycle)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Route (Route(..))
 import Web.Event.Event (Event, preventDefault, stopPropagation)
 import Web.Event.Event as Event
@@ -249,7 +250,13 @@ component =
     Rerender -> void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
     LoadScene -> do
       gets (view _currentFunction)
-        >>= traverse (\name -> gets $ view $ _atGeometry name)
+        >>= traverse
+            ( \name -> do
+                cache <- gets $ view $ _atGeometry name
+                (map (maybe mempty G.keys) $ gets $ preview $ _nodes name)
+                  >>= traverse_ updateNode
+                pure $ cache
+            )
         <#> join
         >>= traverse_
             ( void
