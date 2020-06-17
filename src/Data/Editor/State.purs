@@ -163,9 +163,9 @@ updateNode id =
                           }
   where
   -- TODO: remove this once I get rid of this trash color system from halogen-svg
-  showColor (Color.RGB r g b) = "rgb(" <> show [ r, g, b ] <> ")"
+  showColor (Color.RGB r g b) = "rgb(" <> show r <> "," <> show g <> "," <> show b <> ")"
 
-  showColor (Color.RGBA r g b a) = "rgba(" <> show [ r, g, b ] <> "," <> show a <> ")"
+  showColor (Color.RGBA r g b a) = "rgba(" <> show r <> "," <> show g <> "," <> show b <> "," <> show a <> ")"
 
   go OutputPin color map = map { output = Nullable.notNull $ showColor color }
 

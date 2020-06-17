@@ -2,7 +2,7 @@ import { GeometryCache, NodeId, NodeState } from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
 import { Vec2Like } from "@thi.ng/vectors"
-import { inputLayerOffset, nodeRadius } from "./constants"
+import { inputLayerOffset, nodeRadius, arcSpacing } from "./constants"
 import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
 
@@ -36,8 +36,6 @@ export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
   inputs,
   colorMap
 }: NodeState) => () => {
-  console.log(inputs, colorMap)
-
   const node = cache.nodes.get(id)
 
   if (!node || !node.inputs[0].attribs!.selectable) {
@@ -68,8 +66,8 @@ export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
         geom.start = 0
         geom.end = TAU
       } else {
-        geom.start = arc.arc[0]
-        geom.end = arc.arc[1] + (arc.arc[1] < arc.arc[0] ? TAU : 0)
+        geom.start = arc.arc[0] + arcSpacing
+        geom.end = arc.arc[1] - arcSpacing + (arc.arc[1] < arc.arc[0] ? TAU : 0)
       }
     }
   }
