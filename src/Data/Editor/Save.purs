@@ -15,13 +15,13 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Project (Project)
 import Lunarbox.Data.Editor.State (State, compile, emptyState, nodeCount, visualFunctionCount)
 import Lunarbox.Data.ProjectList (ProjectData)
-import Lunarbox.Foreign.Render (GeomteryCache)
+import Lunarbox.Foreign.Render (GeometryCache)
 import Record as Record
 
 type StatePermanentData
   = { project :: Project
     , nextId :: Int
-    , geometries :: Map FunctionName GeomteryCache
+    , geometries :: Map FunctionName GeometryCache
     , runtimeOverwrites :: ValueMap Location
     }
 

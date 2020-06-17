@@ -12,7 +12,7 @@ import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
-import Lunarbox.Foreign.Render (Context2d, GeomEventHandler, GeomteryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
+import Lunarbox.Foreign.Render (Context2d, GeomEventHandler, GeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -20,7 +20,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.MouseEvent (MouseEvent)
 
 type State
-  = { context :: Maybe Context2d, geometryCache :: GeomteryCache }
+  = { context :: Maybe Context2d, geometryCache :: GeometryCache }
 
 data Action
   = Init
@@ -35,7 +35,8 @@ type Input
   = Unit
 
 data Query a
-  = LoadScene GeomteryCache a
+  = LoadScene GeometryCache a
+  | Rerender a
 
 canvasRef :: RefLabel
 canvasRef = RefLabel "canvas"
@@ -96,6 +97,9 @@ component =
   handleQuery = case _ of
     LoadScene cache a -> do
       modify_ _ { geometryCache = cache }
+      handleAction Render
+      pure $ Just a
+    Rerender a -> do
       handleAction Render
       pure $ Just a
 

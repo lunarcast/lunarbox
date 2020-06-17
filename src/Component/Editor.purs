@@ -86,6 +86,7 @@ data Action
   | PreventDefaults Event
   | Navigate Route
   | LoadScene
+  | Rerender
 
 data Output
   = Save Json
@@ -181,7 +182,9 @@ component =
         sortedFunctions <- gets searchNode
         handleAction $ SelectFunction $ sortedFunctions !! 0
       | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
-    CreateNode name -> createNode name
+    CreateNode name -> do
+      createNode name
+      handleAction Rerender
     TogglePanel -> modify_ $ over _panelIsOpen not
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
@@ -243,6 +246,7 @@ component =
         handleAction $ Autosave oldState
     PreventDefaults event -> preventDefaults event
     Navigate route -> navigate route
+    Rerender -> void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
     LoadScene -> do
       gets (view _currentFunction)
         >>= traverse (\name -> gets $ view $ _atGeometry name)

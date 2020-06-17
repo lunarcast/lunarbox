@@ -36,6 +36,8 @@ export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
   inputs,
   colorMap
 }: NodeState) => () => {
+  console.log(inputs, colorMap)
+
   const node = cache.nodes.get(id)
 
   if (!node || !node.inputs[0].attribs!.selectable) {
@@ -60,14 +62,14 @@ export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
       const radius = i * inputLayerOffset + nodeRadius
 
       geom.r = [radius, radius]
-      geom.attribs!.fill = arc.color
+      geom.attribs!.stroke = arc.color
 
       if (arc.isCircle) {
         geom.start = 0
         geom.end = TAU
       } else {
         geom.start = arc.arc[0]
-        geom.end = arc.arc[1]
+        geom.end = arc.arc[1] + (arc.arc[1] < arc.arc[0] ? TAU : 0)
       }
     }
   }

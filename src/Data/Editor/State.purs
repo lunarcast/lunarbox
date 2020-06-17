@@ -8,23 +8,25 @@ import Data.Array as Array
 import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Filterable (filter, filterMap)
-import Data.Foldable (foldMap, foldr, for_, traverse_)
+import Data.Foldable (foldMap, foldr, length, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.List (List, (..))
+import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype as Newtype
+import Data.Nullable as Nullable
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
+import Lunarbox.Capability.Editor.Type (generateColorMap)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
@@ -49,9 +51,10 @@ import Lunarbox.Data.Graph (emptyGraph)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Ord (sortBySearch)
-import Lunarbox.Foreign.Render (GeomteryCache)
+import Lunarbox.Foreign.Render (GeometryCache)
 import Lunarbox.Foreign.Render as Native
 import Svg.Attributes (Color)
+import Svg.Attributes as Color
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
 
@@ -80,7 +83,7 @@ type State a s m
     , typeMap :: Map Location Type
     , colorMap :: Map Location Color
     , expression :: Expression Location
-    , geometries :: Map FunctionName GeomteryCache
+    , geometries :: Map FunctionName GeometryCache
     , functionData :: Map FunctionName FunctionData
     , partialConnection :: PartialConnection
     , valueMap :: ValueMap Location
@@ -133,6 +136,46 @@ createId = do
 inputNodeName :: FunctionName
 inputNodeName = FunctionName "input"
 
+-- 
+-- Update the way a node looks to fit the latest data
+updateNode :: forall q i o m a s. MonadEffect m => NodeId -> HalogenM (State a s m) q i o m Unit
+updateNode id =
+  gets (view _currentGeometryCache)
+    >>= traverse_ \cache ->
+        gets (view _currentFunction)
+          >>= traverse_ \currentFunction ->
+              gets (preview $ _atCurrentNode id)
+                >>= traverse_ \node -> do
+                    typeMap <- gets $ view _typeMap
+                    let
+                      inputs = List.toUnfoldable $ view _nodeInputs node
+
+                      colorMap = generateColorMap (\pin -> flip Map.lookup typeMap $ DeepLocation currentFunction $ DeepLocation id pin) node
+                    liftEffect
+                      $ Native.refreshInputArcs cache id
+                          { inputs: Nullable.toNullable <$> inputs
+                          , colorMap:
+                            foldr (uncurry go)
+                              { output: Nullable.null
+                              , inputs: replicate (length inputs) Nullable.null
+                              }
+                              $ (Map.toUnfoldable colorMap :: Array _)
+                          }
+  where
+  -- TODO: remove this once I get rid of this trash color system from halogen-svg
+  showColor (Color.RGB r g b) = "rgb(" <> show [ r, g, b ] <> ")"
+
+  showColor (Color.RGBA r g b a) = "rgba(" <> show [ r, g, b ] <> "," <> show a <> ")"
+
+  go OutputPin color map = map { output = Nullable.notNull $ showColor color }
+
+  go (InputPin index) color map =
+    map
+      { inputs =
+        fromMaybe map.inputs
+          $ Array.updateAt index (Nullable.notNull $ showColor color) map.inputs
+      }
+
 --
 -- Create a new node and save all the data in the different required places
 createNode :: forall q i o m a s. MonadEffect m => FunctionName -> HalogenM (State a s m) q i o m Unit
@@ -142,7 +185,6 @@ createNode name = do
       let
         isInput = name == inputNodeName
       id <- createId
-      maybeCurrentFunction <- gets $ view _currentFunction
       desiredInputCount <- gets $ preview $ _atInputCount name
       functionDataInputs <-
         if isInput then
@@ -151,9 +193,7 @@ createNode name = do
           gets
             $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
       let
-        inputCount = fromMaybe maxInputs $ join desiredInputCount
-          where
-          maxInputs = Array.length functionDataInputs
+        inputCount = fromMaybe (length functionDataInputs) $ join desiredInputCount
 
         node =
           if isInput then
@@ -163,24 +203,18 @@ createNode name = do
               { inputs: replicate inputCount Nothing
               , function: name
               }
-          where
-          inputs = (DeepLocation name <<< DeepLocation id <<< InputPin) <$> 0 .. (inputCount - 1)
-      for_ maybeCurrentFunction
-        $ \currentFunction -> do
+      gets (view _currentFunction)
+        >>= traverse_ \currentFunction -> do
             modify_ $ set (_atNode currentFunction id) $ Just node
-            -- TODO: make this work with the new foreign system
-            -- modify_ $ set (_atNodeData currentFunction id) $ Just nodeData
             when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
-            -- We need to recompile when we add a new node, 
-            -- but for rendering purpouses we'll disable it for now
-            -- modify_ compile
-            pure unit -- here so the comment before this don't get moved by purty
+            modify_ compile
       pure $ Tuple id inputCount
   Tuple (Tuple id inputs) newState <- gets $ runState create
   gets (view _currentGeometryCache)
     >>= traverse_ \cache -> do
         liftEffect $ Native.createNode cache id inputs
         void $ put newState
+        updateNode id
 
 -- Get the type of the output a node (Also works for input pins)
 getOutputType :: forall a s m. FunctionName -> NodeId -> State a s m -> Maybe Type
@@ -268,7 +302,11 @@ compile state@{ project, expression, typeMap, valueMap } =
         typeMap
       else case solveExpression expression' of
         Right map -> Map.delete Nowhere map
-        -- TODO: make it so this accounts for errors
+        -- WARNING: in case of errors we just return an empty typemap
+        -- This is not a good idea since in theory this "could" break
+        -- even tho in practice we never get to this point...
+        -- It would still be useful to do something with the error message
+        -- for debugging or stuff like that
         Left _ -> mempty
 
     visualFunctions :: List FunctionName
@@ -286,7 +324,7 @@ compile state@{ project, expression, typeMap, valueMap } =
               let
                 inputDocs =
                   List.toUnfoldable
-                    $ List.mapWithIndex (\index _ -> { name: "Input " <> show index, description: "An input for a custom function" })
+                    $ List.mapWithIndex (\index -> const { name: "Input " <> show index, description: "An input for a custom function" })
                     $ inputs functionType
 
                 functionData = internal inputDocs { name: show functionName <> " output", description: "The output of a custom function" }
@@ -534,10 +572,10 @@ _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 _valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
-_geometries :: forall a s m. Lens' (State a s m) (Map FunctionName GeomteryCache)
+_geometries :: forall a s m. Lens' (State a s m) (Map FunctionName GeometryCache)
 _geometries = prop (SProxy :: _ "geometries")
 
-_atGeometry :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe GeomteryCache)
+_atGeometry :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe GeometryCache)
 _atGeometry name = _geometries <<< at name
 
 _functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
@@ -612,7 +650,7 @@ _currentNodeGroup =
       )
   )
 
-_currentGeometryCache :: forall a s m. Lens' (State a s m) (Maybe GeomteryCache)
+_currentGeometryCache :: forall a s m. Lens' (State a s m) (Maybe GeometryCache)
 _currentGeometryCache =
   ( lens
       ( \state -> do

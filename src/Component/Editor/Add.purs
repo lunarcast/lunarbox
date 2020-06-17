@@ -5,7 +5,6 @@ module Lunarbox.Component.Editor.Add
 import Prelude
 import Data.Array as Array
 import Data.Default (def)
-import Data.Either (either)
 import Data.Int (fromString, toNumber)
 import Data.Lens (view)
 import Data.List ((!!))
@@ -16,7 +15,7 @@ import Data.Unfoldable (replicate)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Capability.Editor.Type (generateTypeMap, prettify)
+import Lunarbox.Capability.Editor.Type (generateColorMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
 import Lunarbox.Component.Editor.Node (SelectionStatus(..), renderNode)
 import Lunarbox.Component.Editor.Node as NodeC
@@ -33,7 +32,6 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
 import Lunarbox.Data.Ord (sortBySearch)
-import Svg.Attributes (Color(..))
 import Svg.Attributes as SA
 import Svg.Elements as SE
 
@@ -70,11 +68,9 @@ nodeInput inputCount typeMap name functionData =
   , selectionStatus: NothingSelected
   , mousePosition: zero
   , colorMap:
-    either (const mempty) identity
-      $ generateTypeMap
-          (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
-          functionData
-          node
+    generateColorMap
+      (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
+      node
   , value: Nothing
   , ui: Nothing
   }
@@ -130,7 +126,7 @@ makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, can
             , container "node-type"
                 $ fromMaybe mempty
                 $ pure
-                <<< highlightTypeToHTML (RGB 255 255 255)
+                <<< highlightTypeToHTML
                 <<< prettify
                 <$> Map.lookup (Location name) typeMap
             , container "curry-node"

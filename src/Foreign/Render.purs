@@ -1,4 +1,20 @@
-module Lunarbox.Foreign.Render where
+module Lunarbox.Foreign.Render
+  ( Context2d
+  , GeometryCache
+  , GeomEventHandler
+  , NodeState
+  , ForeignTypeMap
+  , InputData
+  , resizeCanvas
+  , resizeContext
+  , getContext
+  , renderScene
+  , handleMouseMove
+  , handleMouseDown
+  , handleMouseUp
+  , createNode
+  , refreshInputArcs
+  ) where
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
@@ -15,7 +31,7 @@ import Web.UIEvent.MouseEvent (MouseEvent)
 foreign import data Context2d :: Type
 
 -- This is just a map of cached node geometries
-foreign import data GeomteryCache :: Type
+foreign import data GeometryCache :: Type
 
 -- Foreign helpers
 foreign import resizeCanvas :: HTMLCanvasElement -> Effect Unit
@@ -24,9 +40,9 @@ foreign import resizeContext :: Context2d -> Effect Unit
 
 foreign import getContext :: HTMLCanvasElement -> Effect Context2d
 
-foreign import renderScene :: Context2d -> GeomteryCache -> Effect Unit
+foreign import renderScene :: Context2d -> GeometryCache -> Effect Unit
 
-foreign import emptyGeometryCache :: GeomteryCache
+foreign import emptyGeometryCache :: GeometryCache
 
 foreign import handleMouseMove :: GeomEventHandler
 
@@ -34,29 +50,33 @@ foreign import handleMouseUp :: GeomEventHandler
 
 foreign import handleMouseDown :: GeomEventHandler
 
-foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeomteryCache -> Json -> Either String GeomteryCache
+foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeometryCache -> Json -> Either String GeometryCache
 
-foreign import geometryCacheToJson :: GeomteryCache -> Json
+foreign import geometryCacheToJson :: GeometryCache -> Json
 
-foreign import createNode :: GeomteryCache -> NodeId -> Int -> Effect Unit
+foreign import createNode :: GeometryCache -> NodeId -> Int -> Effect Unit
 
-foreign import refreshInputArcs :: GeomteryCache -> NodeId -> Array InputData -> Effect Unit
+foreign import refreshInputArcs :: GeometryCache -> NodeId -> NodeState -> Effect Unit
 
-instance defaultGeomtryCache :: Default GeomteryCache where
+instance defaultGeomtryCache :: Default GeometryCache where
   -- WARNING:
   -- this might create spooky actions at a distance!!! 
   -- (This doesn't happen anywhere curently but I should keep it in mind)
   def = emptyGeometryCache
 
-instance decodeJsonGeometryCache :: DecodeJson GeomteryCache where
+instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:
   -- The error messages in for this are just the Error.message from js land
   -- so idk how clear those are, maybe I should somehow make it check if the structure is right
   -- and _then_ try parsing it, but that's something to do for the next time
   decodeJson = geometryCacheFromJsonImpl { left: Left, right: Right }
 
-instance encodeJsonGeometryCache :: EncodeJson GeomteryCache where
+instance encodeJsonGeometryCache :: EncodeJson GeometryCache where
   encodeJson = geometryCacheToJson
+
+-- | Helper so we don't have to write the same thing for all 3 handlers
+type GeomEventHandler
+  = Context2d -> MouseEvent -> GeometryCache -> Effect Unit
 
 -- | Some foreign stuff might error out 
 -- | so we pass this to ts to inform it how we handle errors 
@@ -76,10 +96,7 @@ type ForeignTypeMap
     }
 
 -- | Data needed for updating the geometry of a ndoe
-type NodeData
+type NodeState
   = { inputs :: Array InputData
     , colorMap :: ForeignTypeMap
     }
-
-type GeomEventHandler
-  = Context2d -> MouseEvent -> GeomteryCache -> Effect Unit
