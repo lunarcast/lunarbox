@@ -9,22 +9,21 @@ import {
   invert23
 } from "@thi.ng/matrices"
 import type { GeometryCache, NodeId, NodeGeometry } from "./types/Node"
-import { Vec2Like, distSq2, Vec, dist, add2 } from "@thi.ng/vectors"
+import { Vec2Like, Vec, add2 } from "@thi.ng/vectors"
 import {
   nodeRadius,
   arcStrokeWidth,
   constantInputStroke,
   nodeOutputRadius,
-  pickDistance,
   nodeBackgroundOpacity,
   nodeBackgrounds
 } from "./constants"
 import { TAU } from "@thi.ng/math"
-import { ADT } from "ts-adt"
 import { Type } from "@thi.ng/geom-api"
-import { closestPoint, withAttribs } from "@thi.ng/geom"
+import { withAttribs } from "@thi.ng/geom"
 import { isPressed, MouseButtons } from "./mouse"
 import { DCons } from "@thi.ng/dcons"
+import { getMouseTarget, MouseTargetKind, MouseTarget } from "./target"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
@@ -33,6 +32,7 @@ export const emptyGeometryCache: GeometryCache = {
   selectedOutput: null,
   selectedInput: null,
   selectedNode: null,
+  dragging: null,
   selectedNodes: new Set(),
   zOrder: new DCons()
 }
@@ -161,131 +161,6 @@ export const renderScene = (
   })
 }
 
-interface IHasNode {
-  node: NodeGeometry
-}
-
-enum MouseTargetKind {
-  Nothing,
-  Node,
-  NodeInput,
-  NodeOutput
-}
-
-type MouseTarget = ADT<{
-  [MouseTargetKind.NodeInput]: IHasNode & { index: number; geom: g.Arc }
-  [MouseTargetKind.Node]: IHasNode & { id: NodeId }
-  [MouseTargetKind.NodeOutput]: IHasNode
-  [MouseTargetKind.Nothing]: {}
-}>
-
-/**
- * find the smallest element in an array based on a certain criteria
- *
- * @param isSmaller The compare function
- * @param arr The array to search trough
- * @param def Fallback in case of empty arrays
- */
-const minBy = <T>(isSmaller: (a: T, b: T) => boolean, arr: T[]): T | null =>
-  arr.reduce((acc, curr) => {
-    if (acc === null) {
-      return curr
-    }
-
-    if (curr === null) {
-      return acc
-    }
-
-    return isSmaller(curr, acc) ? curr : acc
-  }, null as T | null)
-
-/**
- * Finds the object in the scene the mouse is hovering over
- *
- * @param mousePosition The position the mouse is at
- * @param cache The geometry cache to search trough
- */
-const getMouseTarget = (
-  mousePosition: Vec,
-  cache: GeometryCache
-): MouseTarget => {
-  if (cache.nodes.size === 0) {
-    return {
-      _type: MouseTargetKind.Nothing
-    }
-  }
-
-  const nodes = [...cache.nodes.values()]
-
-  const distanceToMouse = (position: Vec) => dist(mousePosition, position)
-
-  const distanceToMouseSq = (position: Vec) => distSq2(mousePosition, position)
-
-  const closestOutput = minBy((a, b) => {
-    return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
-  }, nodes)
-
-  if (
-    closestOutput !== null &&
-    distanceToMouse(closestOutput.output.pos) < pickDistance.output
-  ) {
-    return {
-      _type: MouseTargetKind.NodeOutput,
-      node: closestOutput
-    }
-  }
-
-  const closestInput = minBy(
-    (a, b) => {
-      return distanceToMouse(a.closest) < distanceToMouse(b.closest)
-    },
-    nodes.flatMap((node) =>
-      node.inputs[0].attribs?.selectable
-        ? node.inputs.map((input, index) => ({
-            index,
-            node,
-            closest: closestPoint(input, mousePosition)!
-          }))
-        : []
-    )
-  )
-
-  if (
-    closestInput &&
-    distanceToMouse(closestInput.closest) < pickDistance.input
-  ) {
-    return {
-      _type: MouseTargetKind.NodeInput,
-      node: closestInput.node,
-      index: closestInput.index,
-      geom: closestInput.node.inputs[closestInput.index] as g.Arc
-    }
-  }
-
-  // Rn this is the same as the output one but in the future nodes might not have outputs.
-  const closestNode = minBy(
-    ([, a], [, b]) => {
-      return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
-    },
-    [...cache.nodes.entries()]
-  )
-
-  if (
-    closestNode &&
-    distanceToMouse(closestNode[1].output!.pos) < pickDistance.node
-  ) {
-    return {
-      _type: MouseTargetKind.Node,
-      node: closestNode[1],
-      id: closestNode[0]
-    }
-  }
-
-  return {
-    _type: MouseTargetKind.Nothing
-  }
-}
-
 /**
  * Selects a particular node in a geometry.
  *
@@ -332,13 +207,11 @@ const unselectNode = (cache: GeometryCache, node: NodeGeometry, id: NodeId) => {
 export const onMouseUp = (ctx: CanvasRenderingContext2D) => (
   event: MouseEvent
 ) => (cache: GeometryCache) => () => {
-  const mouse = [event.pageX, event.pageY]
-  const transform = getMouseTransform(ctx, cache)
-  const mousePosition = mulV23(null, transform, mouse)
-
   for (const [id, node] of cache.nodes) {
     unselectNode(cache, node, id)
   }
+
+  cache.dragging = null
 
   renderScene(ctx, cache)
 }
@@ -359,6 +232,13 @@ export const onMouseDown = (ctx: CanvasRenderingContext2D) => (
 
   if (target._type === MouseTargetKind.Node) {
     selectNode(cache, target.node, target.id)
+  }
+
+  if (
+    target._type === MouseTargetKind.Node ||
+    target._type === MouseTargetKind.Nothing
+  ) {
+    cache.dragging = target
   }
 
   renderScene(ctx, cache)
@@ -397,13 +277,19 @@ const pan = (cache: GeometryCache, offset: Vec) => {
 export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
   event: MouseEvent
 ) => (cache: GeometryCache) => () => {
-  const mouse = [event.pageX, event.pageY]
-  const transform = getMouseTransform(ctx, cache)
-  const mousePosition = mulV23(null, transform, mouse)
-  const pressed = isPressed(event.buttons)
+  let target: MouseTarget
 
-  const target = getMouseTarget(mousePosition, cache)
-  const nodes = [...cache.nodes.values()]
+  if (cache.dragging) {
+    target = cache.dragging
+  } else {
+    const mouse = [event.pageX, event.pageY]
+    const transform = getMouseTransform(ctx, cache)
+    const mousePosition = mulV23(null, transform, mouse)
+
+    target = getMouseTarget(mousePosition, cache)
+  }
+
+  const pressed = isPressed(event.buttons)
 
   // On hover effects for outputs
   if (event.buttons === 0) {

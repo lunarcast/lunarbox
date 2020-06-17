@@ -2,6 +2,7 @@ import type { Mat23Like } from "@thi.ng/matrices"
 import { Circle, Arc } from "@thi.ng/geom"
 import { Vec } from "@thi.ng/vectors"
 import { DCons } from "@thi.ng/dcons"
+import { MouseTarget } from "../target"
 
 /**
  * Data we need to get to be able to update the way a node looks.
@@ -47,4 +48,5 @@ export type GeometryCache = {
   selectedInput: Arc | null
   selectedNodes: Set<NodeId>
   zOrder: DCons<NodeId>
+  dragging: null | MouseTarget
 }
