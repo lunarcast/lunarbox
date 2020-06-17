@@ -43,11 +43,13 @@ foreign import createNode :: GeomteryCache -> NodeId -> Int -> Effect Unit
 foreign import refreshInputArcs :: GeomteryCache -> NodeId -> Array InputData -> Effect Unit
 
 instance defaultGeomtryCache :: Default GeomteryCache where
-  -- WARNING: this might create spooky actions at a distance!!! 
+  -- WARNING:
+  -- this might create spooky actions at a distance!!! 
   -- (This doesn't happen anywhere curently but I should keep it in mind)
   def = emptyGeometryCache
 
 instance decodeJsonGeometryCache :: DecodeJson GeomteryCache where
+  -- WARNING:
   -- The error messages in for this are just the Error.message from js land
   -- so idk how clear those are, maybe I should somehow make it check if the structure is right
   -- and _then_ try parsing it, but that's something to do for the next time
@@ -56,17 +58,27 @@ instance decodeJsonGeometryCache :: DecodeJson GeomteryCache where
 instance encodeJsonGeometryCache :: EncodeJson GeomteryCache where
   encodeJson = geometryCacheToJson
 
--- | This is the data the typescript part needs to render the input arcs
-type InputData
-  = { color :: String
-    , output :: Nullable NodeId
-    }
-
 -- | Some foreign stuff might error out 
--- | so we pass this to it to inform it of how we handle errors 
+-- | so we pass this to ts to inform it how we handle errors 
 type ForeignEitherConfig e a
   = { left :: e -> Either e a
     , right :: a -> Either e a
+    }
+
+-- | This is the data the typescript part needs to render the input arcs
+type InputData
+  = Nullable NodeId
+
+-- | Data related to colors we need for updating some geometries
+type ForeignTypeMap
+  = { inputs :: Array (Nullable String)
+    , output :: Nullable String
+    }
+
+-- | Data needed for updating the geometry of a ndoe
+type NodeData
+  = { inputs :: Array InputData
+    , colorMap :: ForeignTypeMap
     }
 
 type GeomEventHandler

@@ -1,16 +1,11 @@
 import { Vec2Like, sub2, IVector } from "@thi.ng/vectors"
 import { TAU, HALF_PI } from "@thi.ng/math"
-import { NodeId, InputData } from "./types/Node"
+import { NodeId } from "./types/Node"
 
 export interface IArc {
   arc: Vec2Like
   isCircle?: boolean
 }
-
-/**
- * Input data implementing IArc
- */
-export type InputWithArc = InputData & IArc
 
 const normalizeAngle = (angle: number) =>
   (angle < 0.0 ? TAU - (-angle % TAU) : angle) % TAU
@@ -262,29 +257,27 @@ export const center = <T extends IArc>(arc: T) =>
  * @param inputs The inputs to place around.
  * @param position The position of the current node.
  */
-export const placeInputs = (
+export const placeInputs = <T extends { output: NodeId | null }>(
   getData: (id: NodeId) => Vec2Like,
-  inputs: InputData[],
+  inputs: Array<T>,
   position: Vec2Like
-): InputWithArc[][] => {
+): (T & IArc)[][] => {
   const connected = inputs.filter(({ output }) => output !== null)
   const unconnected = inputs.filter(({ output }) => output === null)
 
   const maxHalfArcLength =
     Math.PI / (connected.length == 1 ? 2.0 : connected.length)
 
-  const connectedOverlapping = connected.map(
-    (input): InputWithArc => {
-      const other = getData(input.output!)
-      const relative = sub2(null, other, position)
-      const angle = Math.atan2(-relative[0], relative[1])
+  const connectedOverlapping = connected.map((input): T & IArc => {
+    const other = getData(input.output!)
+    const relative = sub2(null, other, position)
+    const angle = Math.atan2(-relative[0], relative[1])
 
-      return {
-        ...input,
-        arc: [angle - maxHalfArcLength, angle + maxHalfArcLength]
-      }
+    return {
+      ...input,
+      arc: [angle - maxHalfArcLength, angle + maxHalfArcLength]
     }
-  )
+  })
 
   let connectedLayered = solveOverlaps(connectedOverlapping)
 

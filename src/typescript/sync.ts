@@ -1,4 +1,4 @@
-import { GeometryCache, NodeId, InputData } from "./types/Node"
+import { GeometryCache, NodeId, NodeState } from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
 import { Vec2Like } from "@thi.ng/vectors"
@@ -30,11 +30,12 @@ export const createNode = (cache: GeometryCache) => (id: NodeId) => (
  *
  * @param cache The cache to mutate
  * @param id The id of the node to refresh the arcs of
- * @param inputs The actual input data to apply
+ * @param state The actual state to apply
  */
-export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => (
-  inputs: InputData[]
-) => () => {
+export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
+  inputs,
+  colorMap
+}: NodeState) => () => {
   const node = cache.nodes.get(id)
 
   if (!node || !node.inputs[0].attribs!.selectable) {
@@ -43,9 +44,13 @@ export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => (
 
   const arcs = Arc.placeInputs(
     (id) => cache.nodes.get(id)!.position as Vec2Like,
-    inputs,
+    inputs.map((output, index) => ({ output, color: colorMap.inputs[index] })),
     node.position as Vec2Like
   )
+
+  if (node.output && colorMap.output) {
+    node.output.attribs!.fill = colorMap.output
+  }
 
   for (let i = 0; i < arcs.length; i++) {
     for (let j = 0; j < arcs[i].length; j++) {

@@ -1,6 +1,5 @@
 module Lunarbox.Capability.Editor.Type
-  ( ColoringError(..)
-  , typeToColor
+  ( typeToColor
   , generateTypeMap
   , prettify
   , combineColors
@@ -8,26 +7,25 @@ module Lunarbox.Capability.Editor.Type
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array (foldMap, (!!))
+import Data.Array (fold, foldMap, (!!))
 import Data.Array as Array
-import Data.Either (Either(..), isLeft, note)
 import Data.Enum (enumFromTo)
-import Data.Foldable (foldr)
+import Data.Function (on)
 import Data.Lens (view)
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isNothing)
+import Data.Maybe (Maybe, fromMaybe)
+import Data.Newtype (class Newtype, unwrap)
 import Data.String.CodeUnits as String
-import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply)
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
-import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node, hasOutput)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Math.SeededRandom (seededInt)
+import Lunarbox.Svg.Attributes (colorsAreEqual)
 import Svg.Attributes (Color(..))
 
 -- Calculates the averege of 2 ints
@@ -42,43 +40,46 @@ combineColors (RGB r g b) color = combineColors (RGBA r g b 1.0) color
 
 combineColors color (RGB r g b) = combineColors (RGBA r g b 1.0) color
 
+-- Color for types we cannot paint by other means
+unknownColor :: Color
+unknownColor = RGB 52 235 222
+
+-- Wrapper around Colors which can be combined and compared
+newtype Color'
+  = Color Color
+
+derive instance newtypeColor' :: Newtype Color' _
+
+instance eqColor' :: Eq Color' where
+  eq = on colorsAreEqual unwrap
+
+instance semigroupColor' :: Semigroup Color' where
+  append a b
+    | a == mempty = b
+  append b a
+    | a == mempty = b
+  append (Color a) (Color b) = Color $ a `combineColors` b
+
+instance monoidColor' :: Monoid Color' where
+  mempty = Color unknownColor
+
 -- Given a color returns a type
-typeToColor :: Type -> Maybe Color
+typeToColor :: Type -> Color
 typeToColor t@(TConstant _ [])
-  | t == typeString = Just $ RGB 97 196 35
-  | t == typeBool = Just $ RGB 193 71 53
-  | t == typeNumber = Just $ RGB 35 78 196
-  | otherwise = Nothing
+  | t == typeString = RGB 97 196 35
+  | t == typeBool = RGB 193 71 53
+  | t == typeNumber = RGB 35 78 196
+  | otherwise = unknownColor
 
-typeToColor (TConstant _ vars) =
-  foldr
-    ( \current accumulated ->
-        if isNothing accumulated then
-          current
-        else
-          combineColors <$> current <*> accumulated
-    )
-    Nothing
-    $ typeToColor
-    <$> vars
+typeToColor (TConstant _ vars) = unwrap $ fold $ Color <$> typeToColor <$> vars
 
-typeToColor _ = Nothing
-
--- Errors which might occur while generating a typemap
-data ColoringError
-  = UnableToColor Type
-  | MissingType Location
-
-instance showColoringError :: Show ColoringError where
-  show (UnableToColor type') = "Unable to generate a color for type " <> show type'
-  show (MissingType location) = "Cannot find type for " <> show location
-
-alwaysInput :: forall a. Int -> a -> Pin
-alwaysInput = const <<< InputPin
+typeToColor (TVariable _ name) = RGB shade shade shade
+  where
+  shade = seededInt (show name) 0 255
 
 inputPins :: FunctionData -> List.List Pin
 inputPins functionData =
-  List.mapWithIndex alwaysInput
+  List.mapWithIndex (const <<< InputPin)
     $ Array.toUnfoldable
     $ view _FunctionDataInputs functionData
 
@@ -86,37 +87,18 @@ inputPins functionData =
 pinLocations :: FunctionData -> Node -> List.List Pin
 pinLocations functionData node = (OutputPin <$ guard (hasOutput node)) <> inputPins functionData
 
--- Create a location-color pair from a node and data related to it
-generateColor :: Pin -> Type -> Either ColoringError Color
-generateColor currentLocation pinType = do
-  color <- case pinType of
-    TVariable _ name' -> Right $ RGB shade shade shade
-      where
-      shade = seededInt (show name') 100 255
-    TConstant _ [] -> note (UnableToColor pinType) $ typeToColor pinType
-    TConstant _ vars ->
-      foldr
-        ( \current accumulated ->
-            if isLeft accumulated then
-              current
-            else
-              combineColors <$> current <*> accumulated
-        )
-        (Left $ UnableToColor pinType)
-        $ generateColor currentLocation
-        <$> vars
-  pure color
-
 -- Createa a typeMap from a node and data about it
-generateTypeMap :: (Pin -> Maybe Type) -> FunctionData -> Node -> Either ColoringError (Map.Map Pin Color)
-generateTypeMap getType functionData node = Map.fromFoldable <$> pairs
+generateTypeMap :: (Pin -> Maybe Type) -> FunctionData -> Node -> Map.Map Pin Color
+generateTypeMap getType functionData node = Map.fromFoldable pairs
   where
   pairs =
-    ( sequence
-        $ List.catMaybes
-        $ (\pin -> (map $ Tuple pin) <$> generateColor pin <$> getType pin)
-        <$> pinLocations functionData node
-    )
+    List.catMaybes
+      $ ( \pin ->
+            Tuple pin
+              <$> typeToColor
+              <$> getType pin
+        )
+      <$> pinLocations functionData node
 
 alphabet :: Array String
 alphabet = String.singleton <$> enumFromTo 'a' 'z'
