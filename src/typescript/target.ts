@@ -76,7 +76,8 @@ export const getMouseTarget = (
             index,
             node,
             id,
-            closest: closestPoint(input, mousePosition)!
+            closest: closestPoint(input, mousePosition)!,
+            geom: input
           }))
         : []
     )
@@ -91,7 +92,7 @@ export const getMouseTarget = (
       node: closestInput.node,
       id: closestInput.id,
       index: closestInput.index,
-      geom: closestInput.node.inputs[closestInput.index] as g.Arc
+      geom: closestInput.geom as g.Arc
     }
   }
 

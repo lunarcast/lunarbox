@@ -28,11 +28,11 @@ import {
 } from "./constants"
 import { TAU } from "@thi.ng/math"
 import { Type, IHiccupShape } from "@thi.ng/geom-api"
-import { withAttribs, Line, closestPoint } from "@thi.ng/geom"
+import { withAttribs, closestPoint } from "@thi.ng/geom"
 import { isPressed, MouseButtons } from "./mouse"
 import { DCons } from "@thi.ng/dcons"
 import { getMouseTarget, MouseTargetKind, MouseTarget } from "./target"
-import { refreshInputArcs, refreshInputArcsImpl } from "./sync"
+import { refreshInputArcsImpl } from "./sync"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
@@ -89,6 +89,8 @@ const updateConnectionPreview = (cache: GeometryCache, mouse: Vec) => {
     refreshInputArcsImpl(cache, cache.connection.id, state, {
       mouse
     })
+
+    cache.connection.node.inputOverwrites = {}
 
     cache.connectionPreview.attribs!.stroke = cache.connection.geom.attribs!.stroke
     cache.connectionPreview.points[0] = closestPoint(
@@ -286,7 +288,11 @@ const createConnection = (
   input: IHasNode & { index: number }
 ) => {}
 
-const selectInput = (cache: GeometryCache, input: InputPartialConnection) => {
+const selectInput = (
+  cache: GeometryCache,
+  input: InputPartialConnection,
+  mouse: Vec
+) => {
   if (cache.connection._type === PartialKind.Output) {
     createConnection(cache, cache.connection, input)
   } else {
@@ -294,6 +300,8 @@ const selectInput = (cache: GeometryCache, input: InputPartialConnection) => {
       ...input,
       _type: PartialKind.Input
     }
+
+    updateConnectionPreview(cache, mouse)
   }
 }
 
@@ -315,8 +323,23 @@ export const onMouseDown = (ctx: CanvasRenderingContext2D) => (
     selectNode(cache, target.node, target.id)
   }
 
+  if (target._type === MouseTargetKind.Nothing) {
+    if (
+      cache.connection._type === PartialKind.Input &&
+      cache.connection.node.lastState
+    ) {
+      refreshInputArcsImpl(
+        cache,
+        cache.connection.id,
+        cache.connection.node.lastState
+      )
+    }
+
+    cache.connection._type = PartialKind.Nothing
+  }
+
   if (target._type === MouseTargetKind.NodeInput) {
-    selectInput(cache, target)
+    selectInput(cache, target, mousePosition)
   }
 
   if (

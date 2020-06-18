@@ -173,7 +173,7 @@ const emptySpaces = <T extends IArc>(arcs: T[]): IArc[] => {
 
     return [
       {
-        arc: arcs[0].arc.reverse() as Vec2Like
+        arc: [arcs[0].arc[1], arcs[0].arc[0]] as Vec2Like
       }
     ]
   }
@@ -271,12 +271,12 @@ export const placeInputs = <T extends { output: NodeId | null }>(
   const connectedOverlapping = connected.map((input): T & IArc => {
     const other = getData(input.output!)
     const relative = sub2(null, other, position)
-    const angle = Math.atan2(relative[0], -relative[1])
+    const angle = Math.atan2(-relative[0], relative[1])
 
-    return {
+    return normalize({
       ...input,
       arc: [angle - maxHalfArcLength, angle + maxHalfArcLength]
-    }
+    })
   })
 
   let connectedLayered = solveOverlaps(connectedOverlapping)

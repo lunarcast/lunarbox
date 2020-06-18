@@ -52,7 +52,8 @@ export const refreshInputArcsImpl = (
     (id) => positionOverwrites[id] ?? cache.nodes.get(id)?.position ?? [0, 0],
     inputs.map((output, index) => ({
       output: node.inputOverwrites[index] ?? output,
-      color: colorMap.inputs[index]
+      color: colorMap.inputs[index],
+      geom: node.inputs[index] as g.Arc
     })),
     node.position as Vec2Like
   )
@@ -62,10 +63,9 @@ export const refreshInputArcsImpl = (
   }
 
   for (let i = 0; i < arcs.length; i++) {
-    for (let j = 0; j < arcs[i].length; j++) {
-      const arc = arcs[i][j]
-
-      const geom = node.inputs[i * arcs.length + j] as g.Arc
+    const layer = arcs[i]
+    for (const arc of layer) {
+      const geom = arc.geom
       const radius = i * inputLayerOffset + nodeRadius
 
       geom.r = [radius, radius]
