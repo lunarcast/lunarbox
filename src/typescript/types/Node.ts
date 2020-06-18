@@ -1,8 +1,17 @@
 import type { Mat23Like } from "@thi.ng/matrices"
-import { Circle, Arc } from "@thi.ng/geom"
-import { Vec } from "@thi.ng/vectors"
-import { DCons } from "@thi.ng/dcons"
-import { MouseTarget } from "../target"
+import type { Circle, Arc, Line } from "@thi.ng/geom"
+import type { Vec } from "@thi.ng/vectors"
+import type { DCons } from "@thi.ng/dcons"
+import type { MouseTarget } from "../target"
+import type { ADT } from "ts-adt"
+
+/**
+ * Interface for everything which keeps track of a node.
+ */
+export interface IHasNode {
+  node: NodeGeometry
+  id: NodeId
+}
 
 /**
  * Data we need to get to be able to update the way a node looks.
@@ -32,7 +41,32 @@ export interface NodeGeometry {
   output: Circle
   inputs: (Circle | Arc)[]
   position: Vec
+  lastState: NodeState | null
+  inputOverwrites: Record<number, NodeId>
 }
+
+/**
+ * Different tags for the PartialConnection adt.
+ */
+export const enum PartialKind {
+  Nothing,
+  Input,
+  Output
+}
+
+/**
+ * We take this as an argument to some stuff so I made a separate type for it.
+ */
+export type InputPartialConnection = IHasNode & { index: number; geom: Arc }
+
+/**
+ * We can either have nothing selected or a kind of pin (input or output).
+ */
+export type PartialConnection = ADT<{
+  [PartialKind.Input]: InputPartialConnection
+  [PartialKind.Output]: IHasNode
+  [PartialKind.Nothing]: {}
+}>
 
 /**
  * A geometry cache is just the state of the display.
@@ -49,4 +83,6 @@ export type GeometryCache = {
   selectedNodes: Set<NodeId>
   zOrder: DCons<NodeId>
   dragging: null | MouseTarget
+  connection: PartialConnection
+  connectionPreview: Line
 }

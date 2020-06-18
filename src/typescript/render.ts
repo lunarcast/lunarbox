@@ -8,7 +8,14 @@ import {
   translation23,
   invert23
 } from "@thi.ng/matrices"
-import type { GeometryCache, NodeId, NodeGeometry } from "./types/Node"
+import {
+  GeometryCache,
+  NodeId,
+  NodeGeometry,
+  PartialKind,
+  IHasNode,
+  InputPartialConnection
+} from "./types/Node"
 import { Vec2Like, Vec, add2 } from "@thi.ng/vectors"
 import {
   nodeRadius,
@@ -16,14 +23,16 @@ import {
   constantInputStroke,
   nodeOutputRadius,
   nodeBackgroundOpacity,
-  nodeBackgrounds
+  nodeBackgrounds,
+  connectionWidth
 } from "./constants"
 import { TAU } from "@thi.ng/math"
-import { Type } from "@thi.ng/geom-api"
-import { withAttribs } from "@thi.ng/geom"
+import { Type, IHiccupShape } from "@thi.ng/geom-api"
+import { withAttribs, Line, closestPoint } from "@thi.ng/geom"
 import { isPressed, MouseButtons } from "./mouse"
 import { DCons } from "@thi.ng/dcons"
 import { getMouseTarget, MouseTargetKind, MouseTarget } from "./target"
+import { refreshInputArcs, refreshInputArcsImpl } from "./sync"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
@@ -34,7 +43,11 @@ export const emptyGeometryCache: GeometryCache = {
   selectedNode: null,
   dragging: null,
   selectedNodes: new Set(),
-  zOrder: new DCons()
+  zOrder: new DCons(),
+  connection: { _type: PartialKind.Nothing },
+  connectionPreview: g.line([0, 0], [0, 0], {
+    weight: connectionWidth
+  })
 }
 /**
  * Create the geometry for a node input.
@@ -52,6 +65,39 @@ const dottedInput = (position: Vec2Like) => {
   return g.circle(position, nodeRadius, attribs)
 }
 
+const updateConnectionPreview = (cache: GeometryCache, mouse: Vec) => {
+  if (cache.connection._type === PartialKind.Nothing) {
+    return
+  }
+
+  cache.connectionPreview.points[1] = mouse
+
+  if (cache.connection._type === PartialKind.Output) {
+    cache.connectionPreview.attribs!.stroke = cache.connection.node.output.attribs!.fill
+    cache.connectionPreview.points[0] = cache.connection.node.position
+  } else if (
+    cache.connection._type === PartialKind.Input &&
+    cache.connection.node.lastState
+  ) {
+    const state = cache.connection.node.lastState
+
+    // We point this to our custom id ("mouse")
+    cache.connection.node.inputOverwrites = {
+      [cache.connection.index]: "mouse" as NodeId
+    }
+
+    refreshInputArcsImpl(cache, cache.connection.id, state, {
+      mouse
+    })
+
+    cache.connectionPreview.attribs!.stroke = cache.connection.geom.attribs!.stroke
+    cache.connectionPreview.points[0] = closestPoint(
+      cache.connection.geom,
+      mouse
+    )!
+  }
+}
+
 /**
  * Create the geometry for a node input.
  *
@@ -59,7 +105,7 @@ const dottedInput = (position: Vec2Like) => {
  * @param step The layer the input lays on.
  * @param input The input-specific data
  */
-const renderInput = (position: Vec2Like) => {
+const createInputGeometry = (position: Vec2Like) => {
   const attribs = {
     stroke: "black",
     weight: arcStrokeWidth.normal,
@@ -71,6 +117,12 @@ const renderInput = (position: Vec2Like) => {
   return withAttribs(arc, attribs)
 }
 
+/**
+ * Generate an empty node geometry.
+ *
+ * @param position The position of the node
+ * @param numberOfInputs The number of input arcs to create.
+ */
 export const createNodeGeometry = (
   position: Vec2Like,
   numberOfInputs: number
@@ -80,7 +132,7 @@ export const createNodeGeometry = (
       ? [dottedInput(position)]
       : Array(numberOfInputs)
           .fill(1)
-          .map(() => renderInput(position))
+          .map(() => createInputGeometry(position))
 
   const output = g.circle(position, 10, { fill: "yellow" })
 
@@ -88,7 +140,14 @@ export const createNodeGeometry = (
     alpha: nodeBackgroundOpacity
   })
 
-  return { inputs: inputGeom, output, background, position }
+  return {
+    inputs: inputGeom,
+    output,
+    background,
+    position,
+    lastState: null,
+    inputOverwrites: {}
+  }
 }
 
 /**
@@ -143,7 +202,7 @@ export const renderScene = (
 
   const matrix = getTransform(ctx, cache)
 
-  const nodes = [...cache.zOrder]
+  const nodes: IHiccupShape[] = [...cache.zOrder]
     .map((id) => cache.nodes.get(id)!)
     .flatMap(({ inputs, output, background }) => [
       ...(background.attribs!.fill ? [background] : []),
@@ -153,7 +212,12 @@ export const renderScene = (
       output
     ])
 
-  const shapes = g.group({ transform: matrix }, nodes).toHiccup()
+  const withPreview =
+    cache.connection._type === PartialKind.Nothing
+      ? nodes
+      : nodes.concat([cache.connectionPreview])
+
+  const shapes = g.group({ transform: matrix }, withPreview).toHiccup()
 
   walk(ctx, [shapes], {
     attribs: {},
@@ -216,6 +280,23 @@ export const onMouseUp = (ctx: CanvasRenderingContext2D) => (
   renderScene(ctx, cache)
 }
 
+const createConnection = (
+  cache: GeometryCache,
+  output: IHasNode,
+  input: IHasNode & { index: number }
+) => {}
+
+const selectInput = (cache: GeometryCache, input: InputPartialConnection) => {
+  if (cache.connection._type === PartialKind.Output) {
+    createConnection(cache, cache.connection, input)
+  } else {
+    cache.connection = {
+      ...input,
+      _type: PartialKind.Input
+    }
+  }
+}
+
 /**
  * Handle a mouseDown event
  *
@@ -232,6 +313,10 @@ export const onMouseDown = (ctx: CanvasRenderingContext2D) => (
 
   if (target._type === MouseTargetKind.Node) {
     selectNode(cache, target.node, target.id)
+  }
+
+  if (target._type === MouseTargetKind.NodeInput) {
+    selectInput(cache, target)
   }
 
   if (
@@ -279,13 +364,13 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
 ) => (cache: GeometryCache) => () => {
   let target: MouseTarget
 
+  const mouse = [event.pageX, event.pageY]
+  const transform = getMouseTransform(ctx, cache)
+  const mousePosition = mulV23(null, transform, mouse)
+
   if (cache.dragging) {
     target = cache.dragging
   } else {
-    const mouse = [event.pageX, event.pageY]
-    const transform = getMouseTransform(ctx, cache)
-    const mousePosition = mulV23(null, transform, mouse)
-
     target = getMouseTarget(mousePosition, cache)
   }
 
@@ -366,5 +451,6 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
     pan(cache, mouseScreenOffset)
   }
 
+  updateConnectionPreview(cache, mousePosition)
   renderScene(ctx, cache)
 }

@@ -1,15 +1,14 @@
-import { NodeGeometry, NodeId, GeometryCache } from "./types/Node"
-import { ADT } from "ts-adt"
+import type { NodeId, GeometryCache, IHasNode } from "./types/Node"
+import type { ADT } from "ts-adt"
 import * as g from "@thi.ng/geom"
 import { Vec, dist, distSq2 } from "@thi.ng/vectors"
 import { minBy } from "./helpers/minBy"
 import { pickDistance } from "./constants"
 import { closestPoint } from "@thi.ng/geom"
 
-interface IHasNode {
-  node: NodeGeometry
-}
-
+/**
+ * Possible tags for the MouseTarget adt.
+ */
 export enum MouseTargetKind {
   Nothing,
   Node,
@@ -17,9 +16,15 @@ export enum MouseTargetKind {
   NodeOutput
 }
 
+/**
+ * This adt represents whatever the mouse is over at any state.
+ */
 export type MouseTarget = ADT<{
-  [MouseTargetKind.NodeInput]: IHasNode & { index: number; geom: g.Arc }
-  [MouseTargetKind.Node]: IHasNode & { id: NodeId }
+  [MouseTargetKind.NodeInput]: IHasNode & {
+    index: number
+    geom: g.Arc
+  }
+  [MouseTargetKind.Node]: IHasNode
   [MouseTargetKind.NodeOutput]: IHasNode
   [MouseTargetKind.Nothing]: {}
 }>
@@ -40,23 +45,24 @@ export const getMouseTarget = (
     }
   }
 
-  const nodes = [...cache.nodes.values()]
+  const nodes = [...cache.nodes.entries()]
 
   const distanceToMouse = (position: Vec) => dist(mousePosition, position)
 
   const distanceToMouseSq = (position: Vec) => distSq2(mousePosition, position)
 
-  const closestOutput = minBy((a, b) => {
+  const closestOutput = minBy(([, a], [, b]) => {
     return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
   }, nodes)
 
   if (
     closestOutput !== null &&
-    distanceToMouse(closestOutput.output.pos) < pickDistance.output
+    distanceToMouse(closestOutput[1].output.pos) < pickDistance.output
   ) {
     return {
       _type: MouseTargetKind.NodeOutput,
-      node: closestOutput
+      node: closestOutput[1],
+      id: closestOutput[0]
     }
   }
 
@@ -64,11 +70,12 @@ export const getMouseTarget = (
     (a, b) => {
       return distanceToMouse(a.closest) < distanceToMouse(b.closest)
     },
-    nodes.flatMap((node) =>
+    nodes.flatMap(([id, node]) =>
       node.inputs[0].attribs?.selectable
         ? node.inputs.map((input, index) => ({
             index,
             node,
+            id,
             closest: closestPoint(input, mousePosition)!
           }))
         : []
@@ -82,6 +89,7 @@ export const getMouseTarget = (
     return {
       _type: MouseTargetKind.NodeInput,
       node: closestInput.node,
+      id: closestInput.id,
       index: closestInput.index,
       geom: closestInput.node.inputs[closestInput.index] as g.Arc
     }

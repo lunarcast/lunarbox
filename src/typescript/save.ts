@@ -1,7 +1,7 @@
-import { GeometryCache, NodeId } from "./types/Node"
+import type { GeometryCache, NodeId } from "./types/Node"
+import type { Mat23Like } from "@thi.ng/matrices"
+import type { Vec2Like } from "@thi.ng/vectors"
 import { emptyGeometryCache, createNodeGeometry } from "./render"
-import { Mat23Like } from "@thi.ng/matrices"
-import { Vec2Like } from "@thi.ng/vectors"
 import { DCons } from "@thi.ng/dcons"
 
 // The following section is for stuff related to saving / loading caches from / to json
@@ -37,13 +37,10 @@ export const geometryCacheFromJson = (
   config: EitherConfig<String, GeometryCache>
 ) => ({ camera, nodes }: SavedData): Either<String, GeometryCache> => {
   try {
-    // While rendering it's useful to be able to
-    const hashed = new Map(nodes)
-    const getPosition = (id: NodeId) =>
-      hashed.get(id)?.position ?? ([0, 0] as Vec2Like)
-
     return config.right({
       ...emptyGeometryCache,
+      connectionPreview: emptyGeometryCache.connectionPreview.copy(),
+      selectedNodes: new Set(),
       camera: camera,
       zOrder: new DCons(nodes.map(([id]) => id)),
       nodes: new Map(

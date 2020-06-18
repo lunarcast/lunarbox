@@ -1,6 +1,5 @@
 import * as Native from "src/typescript/render"
 import { GeometryCache } from "src/typescript/types/Node"
-import { Vec2Like } from "@thi.ng/vectors"
 
 // The initial cache used from purescript
 export const emptyGeometryCache = Native.emptyGeometryCache

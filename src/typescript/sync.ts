@@ -1,7 +1,7 @@
-import { GeometryCache, NodeId, NodeState } from "./types/Node"
+import type { GeometryCache, NodeId, NodeState } from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
-import { Vec2Like } from "@thi.ng/vectors"
+import type { Vec2Like } from "@thi.ng/vectors"
 import { inputLayerOffset, nodeRadius, arcSpacing } from "./constants"
 import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
@@ -31,20 +31,29 @@ export const createNode = (cache: GeometryCache) => (id: NodeId) => (
  * @param cache The cache to mutate
  * @param id The id of the node to refresh the arcs of
  * @param state The actual state to apply
+ * @param positionOverwrites Useful for preview of connections and stuff like that.
  */
-export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
-  inputs,
-  colorMap
-}: NodeState) => () => {
+export const refreshInputArcsImpl = (
+  cache: GeometryCache,
+  id: NodeId,
+  state: NodeState,
+  positionOverwrites: Record<NodeId, Vec2Like> = {}
+) => {
   const node = cache.nodes.get(id)
 
   if (!node || !node.inputs[0].attribs!.selectable) {
     return
   }
 
+  node.lastState = state
+
+  const { colorMap, inputs } = state
   const arcs = Arc.placeInputs(
-    (id) => cache.nodes.get(id)!.position as Vec2Like,
-    inputs.map((output, index) => ({ output, color: colorMap.inputs[index] })),
+    (id) => positionOverwrites[id] ?? cache.nodes.get(id)?.position ?? [0, 0],
+    inputs.map((output, index) => ({
+      output: node.inputOverwrites[index] ?? output,
+      color: colorMap.inputs[index]
+    })),
     node.position as Vec2Like
   )
 
@@ -72,3 +81,10 @@ export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => ({
     }
   }
 }
+
+/**
+ * Curried version for use from purescript.
+ */
+export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => (
+  state: NodeState
+) => () => refreshInputArcsImpl(cache, id, state)

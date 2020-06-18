@@ -1,6 +1,6 @@
-import { Vec2Like, sub2, IVector } from "@thi.ng/vectors"
+import { Vec2Like, sub2 } from "@thi.ng/vectors"
 import { TAU, HALF_PI } from "@thi.ng/math"
-import { NodeId } from "./types/Node"
+import type { NodeId } from "./types/Node"
 
 export interface IArc {
   arc: Vec2Like
@@ -271,7 +271,7 @@ export const placeInputs = <T extends { output: NodeId | null }>(
   const connectedOverlapping = connected.map((input): T & IArc => {
     const other = getData(input.output!)
     const relative = sub2(null, other, position)
-    const angle = Math.atan2(-relative[0], relative[1])
+    const angle = Math.atan2(relative[0], -relative[1])
 
     return {
       ...input,

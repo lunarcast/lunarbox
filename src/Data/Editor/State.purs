@@ -421,8 +421,7 @@ initializeFunction name state =
       function = createFunction name id
     modify_ $ over _project function
     modify_ $ setCurrentFunction (Just name)
-    -- Todo: make this work with the new foreign system
-    -- modify_ $ set (_atNodeData name id) (Just def)
+    modify_ $ set _currentGeometryCache $ Just def
     modify_ $ set (_atFunctionData name) (Just def)
     modify_ compile
 
