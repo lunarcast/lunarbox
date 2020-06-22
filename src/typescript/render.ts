@@ -310,7 +310,7 @@ const selectOutput = (
 
   updateConnectionPreview(cache, mouse)
 
-  return config.nothing
+  return config.selectOutput(output.id)
 }
 
 /**
@@ -338,7 +338,7 @@ const selectInput = (
 
   updateConnectionPreview(cache, mouse)
 
-  return config.nothing
+  return config.selectInput(input.id, input.index)
 }
 
 /**

@@ -94,7 +94,7 @@ data Output
 
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
-    , scene :: Slot Scene.Query Void Unit
+    , scene :: Slot Scene.Query Scene.Output Unit
     )
 
 -- Shorthand for manually passing the types of the actions and child slots
@@ -371,7 +371,7 @@ component =
         ]
 
   scene :: HH.ComponentHTML Action ChildSlots m
-  scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit absurd
+  scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit $ const Nothing
 
   logoElement =
     container "sidebar-logo-container"

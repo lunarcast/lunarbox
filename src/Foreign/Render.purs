@@ -21,7 +21,9 @@ import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
 import Data.Default (class Default, def)
 import Data.Either (Either(..))
-import Data.Function.Uncurried (Fn3, Fn4, mkFn3, runFn4)
+import Data.Function.Uncurried (Fn2, Fn3, Fn4, mkFn2, mkFn3, runFn4)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Nullable (Nullable)
 import Effect (Effect)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
@@ -111,13 +113,24 @@ type NodeState
 data ForeignAction
   -- Create a connection from output-id to input-id, input-index
   = CreateConnection NodeId NodeId Int
+  -- Select an input pin
+  | SelectInput NodeId Int
+  -- Select an output pin
+  | SelectOutput NodeId
   -- This just does nothing
   | NoAction
+
+derive instance genericForeignAction :: Generic ForeignAction _
+
+instance showForeignAction :: Show ForeignAction where
+  show = genericShow
 
 -- | Config used by the ts side to create actions
 newtype ForeignActionConfig
   = ForeignActionConfig
   { createConnection :: Fn3 NodeId NodeId Int ForeignAction
+  , selectInput :: Fn2 NodeId Int ForeignAction
+  , selectOutput :: NodeId -> ForeignAction
   , nothing :: ForeignAction
   }
 
@@ -125,6 +138,8 @@ instance defaultForeignActionConfig :: Default ForeignActionConfig where
   def =
     ForeignActionConfig
       { createConnection: mkFn3 CreateConnection
+      , selectInput: mkFn2 SelectInput
+      , selectOutput: SelectOutput
       , nothing: NoAction
       }
 

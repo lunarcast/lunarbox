@@ -1,4 +1,8 @@
-module Lunarbox.Component.Editor.Scene (component, Query(..)) where
+module Lunarbox.Component.Editor.Scene
+  ( Query(..)
+  , Output(..)
+  , component
+  ) where
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
@@ -6,7 +10,7 @@ import Data.Default (def)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, subscribe)
+import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, raise, subscribe)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
@@ -40,10 +44,13 @@ data Query a
   = LoadScene GeometryCache a
   | Rerender a
 
+data Output
+  = BubbleForeignAction ForeignAction
+
 canvasRef :: RefLabel
 canvasRef = RefLabel "canvas"
 
-component :: forall m o. MonadEffect m => MonadAsk Config m => MonadAff m => Component HH.HTML Query Input o m
+component :: forall m. MonadEffect m => MonadAsk Config m => MonadAff m => Component HH.HTML Query Input Output m
 component =
   mkComponent
     { initialState: const { context: Nothing, geometryCache: def }
@@ -57,7 +64,7 @@ component =
             }
     }
   where
-  withContext :: (Context2d -> HalogenM State Action ChildSlots o m Unit) -> HalogenM State Action ChildSlots o m Unit
+  withContext :: (Context2d -> HalogenM State Action ChildSlots Output m Unit) -> HalogenM State Action ChildSlots Output m Unit
   withContext continue = do
     context <- gets _.context
     case context of
@@ -72,7 +79,7 @@ component =
             modify_ _ { context = Just ctx }
             continue ctx
 
-  handleAction :: Action -> HalogenM State Action ChildSlots o m Unit
+  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     Init -> do
       withContext $ const $ pure unit
@@ -96,13 +103,12 @@ component =
         action <- liftEffect $ handler ctx event cache
         handleAction $ HandleForeignAction action
     HandleForeignAction action -> case action of
-      CreateConnection from toId toIndex -> do
-        print
-          { from, toId, toIndex
-          }
-      _ -> pure unit
+      NoAction -> pure unit
+      _ -> do
+        print action
+        raise $ BubbleForeignAction action
 
-  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)
+  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
     LoadScene cache a -> do
       modify_ _ { geometryCache = cache }
