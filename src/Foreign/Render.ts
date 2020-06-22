@@ -30,9 +30,9 @@ export const resizeContext = (ctx: CanvasRenderingContext2D) =>
   resizeCanvas(ctx.canvas)
 
 // Reexports with a few changed names
-export const handleMouseMove = Native.onMouseMove
-export const handleMouseUp = Native.onMouseUp
-export const handleMouseDown = Native.onMouseDown
+export const handleMouseMoveImpl = Native.onMouseMove
+export const handleMouseUpImpl = Native.onMouseUp
+export const handleMouseDownImpl = Native.onMouseDown
 
 // We cannot do
 // export * from "../typescript/save"

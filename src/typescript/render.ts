@@ -1,38 +1,39 @@
+import { DCons } from "@thi.ng/dcons"
 import * as g from "@thi.ng/geom"
+import { closestPoint, withAttribs } from "@thi.ng/geom"
+import { IHiccupShape, Type } from "@thi.ng/geom-api"
 import { walk } from "@thi.ng/hdom-canvas"
+import { TAU } from "@thi.ng/math"
 import {
-  Mat23Like,
-  transform23,
-  mulV23,
   concat,
-  translation23,
-  invert23
+  invert23,
+  Mat23Like,
+  mulV23,
+  transform23,
+  translation23
 } from "@thi.ng/matrices"
+import { add2, Vec, Vec2Like } from "@thi.ng/vectors"
 import {
-  GeometryCache,
-  NodeId,
-  NodeGeometry,
-  PartialKind,
-  IHasNode,
-  InputPartialConnection
-} from "./types/Node"
-import { Vec2Like, Vec, add2 } from "@thi.ng/vectors"
-import {
-  nodeRadius,
   arcStrokeWidth,
+  connectionWidth,
   constantInputStroke,
-  nodeOutputRadius,
   nodeBackgroundOpacity,
   nodeBackgrounds,
-  connectionWidth
+  nodeOutputRadius,
+  nodeRadius
 } from "./constants"
-import { TAU } from "@thi.ng/math"
-import { Type, IHiccupShape } from "@thi.ng/geom-api"
-import { withAttribs, closestPoint } from "@thi.ng/geom"
 import { isPressed, MouseButtons } from "./mouse"
-import { DCons } from "@thi.ng/dcons"
-import { getMouseTarget, MouseTargetKind, MouseTarget } from "./target"
 import { refreshInputArcsImpl } from "./sync"
+import { getMouseTarget, MouseTarget, MouseTargetKind } from "./target"
+import type { ForeignAction, ForeignActionConfig } from "./types/ForeignAction"
+import {
+  GeometryCache,
+  IHasNode,
+  InputPartialConnection,
+  NodeGeometry,
+  NodeId,
+  PartialKind
+} from "./types/Node"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache: GeometryCache = {
@@ -266,121 +267,80 @@ const unselectNode = (cache: GeometryCache, node: NodeGeometry, id: NodeId) => {
 }
 
 /**
- * Handle a mouseUp event
+ * Connect 2 pins together
  *
- * @param ctx The context to re-render to.
+ * @param config The config for the action to return
+ * @param cache The cache to mutate.
+ * @param output The output pin of the connection.
+ * @param input The input pin of the connection
  */
-export const onMouseUp = (ctx: CanvasRenderingContext2D) => (
-  event: MouseEvent
-) => (cache: GeometryCache) => () => {
-  for (const [id, node] of cache.nodes) {
-    unselectNode(cache, node, id)
-  }
-
-  cache.dragging = null
-
-  renderScene(ctx, cache)
-}
-
 const createConnection = (
+  config: ForeignActionConfig,
   cache: GeometryCache,
   output: IHasNode,
   input: IHasNode & { index: number }
-) => {
-  console.log("connecting")
-
+): ForeignAction => {
   cache.connection._type = PartialKind.Nothing
 
-  // updateConnectionPreview(cache, [])
+  return config.createConnection(output.id, input.id, input.index)
 }
 
 /**
  * Select the output of the current connection.
  *
+ * @param config The config for the action to return
  * @param cache The cache to mutate.
  * @param output The output to select.
  * @param mouse The current mouse position.
  */
-const selectOutput = (cache: GeometryCache, output: IHasNode, mouse: Vec) => {
+const selectOutput = (
+  config: ForeignActionConfig,
+  cache: GeometryCache,
+  output: IHasNode,
+  mouse: Vec
+): ForeignAction => {
   if (cache.connection._type === PartialKind.Input) {
-    createConnection(cache, output, cache.connection)
-  } else {
-    cache.connection = {
-      ...output,
-      _type: PartialKind.Output
-    }
-
-    updateConnectionPreview(cache, mouse)
+    return createConnection(config, cache, output, cache.connection)
   }
+
+  cache.connection = {
+    ...output,
+    _type: PartialKind.Output
+  }
+
+  updateConnectionPreview(cache, mouse)
+
+  return config.nothing
 }
 
 /**
  * Select the input of the current connection.
  *
+ * @param config The config for the action to return
  * @param cache The cache to mutate.
  * @param input The input to select.
  * @param mouse The current mouse position.
  */
 const selectInput = (
+  config: ForeignActionConfig,
   cache: GeometryCache,
   input: InputPartialConnection,
   mouse: Vec
-) => {
+): ForeignAction => {
   if (cache.connection._type === PartialKind.Output) {
-    createConnection(cache, cache.connection, input)
-  } else {
-    cache.connection = {
-      ...input,
-      _type: PartialKind.Input
-    }
-
-    updateConnectionPreview(cache, mouse)
+    return createConnection(config, cache, cache.connection, input)
   }
+
+  cache.connection = {
+    ...input,
+    _type: PartialKind.Input
+  }
+
+  updateConnectionPreview(cache, mouse)
+
+  return config.nothing
 }
 
-/**
- * Handle a mouseDown event
- *
- * @param ctx The context to re-render to.
- */
-export const onMouseDown = (ctx: CanvasRenderingContext2D) => (
-  event: MouseEvent
-) => (cache: GeometryCache) => () => {
-  const mouse = [event.pageX, event.pageY]
-  const transform = getMouseTransform(ctx, cache)
-  const mousePosition = mulV23(null, transform, mouse)
-
-  const target = getMouseTarget(mousePosition, cache)
-
-  if (target._type === MouseTargetKind.Node) {
-    selectNode(cache, target.node, target.id)
-  }
-
-  if (target._type === MouseTargetKind.Nothing) {
-    if (
-      cache.connection._type === PartialKind.Input &&
-      cache.connection.node.lastState
-    ) {
-      refreshInputArcsImpl(
-        cache,
-        cache.connection.id,
-        cache.connection.node.lastState
-      )
-    }
-
-    cache.connection._type = PartialKind.Nothing
-  }
-
-  if (target._type === MouseTargetKind.NodeInput) {
-    selectInput(cache, target, mousePosition)
-  } else if (target._type === MouseTargetKind.NodeOutput) {
-    selectOutput(cache, target, mousePosition)
-  } else {
-    cache.dragging = target
-  }
-
-  renderScene(ctx, cache)
-}
 /**
  * Move a single node by a certain offset
  *
@@ -408,13 +368,98 @@ const pan = (cache: GeometryCache, offset: Vec) => {
 }
 
 /**
+ * Handle a mouseUp event
+ *
+ * @param config The config for what we want to return
+ * @param ctx The context to re-render to.
+ * @param event The event to handle.
+ * @param cache The cache to mutate.
+ */
+export const onMouseUp = (
+  config: ForeignActionConfig,
+  ctx: CanvasRenderingContext2D,
+  _: MouseEvent,
+  cache: GeometryCache
+) => (): ForeignAction => {
+  for (const [id, node] of cache.nodes) {
+    unselectNode(cache, node, id)
+  }
+
+  cache.dragging = null
+
+  renderScene(ctx, cache)
+
+  return config.nothing
+}
+
+/**
+ * Handle a mouseDown event
+ *
+ * @param config The config for what we want to return
+ * @param ctx The context to re-render to.
+ * @param event The event to handle.
+ * @param cache The cache to mutate.
+ */
+export const onMouseDown = (
+  config: ForeignActionConfig,
+  ctx: CanvasRenderingContext2D,
+  event: MouseEvent,
+  cache: GeometryCache
+) => (): ForeignAction => {
+  let action = config.nothing
+
+  const mouse = [event.pageX, event.pageY]
+  const transform = getMouseTransform(ctx, cache)
+  const mousePosition = mulV23(null, transform, mouse)
+
+  const target = getMouseTarget(mousePosition, cache)
+
+  if (target._type === MouseTargetKind.Node) {
+    selectNode(cache, target.node, target.id)
+  }
+
+  if (target._type === MouseTargetKind.Nothing) {
+    if (
+      cache.connection._type === PartialKind.Input &&
+      cache.connection.node.lastState
+    ) {
+      refreshInputArcsImpl(
+        cache,
+        cache.connection.id,
+        cache.connection.node.lastState
+      )
+    }
+
+    cache.connection._type = PartialKind.Nothing
+  }
+
+  if (target._type === MouseTargetKind.NodeInput) {
+    action = selectInput(config, cache, target, mousePosition)
+  } else if (target._type === MouseTargetKind.NodeOutput) {
+    action = selectOutput(config, cache, target, mousePosition)
+  } else {
+    cache.dragging = target
+  }
+
+  renderScene(ctx, cache)
+
+  return action
+}
+
+/**
  * Handle a mouseMove event
  *
+ * @param config The config for what we want to return
  * @param ctx The context to re-render to.
+ * @param event The event to handle.
+ * @param cache The cache to mutate.
  */
-export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
-  event: MouseEvent
-) => (cache: GeometryCache) => () => {
+export const onMouseMove = (
+  config: ForeignActionConfig,
+  ctx: CanvasRenderingContext2D,
+  event: MouseEvent,
+  cache: GeometryCache
+) => (): ForeignAction => {
   let target: MouseTarget
 
   const mouse = [event.pageX, event.pageY]
@@ -506,4 +551,6 @@ export const onMouseMove = (ctx: CanvasRenderingContext2D) => (
 
   updateConnectionPreview(cache, mousePosition)
   renderScene(ctx, cache)
+
+  return config.nothing
 }

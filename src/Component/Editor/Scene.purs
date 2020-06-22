@@ -12,7 +12,8 @@ import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
-import Lunarbox.Foreign.Render (Context2d, GeomEventHandler, GeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
+import Lunarbox.Control.Monad.Effect (print)
+import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -27,6 +28,7 @@ data Action
   | Render
   | ResizeCanvas
   | HandleEvent GeomEventHandler MouseEvent
+  | HandleForeignAction ForeignAction
 
 type ChildSlots
   = ()
@@ -91,7 +93,14 @@ component =
     HandleEvent handler event ->
       withContext \ctx -> do
         cache <- gets _.geometryCache
-        liftEffect $ handler ctx event cache
+        action <- liftEffect $ handler ctx event cache
+        handleAction $ HandleForeignAction action
+    HandleForeignAction action -> case action of
+      CreateConnection from toId toIndex -> do
+        print
+          { from, toId, toIndex
+          }
+      _ -> pure unit
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)
   handleQuery = case _ of

@@ -5,6 +5,7 @@ module Lunarbox.Foreign.Render
   , NodeState
   , ForeignTypeMap
   , InputData
+  , ForeignAction(..)
   , resizeCanvas
   , resizeContext
   , getContext
@@ -18,8 +19,9 @@ module Lunarbox.Foreign.Render
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
-import Data.Default (class Default)
+import Data.Default (class Default, def)
 import Data.Either (Either(..))
+import Data.Function.Uncurried (Fn3, Fn4, mkFn3, runFn4)
 import Data.Nullable (Nullable)
 import Effect (Effect)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
@@ -44,11 +46,11 @@ foreign import renderScene :: Context2d -> GeometryCache -> Effect Unit
 
 foreign import emptyGeometryCache :: GeometryCache
 
-foreign import handleMouseMove :: GeomEventHandler
+foreign import handleMouseMoveImpl :: NativeGeomEventHandler
 
-foreign import handleMouseUp :: GeomEventHandler
+foreign import handleMouseUpImpl :: NativeGeomEventHandler
 
-foreign import handleMouseDown :: GeomEventHandler
+foreign import handleMouseDownImpl :: NativeGeomEventHandler
 
 foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeometryCache -> Json -> Either String GeometryCache
 
@@ -74,9 +76,13 @@ instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
 instance encodeJsonGeometryCache :: EncodeJson GeometryCache where
   encodeJson = geometryCacheToJson
 
--- | Helper so we don't have to write the same thing for all 3 handlers
+-- | Type of event handlers for the Scene component.
+type NativeGeomEventHandler
+  = Fn4 ForeignActionConfig Context2d MouseEvent GeometryCache (Effect ForeignAction)
+
+-- | Curried version of NativeGeomEventHandler.
 type GeomEventHandler
-  = Context2d -> MouseEvent -> GeometryCache -> Effect Unit
+  = Context2d -> MouseEvent -> GeometryCache -> Effect ForeignAction
 
 -- | Some foreign stuff might error out 
 -- | so we pass this to ts to inform it how we handle errors 
@@ -100,3 +106,36 @@ type NodeState
   = { inputs :: Array InputData
     , colorMap :: ForeignTypeMap
     }
+
+-- | Stuff the ts side of things can tell us to do
+data ForeignAction
+  -- Create a connection from output-id to input-id, input-index
+  = CreateConnection NodeId NodeId Int
+  -- This just does nothing
+  | NoAction
+
+-- | Config used by the ts side to create actions
+newtype ForeignActionConfig
+  = ForeignActionConfig
+  { createConnection :: Fn3 NodeId NodeId Int ForeignAction
+  , nothing :: ForeignAction
+  }
+
+instance defaultForeignActionConfig :: Default ForeignActionConfig where
+  def =
+    ForeignActionConfig
+      { createConnection: mkFn3 CreateConnection
+      , nothing: NoAction
+      }
+
+-- | Handle a mouse down event
+handleMouseDown :: GeomEventHandler
+handleMouseDown = runFn4 handleMouseDownImpl $ def
+
+-- | Handle a mouse up event
+handleMouseUp :: GeomEventHandler
+handleMouseUp = runFn4 handleMouseUpImpl $ def
+
+-- | Handle a mouse move event
+handleMouseMove :: GeomEventHandler
+handleMouseMove = runFn4 handleMouseMoveImpl $ def
