@@ -286,8 +286,41 @@ const createConnection = (
   cache: GeometryCache,
   output: IHasNode,
   input: IHasNode & { index: number }
-) => {}
+) => {
+  console.log("connecting")
 
+  cache.connection._type = PartialKind.Nothing
+
+  // updateConnectionPreview(cache, [])
+}
+
+/**
+ * Select the output of the current connection.
+ *
+ * @param cache The cache to mutate.
+ * @param output The output to select.
+ * @param mouse The current mouse position.
+ */
+const selectOutput = (cache: GeometryCache, output: IHasNode, mouse: Vec) => {
+  if (cache.connection._type === PartialKind.Input) {
+    createConnection(cache, output, cache.connection)
+  } else {
+    cache.connection = {
+      ...output,
+      _type: PartialKind.Output
+    }
+
+    updateConnectionPreview(cache, mouse)
+  }
+}
+
+/**
+ * Select the input of the current connection.
+ *
+ * @param cache The cache to mutate.
+ * @param input The input to select.
+ * @param mouse The current mouse position.
+ */
 const selectInput = (
   cache: GeometryCache,
   input: InputPartialConnection,
@@ -340,12 +373,9 @@ export const onMouseDown = (ctx: CanvasRenderingContext2D) => (
 
   if (target._type === MouseTargetKind.NodeInput) {
     selectInput(cache, target, mousePosition)
-  }
-
-  if (
-    target._type === MouseTargetKind.Node ||
-    target._type === MouseTargetKind.Nothing
-  ) {
+  } else if (target._type === MouseTargetKind.NodeOutput) {
+    selectOutput(cache, target, mousePosition)
+  } else {
     cache.dragging = target
   }
 
