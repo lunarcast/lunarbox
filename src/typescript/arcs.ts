@@ -270,7 +270,7 @@ export const placeInputs = <T extends { output: NodeId | null }>(
 
   const connectedOverlapping = connected.map((input): T & IArc => {
     const other = getData(input.output!)
-    const relative = sub2(null, other, position)
+    const relative = sub2([], other, position)
     const angle = Math.atan2(-relative[0], relative[1])
 
     return normalize({

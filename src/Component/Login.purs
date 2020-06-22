@@ -54,7 +54,6 @@ component =
   handleAction :: Action -> HalogenM Input Action ChildSlots o m Unit
   handleAction = case _ of
     HandleLoginForm fields -> do
-      print "im here"
       loginUser fields
         >>= case _ of
             Left err -> void $ query F._formless unit $ injQuery $ SetLoginError (Just err) unit
