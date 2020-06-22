@@ -18,6 +18,8 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Monoid.Additive (Additive(..))
+import Data.Newtype (unwrap)
 import Data.Newtype as Newtype
 import Data.Nullable as Nullable
 import Data.Set as Set
@@ -35,7 +37,7 @@ import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
-import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction, _VisualFunction)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -44,7 +46,7 @@ import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.NodeGroup (NodeGroup, _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph (emptyGraph)
@@ -538,9 +540,12 @@ visualFunctionCount :: forall a s m. State a s m -> Int
 visualFunctionCount = Map.size <<< filter (is _VisualFunction) <<< view _functions
 
 -- Get the number of nodes in a state
--- TODO: make this actually work again
 nodeCount :: forall a s m. State a s m -> Int
-nodeCount _ = 777
+nodeCount = unwrap <<< foldMap (Additive <<< go) <<< view _functions
+  where
+  go (VisualFunction (NodeGroup { nodes })) = length nodes
+
+  go _ = 0
 
 -- Search using the current search term in the state
 searchNode :: forall a s m. State a s m -> Array FunctionName
