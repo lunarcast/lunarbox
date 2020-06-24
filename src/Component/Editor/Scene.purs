@@ -6,10 +6,10 @@ module Lunarbox.Component.Editor.Scene
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
-import Data.Default (def)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Unsafe (unsafePerformEffect)
 import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, raise, subscribe)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
@@ -17,7 +17,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Effect (print)
-import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
+import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, emptyGeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
 import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
@@ -54,7 +54,12 @@ canvasRef = RefLabel "canvas"
 component :: forall m. MonadEffect m => MonadAsk Config m => MonadAff m => Component HH.HTML Query Input Output m
 component =
   mkComponent
-    { initialState: const { context: Nothing, geometryCache: def }
+    { initialState:
+      const
+        { context: Nothing
+        -- NOTE: I made sure did is a safe operation to perform
+        , geometryCache: unsafePerformEffect emptyGeometryCache
+        }
     , render
     , eval:
       mkEval

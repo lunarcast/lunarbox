@@ -1,7 +1,7 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
-import Control.Monad.State (execState, gets, put, runState)
+import Control.Monad.State (execState, execStateT, gets, put, runState)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
@@ -53,7 +53,7 @@ import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectF
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Ord (sortBySearch)
-import Lunarbox.Foreign.Render (GeometryCache)
+import Lunarbox.Foreign.Render (GeometryCache, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
 import Svg.Attributes (Color)
 import Svg.Attributes as Color
@@ -101,7 +101,7 @@ type State a s m
     }
 
 -- Starting state which contains nothing
-emptyState :: forall a s m. State a s m
+emptyState :: forall a s m f. MonadEffect f => f (State a s m)
 emptyState =
   initializeFunction (FunctionName "main")
     { currentTab: Settings
@@ -214,7 +214,7 @@ createNode name = do
   Tuple (Tuple id inputs) newState <- gets $ runState create
   gets (view _currentGeometryCache)
     >>= traverse_ \cache -> do
-        liftEffect $ Native.createNode cache id inputs
+        liftEffect $ Native.createNode cache id inputs true
         void $ put newState
         updateNode id
 
@@ -406,16 +406,16 @@ setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a
 setCurrentFunction name = makeUnconnetacbleList <<< set _currentFunction name
 
 -- Creates a function, adds an output node and set it as the current edited function
-initializeFunction :: forall a s m. FunctionName -> State a s m -> State a s m
+initializeFunction :: forall a s m monad. MonadEffect monad => FunctionName -> State a s m -> monad (State a s m)
 initializeFunction name state =
-  flip execState state do
+  flip execStateT state do
     let
       id = NodeId $ show name <> "-output"
-
-      function = createFunction name id
-    modify_ $ over _project function
+    cache <- liftEffect emptyGeometryCache
+    liftEffect $ Native.createNode cache id 1 false
+    modify_ $ over _project $ createFunction name id
     modify_ $ setCurrentFunction (Just name)
-    modify_ $ set _currentGeometryCache $ Just def
+    modify_ $ set _currentGeometryCache $ Just cache
     modify_ $ set (_atFunctionData name) (Just def)
     modify_ compile
 

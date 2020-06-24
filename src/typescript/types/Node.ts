@@ -8,8 +8,8 @@ import type { ADT } from "ts-adt"
 /**
  * Interface for everything which keeps track of a node.
  */
-export interface IHasNode {
-  node: NodeGeometry
+export interface IHasNode<N = NodeGeometry> {
+  node: N
   id: NodeId
 }
 
@@ -38,11 +38,18 @@ export type NodeId = { readonly brand: unique symbol } & string
  */
 export interface NodeGeometry {
   background: Circle
-  output: Circle
+  output: Circle | null
   inputs: (Circle | Arc)[]
   position: Vec
   lastState: NodeState | null
   inputOverwrites: Record<number, NodeId>
+}
+
+/**
+ * Nodes which we are sure have an output geometry
+ */
+export type NodeWithOutput = NodeGeometry & {
+  output: NonNullable<NodeGeometry["output"]>
 }
 
 /**
@@ -77,7 +84,7 @@ export type PartialConnection = ADT<{
 export type GeometryCache = {
   nodes: Map<NodeId, NodeGeometry>
   camera: Mat23Like
-  selectedOutput: NodeGeometry | null
+  selectedOutput: NodeWithOutput | null
   selectedNode: NodeGeometry | null
   selectedInput: Arc | null
   selectedNodes: Set<NodeId>

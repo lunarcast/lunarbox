@@ -8,7 +8,7 @@ module Lunarbox.Component.Editor
 
 import Prelude
 import Control.Monad.Reader (class MonadReader, asks)
-import Control.Monad.State (get, gets, modify_)
+import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
@@ -171,8 +171,8 @@ component =
             inputFunctionName = FunctionName inputValue
 
             exists = functionExists inputFunctionName state
-          if inputValue /= "" && (not exists) then
-            modify_ $ initializeFunction inputFunctionName
+          if inputValue /= "" && (not exists) then do
+            initializeFunction inputFunctionName state >>= put
           else
             if exists then
               handleAction $ SelectFunction $ Just inputFunctionName
@@ -197,7 +197,7 @@ component =
         modify_ $ set _currentTab newTab <<< set _panelIsOpen true
         void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     CreateFunction name -> do
-      modify_ $ initializeFunction name
+      get >>= initializeFunction name >>= put
     SelectFunction name -> do
       oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name

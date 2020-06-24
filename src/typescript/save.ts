@@ -13,6 +13,7 @@ interface SavedData {
       {
         position: Vec2Like
         inputCount: number
+        hasOutput: boolean
       }
     ]
   >
@@ -38,15 +39,14 @@ export const geometryCacheFromJson = (
 ) => ({ camera, nodes }: SavedData): Either<String, GeometryCache> => {
   try {
     return config.right({
-      ...emptyGeometryCache,
-      connectionPreview: emptyGeometryCache.connectionPreview.copy(),
+      ...emptyGeometryCache(),
       selectedNodes: new Set(),
       camera: camera,
       zOrder: new DCons(nodes.map(([id]) => id)),
       nodes: new Map(
         nodes.map(([id, data]) => [
           id,
-          createNodeGeometry(data.position, data.inputCount)
+          createNodeGeometry(data.position, data.inputCount, data.hasOutput)
         ])
       )
     })
@@ -71,7 +71,8 @@ export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
           position: node.position as Vec2Like,
           inputCount: node.inputs[0].attribs!.selectable
             ? node.inputs.length
-            : 0
+            : 0,
+          hasOutput: node.output !== null
         }
       ]
     })

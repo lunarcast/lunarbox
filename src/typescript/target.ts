@@ -1,4 +1,9 @@
-import type { NodeId, GeometryCache, IHasNode } from "./types/Node"
+import type {
+  NodeWithOutput,
+  GeometryCache,
+  IHasNode,
+  NodeId
+} from "./types/Node"
 import type { ADT } from "ts-adt"
 import * as g from "@thi.ng/geom"
 import { Vec, dist, distSq2 } from "@thi.ng/vectors"
@@ -25,7 +30,7 @@ export type MouseTarget = ADT<{
     geom: g.Arc
   }
   [MouseTargetKind.Node]: IHasNode
-  [MouseTargetKind.NodeOutput]: IHasNode
+  [MouseTargetKind.NodeOutput]: IHasNode<NodeWithOutput>
   [MouseTargetKind.Nothing]: {}
 }>
 
@@ -51,9 +56,14 @@ export const getMouseTarget = (
 
   const distanceToMouseSq = (position: Vec) => distSq2(mousePosition, position)
 
-  const closestOutput = minBy(([, a], [, b]) => {
-    return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
-  }, nodes)
+  const closestOutput: [NodeId, NodeWithOutput] | null = minBy(
+    ([, a], [, b]) => {
+      return distanceToMouseSq(a.output.pos) < distanceToMouseSq(b.output.pos)
+    },
+    nodes.filter(
+      (input): input is [NodeId, NodeWithOutput] => input[1].output !== null
+    )
+  )
 
   if (
     closestOutput !== null &&
@@ -96,17 +106,13 @@ export const getMouseTarget = (
     }
   }
 
-  // Rn this is the same as the output one but in the future nodes might not have outputs.
-  const closestNode = minBy(
-    ([, a], [, b]) => {
-      return distanceToMouseSq(a.output!.pos) < distanceToMouseSq(b.output!.pos)
-    },
-    [...cache.nodes.entries()]
-  )
+  const closestNode = minBy(([, a], [, b]) => {
+    return distanceToMouseSq(a.position) < distanceToMouseSq(b.position)
+  }, nodes)
 
   if (
     closestNode &&
-    distanceToMouse(closestNode[1].output!.pos) < pickDistance.node
+    distanceToMouse(closestNode[1].position) < pickDistance.node
   ) {
     return {
       _type: MouseTargetKind.Node,

@@ -118,7 +118,8 @@ component =
     CreateProject -> do
       -- Display a loading message
       modify_ $ set _projectList Loading
-      response <- createProject emptyState
+      state <- emptyState
+      response <- createProject state
       case response of
         Right id -> navigate $ Project id
         Left err -> modify_ $ set _projectList $ Failure err

@@ -36,7 +36,7 @@ import {
 } from "./types/Node"
 
 // Used in the Default purescript implementation of GeomCache
-export const emptyGeometryCache: GeometryCache = {
+export const emptyGeometryCache = (): GeometryCache => ({
   nodes: new Map(),
   camera: transform23(null, [0, 0], 0, 1) as Mat23Like,
   selectedOutput: null,
@@ -49,7 +49,8 @@ export const emptyGeometryCache: GeometryCache = {
   connectionPreview: g.line([0, 0], [0, 0], {
     weight: connectionWidth
   })
-}
+})
+
 /**
  * Create the geometry for a node input.
  *
@@ -73,7 +74,10 @@ const updateConnectionPreview = (cache: GeometryCache, mouse: Vec) => {
 
   cache.connectionPreview.points[1] = mouse
 
-  if (cache.connection._type === PartialKind.Output) {
+  if (
+    cache.connection._type === PartialKind.Output &&
+    cache.connection.node.output
+  ) {
     cache.connectionPreview.attribs!.stroke = cache.connection.node.output.attribs!.fill
     cache.connectionPreview.points[0] = cache.connection.node.position
   } else if (
@@ -125,10 +129,12 @@ const createInputGeometry = (position: Vec2Like) => {
  *
  * @param position The position of the node
  * @param numberOfInputs The number of input arcs to create.
+ * @param hasOutput If this is true a geometry for the output will be generated as well
  */
 export const createNodeGeometry = (
   position: Vec2Like,
-  numberOfInputs: number
+  numberOfInputs: number,
+  hasOutput: boolean
 ): NodeGeometry => {
   const inputGeom =
     numberOfInputs === 0
@@ -137,7 +143,7 @@ export const createNodeGeometry = (
           .fill(1)
           .map(() => createInputGeometry(position))
 
-  const output = g.circle(position, 10, { fill: "yellow" })
+  const output = hasOutput ? g.circle(position, 10, { fill: "yellow" }) : null
 
   const background = g.withAttribs(g.circle(position, nodeRadius), {
     alpha: nodeBackgroundOpacity
@@ -212,7 +218,7 @@ export const renderScene = (
       ...inputs.map((input) =>
         input.type === Type.CIRCLE ? input : g.pathFromCubics(g.asCubic(input))
       ),
-      output
+      ...(output === null ? [] : [output])
     ])
 
   const withPreview =

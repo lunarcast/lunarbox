@@ -9,16 +9,18 @@ import { TAU } from "@thi.ng/math"
 /**
  * Generate the geometries for a new node.
  *
- * @param cache The cache to mutate
- * @param id The id of the new node
- * @param inputCount The number of inputs arcs to generate for the new node
+ * @param cache The cache to mutate.
+ * @param id The id of the new node.
+ * @param inputCount The number of inputs arcs to generate for the new node.
+ * @param hasOutput If this is true an output geometry will be generated as well.
  */
 export const createNode = (cache: GeometryCache) => (id: NodeId) => (
   inputCount: number
-) => () => {
+) => (hasOutput: boolean) => () => {
   const shape = Native.createNodeGeometry(
     [0, 0], // TODO: find a better way to place nodes
-    inputCount
+    inputCount,
+    hasOutput
   )
 
   cache.zOrder.push(id)

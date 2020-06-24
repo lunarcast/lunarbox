@@ -15,6 +15,7 @@ module Lunarbox.Foreign.Render
   , handleMouseUp
   , createNode
   , refreshInputArcs
+  , emptyGeometryCache
   ) where
 
 import Prelude
@@ -46,7 +47,7 @@ foreign import getContext :: HTMLCanvasElement -> Effect Context2d
 
 foreign import renderScene :: Context2d -> GeometryCache -> Effect Unit
 
-foreign import emptyGeometryCache :: GeometryCache
+foreign import emptyGeometryCache :: Effect GeometryCache
 
 foreign import handleMouseMoveImpl :: NativeGeomEventHandler
 
@@ -58,15 +59,9 @@ foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeometryC
 
 foreign import geometryCacheToJson :: GeometryCache -> Json
 
-foreign import createNode :: GeometryCache -> NodeId -> Int -> Effect Unit
+foreign import createNode :: GeometryCache -> NodeId -> Int -> Boolean -> Effect Unit
 
 foreign import refreshInputArcs :: GeometryCache -> NodeId -> NodeState -> Effect Unit
-
-instance defaultGeomtryCache :: Default GeometryCache where
-  -- WARNING:
-  -- this might create spooky actions at a distance!!! 
-  -- (This doesn't happen anywhere curently but I should keep it in mind)
-  def = emptyGeometryCache
 
 instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:

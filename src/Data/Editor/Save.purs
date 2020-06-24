@@ -8,6 +8,7 @@ import Prelude
 import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Either (Either)
 import Data.Map (Map)
+import Effect.Unsafe (unsafePerformEffect)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -65,6 +66,8 @@ jsonToState json = do
   let
     recivedData = Record.merge { name, isExample, isVisible } saveData
 
+    -- TODO: this is pretty low priority but maybe I could get rid of the call to
+    -- unsafePerformEffect by making the whole function return an effect
     baseState :: State a s m
-    baseState = Record.merge recivedData emptyState
+    baseState = Record.merge recivedData $ unsafePerformEffect emptyState
   pure $ compile $ loadPrelude baseState
