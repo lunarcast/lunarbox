@@ -51,6 +51,10 @@ export const emptyGeometryCache = (): GeometryCache => ({
   })
 })
 
+// TODO: go trough every piece of rendering code and
+// make sure everything is floored before rendering.
+// It's unbelievable how much this helps in terms of performance :D
+
 /**
  * Create the geometry for a node input.
  *
@@ -411,7 +415,7 @@ const pan = (cache: GeometryCache, offset: Vec) => {
 export const onMouseUp = (
   config: ForeignActionConfig,
   ctx: CanvasRenderingContext2D,
-  _: MouseEvent,
+  event: MouseEvent,
   cache: GeometryCache
 ) => (): ForeignAction => {
   for (const [id, node] of cache.nodes) {
@@ -420,9 +424,7 @@ export const onMouseUp = (
 
   cache.dragging = null
 
-  renderScene(ctx, cache)
-
-  return config.nothing
+  return onMouseMove(config, ctx, event, cache)()
 }
 
 /**
