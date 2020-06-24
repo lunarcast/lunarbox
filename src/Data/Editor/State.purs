@@ -33,6 +33,7 @@ import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runI
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
+import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
@@ -49,7 +50,6 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
-import Lunarbox.Data.Graph (emptyGraph)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Ord (sortBySearch)
@@ -234,27 +234,25 @@ getOutputType functionName id state = do
 -- Get all the input pins in the current function
 currentInputSet :: forall a s m. State a s m -> Set.Set (Tuple NodeId Int)
 currentInputSet state =
-  let
-    nodeGroup = fromMaybe G.emptyGraph $ preview _currentNodes state
-  in
-    Set.fromFoldable
-      $ ( \(Tuple id node) ->
-            let
-              inputs = view _nodeInputs node
-            in
-              List.mapWithIndex (\index -> const $ Tuple id index) inputs
-        )
-      =<< G.toUnfoldable nodeGroup
+  Set.fromFoldable
+    $ ( \(Tuple id node) ->
+          let
+            inputs = view _nodeInputs node
+          in
+            List.mapWithIndex (const <<< Tuple id) inputs
+      )
+    =<< nodeGroup
+  where
+  nodeGroup :: List _
+  nodeGroup = maybe mempty Map.toUnfoldable $ preview _currentNodes state
 
 -- Ger a list of all the outputs
 currentOutputList :: forall a s m. State a s m -> Set.Set NodeId
 currentOutputList state =
   let
-    nodes = fromMaybe G.emptyGraph $ preview _currentNodes state
+    keys = maybe mempty Map.keys $ preview _currentNodes state
 
     output = preview (_currentNodeGroup <<< _Just <<< _NodeGroupOutput) state
-
-    keys = G.keys nodes
   in
     case output of
       Just id -> Set.difference keys $ Set.singleton id
@@ -363,7 +361,7 @@ canConnect from (Tuple toId toIndex) state =
     let
       typeMap = view _typeMap state
     nodes <- preview _currentNodes state
-    guard $ not $ G.wouldCreateCycle from toId nodes
+    guard $ not $ G.wouldCreateCycle from toId $ toGraph nodes
     currentFunction <- view _currentFunction state
     fromType <- getOutputType currentFunction from state
     toType <- Map.lookup (DeepLocation currentFunction $ DeepLocation toId $ InputPin toIndex) typeMap
@@ -392,22 +390,16 @@ tryConnecting state =
               )
               state
 
-      state' = case previousConnection of
-        Just id -> over _currentNodes (G.removeEdge id toId) state
-        Nothing -> state
-
-      state'' = over _currentNodes (G.insertEdge from toId) state'
-
-      state''' =
+      state' =
         set
           ( _atCurrentNode toId
               <<< _nodeInput toIndex
           )
           (Just from)
-          state''
+          state
 
-      state'''' = set _partialTo Nothing $ set _partialFrom Nothing state'''
-    pure $ compile state''''
+      state'' = set _partialTo Nothing $ set _partialFrom Nothing state'
+    pure $ compile state''
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
@@ -429,34 +421,9 @@ initializeFunction name state =
 
 -- Remove a conenction from the current function
 removeConnection :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> State a s m
-removeConnection from (Tuple toId toIndex) state = compile state''
+removeConnection from (Tuple toId toIndex) state = compile state'
   where
   state' = set (_atCurrentNode toId <<< _nodeInput toIndex) Nothing state
-
-  toInputs = view (_atCurrentNode toId <<< _nodeInputs) state'
-
-  inputsToSource :: List _
-  inputsToSource =
-    foldMap
-      ( \maybeInput ->
-          maybe mempty pure
-            $ do
-                input <- maybeInput
-                guard $ input == from
-                pure input
-      )
-      toInputs
-
-  state'' =
-    -- We only remove the connections if there are no dependencies left
-    if List.null inputsToSource then
-      over _currentNodes (G.removeEdge from toId) state'
-    else
-      state'
-
--- Counts how many times a function is used inside another function
-countFunctionRefs :: FunctionName -> G.Graph NodeId Node -> Int
-countFunctionRefs name = G.size <<< G.filterVertices ((_ == name) <<< getFunctionName)
 
 -- Deletes a node form a given function
 deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
@@ -468,15 +435,11 @@ deleteNode functionName id state =
 
           -- The function the node runs
           nodeFunction = fromMaybe (FunctionName "") $ getFunctionName <$> node
-
-          -- If this is the last reference to the used function in the current function we remove the edge from the dependency graph
-          functionRefCount = countFunctionRefs nodeFunction (fromMaybe emptyGraph $ preview (_nodes functionName) state)
         modify_
           $ over (_nodes functionName)
           $ map
           $ over _nodeInputs
           $ map \input -> if input == Just id then Nothing else input
-        modify_ $ over (_nodes functionName) $ G.delete id
         -- TODO: make this work with the new foreign system
         -- modify_ $ set (_atNodeData functionName id) Nothing
         modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id /= _)
@@ -487,7 +450,7 @@ deleteNode functionName id state =
   isOutput = maybe false (is _OutputNode) node
 
 -- Delete all the nodes runnign a certain functions inside another functions
-deleteFunctionReferences :: forall a s m. FunctionName -> FunctionName -> G.Graph NodeId Node -> State a s m -> State a s m
+deleteFunctionReferences :: forall a s m. FunctionName -> FunctionName -> Map NodeId Node -> State a s m -> State a s m
 deleteFunctionReferences toDelete functionName graph state =
   foldr (deleteNode functionName) state
     $ filterMap
@@ -497,7 +460,7 @@ deleteFunctionReferences toDelete functionName graph state =
             else
               Nothing
         )
-    $ (G.toUnfoldable graph :: List _)
+    $ (Map.toUnfoldable graph :: List _)
 
 -- Delete a function from the state
 deleteFunction :: forall a s m. FunctionName -> State a s m -> State a s m
@@ -612,7 +575,7 @@ _functions = _project <<< _ProjectFunctions
 _nodeGroup :: forall a s m. FunctionName -> Traversal' (State a s m) NodeGroup
 _nodeGroup name = _project <<< _projectNodeGroup name
 
-_nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (G.Graph NodeId Node)
+_nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (Map NodeId Node)
 _nodes name = _nodeGroup name <<< _NodeGroupNodes
 
 _atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) (Maybe Node)
@@ -668,7 +631,7 @@ _currentGeometryCache =
       )
   )
 
-_currentNodes :: forall a s m. Traversal' (State a s m) (G.Graph NodeId Node)
+_currentNodes :: forall a s m. Traversal' (State a s m) (Map NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
 _atCurrentNode :: forall a s m. NodeId -> Traversal' (State a s m) Node

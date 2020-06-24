@@ -18,6 +18,7 @@ import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
+import Data.Compactable (compact)
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Index (ix)
@@ -25,9 +26,11 @@ import Data.Lens.Record (prop)
 import Data.List (List(..), foldl, mapWithIndex, (!!))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Editor.Class.Depends (class Depends)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
@@ -65,6 +68,11 @@ instance showNode :: Show Node where
   show InputNode = "InputNode"
   show (OutputNode id) = "Output " <> maybe "???" show id
   show (ComplexNode data') = show data'
+
+instance dependsNode :: Depends Node NodeId where
+  getDependencies (OutputNode (Just id)) = Set.singleton id
+  getDependencies (ComplexNode { inputs }) = Set.fromFoldable $ compact inputs
+  getDependencies _ = mempty
 
 -- Check if a node has an output pin
 hasOutput :: Node -> Boolean

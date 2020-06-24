@@ -50,7 +50,6 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, _partialFrom, _partialTo, _unconnectablePins, compile, createNode, deleteFunction, functionExists, initializeFunction, makeUnconnetacbleList, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting, updateNode)
 import Lunarbox.Data.Graph (wouldCreateCycle)
-import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Route (Route(..))
 import Web.Event.Event (Event, preventDefault, stopPropagation)
 import Web.Event.Event as Event
@@ -253,9 +252,9 @@ component =
         >>= traverse
             ( \name -> do
                 cache <- gets $ view $ _atGeometry name
-                (map (maybe mempty G.keys) $ gets $ preview $ _nodes name)
+                (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
                   >>= traverse_ updateNode
-                pure $ cache
+                pure cache
             )
         <#> join
         >>= traverse_

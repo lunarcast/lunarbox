@@ -22,19 +22,16 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression, optimize)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
-import Lunarbox.Data.Editor.Class.Depends (getDependencies)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location)
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
-import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 
 newtype Project
@@ -50,10 +47,7 @@ derive newtype instance encodeJsonProject :: EncodeJson Project
 derive newtype instance decodeJsonProject :: DecodeJson Project
 
 instance graphRepProject :: GraphRep Project FunctionName DataflowFunction where
-  toGraph (Project { functions }) = G.invert $ toGraph $ go <$> functions
-    where
-    go :: DataflowFunction -> Tuple DataflowFunction (Set.Set FunctionName)
-    go function = Tuple function $ getDependencies function
+  toGraph (Project { functions }) = toGraph functions
 
 _ProjectFunctions :: Lens' Project (Map.Map FunctionName DataflowFunction)
 _ProjectFunctions = newtypeIso <<< prop (SProxy :: _ "functions")
@@ -69,7 +63,7 @@ createEmptyFunction id =
   VisualFunction
     $ NodeGroup
         { inputs: mempty
-        , nodes: G.singleton id $ OutputNode Nothing
+        , nodes: Map.singleton id $ OutputNode Nothing
         , output: id
         }
 
