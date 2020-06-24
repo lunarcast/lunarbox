@@ -185,7 +185,9 @@ component =
     CreateNode name -> do
       createNode name
       handleAction Rerender
-    TogglePanel -> modify_ $ over _panelIsOpen not
+    TogglePanel -> do
+      modify_ $ over _panelIsOpen not
+      void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       panelWasOpen <- gets $ view _panelIsOpen
@@ -193,6 +195,7 @@ component =
         handleAction TogglePanel
       else do
         modify_ $ set _currentTab newTab <<< set _panelIsOpen true
+        void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     CreateFunction name -> do
       modify_ $ initializeFunction name
     SelectFunction name -> do

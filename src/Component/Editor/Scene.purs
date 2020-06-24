@@ -42,6 +42,7 @@ type Input
 
 data Query a
   = LoadScene GeometryCache a
+  | HandleResize a
   | Rerender a
 
 data Output
@@ -116,6 +117,9 @@ component =
       pure $ Just a
     Rerender a -> do
       handleAction Render
+      pure $ Just a
+    HandleResize a -> do
+      handleAction ResizeCanvas
       pure $ Just a
 
   -- This only renders the canvas, the rest of the rendering is done via some typescript code
