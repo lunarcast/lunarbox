@@ -28,7 +28,7 @@ import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
-import Lunarbox.Capability.Editor.Type (generateColorMap)
+import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
@@ -149,10 +149,17 @@ updateNode id =
               gets (preview $ _atCurrentNode id)
                 >>= traverse_ \node -> do
                     typeMap <- gets $ view _typeMap
+                    nodeGroup <- gets $ preview (_nodeGroup currentFunction)
                     let
                       inputs = List.toUnfoldable $ view _nodeInputs node
 
-                      colorMap = generateColorMap (\pin -> flip Map.lookup typeMap $ DeepLocation currentFunction $ DeepLocation id pin) node
+                      colorMap = case node of
+                        InputNode ->
+                          fromMaybe mempty do
+                            group <- nodeGroup
+                            ty <- Map.lookup (Location currentFunction) typeMap
+                            pure $ typeToColor <$> inputNodeType group id ty
+                        _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ DeepLocation currentFunction $ DeepLocation id pin) node
                     liftEffect
                       $ Native.refreshInputArcs cache id
                           { inputs: Nullable.toNullable <$> inputs
@@ -161,7 +168,7 @@ updateNode id =
                               { output: Nullable.null
                               , inputs: replicate (length inputs) Nullable.null
                               }
-                              $ (Map.toUnfoldable colorMap :: Array _)
+                              (Map.toUnfoldable colorMap :: Array _)
                           }
   where
   -- TODO: remove this once I get rid of this trash color system from halogen-svg

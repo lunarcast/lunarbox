@@ -17,14 +17,18 @@ module Lunarbox.Data.Dataflow.Expression
   , removeWrappers
   , wrapWith
   , wrappers
+  , everywhereOnExpressionM
+  , everywhereOnExpression
   ) where
 
 import Prelude
+import Data.Identity (Identity(..))
 import Data.List (List(..), foldr, (:))
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
+import Data.Traversable (traverse)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Scheme (Scheme)
 import Lunarbox.Data.String (indent)
@@ -60,6 +64,30 @@ data Expression l
 derive instance eqExpression :: Eq l => Eq (Expression l)
 
 derive instance functorExpression :: Functor Expression
+
+-- Map every level of an expression in a monadic context
+everywhereOnExpressionM :: forall l m. Monad m => (Expression l -> m (Expression l)) -> Expression l -> m (Expression l)
+everywhereOnExpressionM f = go'
+  where
+  go continue (FunctionCall loc func arg) = FunctionCall loc <$> continue func <*> continue arg
+
+  go continue (Lambda loc name body) = Lambda loc name <$> continue body
+
+  go continue (Let loc name value body) = Let loc name <$> continue value <*> continue body
+
+  go continue (FixPoint loc body) = FixPoint loc <$> continue body
+
+  go continue (Chain loc expressions) = Chain loc <$> traverse continue expressions
+
+  go _ expr = pure expr
+
+  go' expr = do
+    expr' <- f expr
+    go go' expr'
+
+-- Map every level of an expression
+everywhereOnExpression :: forall l. (Expression l -> Expression l) -> Expression l -> Expression l
+everywhereOnExpression mapper = unwrap <<< everywhereOnExpressionM (Identity <<< mapper)
 
 -- Takes a list of argument names and a body and creates the body of a function
 functionDeclaration :: forall l. l -> Expression l -> List VarName -> Expression l
@@ -188,17 +216,11 @@ wrapWith Nil = identity
 
 -- Optimize an expression
 optimize :: forall l. Expression l -> Expression l
-optimize expression@(Let location name value body) = case removeWrappers body of
-  Variable location' name'
-    | name == name' -> wrapWith (wrappers body) $ wrap location' $ optimize value
-  _ -> Let location name (optimize value) $ optimize body
+optimize = everywhereOnExpression go
+  where
+  go (Let location name value body) = case removeWrappers body of
+    Variable location' name'
+      | name == name' -> wrapWith (wrappers body) $ wrap location' value
+    _ -> Let location name value body
 
-optimize (FunctionCall location calee argument) = FunctionCall location (optimize calee) $ optimize argument
-
-optimize (Lambda location argument body) = Lambda location argument $ optimize body
-
-optimize (FixPoint location body) = FixPoint location $ optimize body
-
-optimize (Chain location expressions) = Chain location $ optimize <$> expressions
-
-optimize expression = expression
+  go expr = expr

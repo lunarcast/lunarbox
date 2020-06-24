@@ -43,13 +43,22 @@ export const refreshInputArcsImpl = (
 ) => {
   const node = cache.nodes.get(id)
 
-  if (!node || !node.inputs[0].attribs!.selectable) {
+  if (!node) {
+    return
+  }
+
+  const { colorMap, inputs } = state
+
+  if (node.output !== null && colorMap.output) {
+    node.output.attribs!.fill = colorMap.output
+  }
+
+  if (!node.inputs[0].attribs!.selectable) {
     return
   }
 
   node.lastState = state
 
-  const { colorMap, inputs } = state
   const arcs = Arc.placeInputs(
     (id) => positionOverwrites[id] ?? cache.nodes.get(id)?.position ?? [0, 0],
     inputs.map((output, index) => ({
@@ -59,10 +68,6 @@ export const refreshInputArcsImpl = (
     })),
     node.position as Vec2Like
   )
-
-  if (node.output && colorMap.output) {
-    node.output.attribs!.fill = colorMap.output
-  }
 
   for (let i = 0; i < arcs.length; i++) {
     const layer = arcs[i]

@@ -223,7 +223,7 @@ component =
       name <- gets $ view _name
       if String.length name >= 2 then do
         newState <- gets stateToJson
-        unless (newState == oldState) $ raise $ Save newState
+        raise $ Save newState
         handleAction $ Autosave newState
       else
         handleAction $ Autosave oldState

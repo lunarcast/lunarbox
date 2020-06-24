@@ -3,11 +3,12 @@ module Lunarbox.Capability.Editor.Type
   , generateColorMap
   , prettify
   , combineColors
+  , inputNodeType
   ) where
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array (fold, foldMap, (!!))
+import Data.Array (fold, foldMap, foldr, (!!))
 import Data.Array as Array
 import Data.Enum (enumFromTo)
 import Data.Filterable (filterMap)
@@ -16,14 +17,17 @@ import Data.Lens (view)
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String.CodeUnits as String
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, uncurry)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply)
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
-import Lunarbox.Data.Editor.Node (Node, _nodeInputs, hasOutput)
+import Lunarbox.Data.Dataflow.Type as Type
+import Lunarbox.Data.Editor.Node (Node(..), _nodeInputs, hasOutput)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
+import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..))
 import Lunarbox.Math.SeededRandom (seededInt)
 import Lunarbox.Svg.Attributes (colorsAreEqual)
 import Svg.Attributes (Color(..))
@@ -77,7 +81,7 @@ typeToColor (TConstant _ vars) = unwrap $ fold $ Color <$> typeToColor <$> vars
 
 typeToColor (TVariable _ name) = RGB shade shade shade
   where
-  shade = seededInt (show name) 0 255
+  shade = seededInt (show name) 50 220
 
 -- Generate all possible pin locations for a certain node
 pinLocations :: Node -> List.List Pin
@@ -89,6 +93,8 @@ pinLocations node = output <> inputs
 
 -- Createa a typeMap from a node and data about it
 generateColorMap :: (Pin -> Maybe Type) -> Node -> Map.Map Pin Color
+generateColorMap _ InputNode = mempty
+
 generateColorMap getType node = Map.fromFoldable pairs
   where
   pairs =
@@ -100,6 +106,23 @@ generateColorMap getType node = Map.fromFoldable pairs
       )
       $ pinLocations node
 
+-- More complex version of generateColorMap specialised on input nodes
+inputNodeType :: NodeGroup -> NodeId -> Type -> Map.Map Pin Type
+inputNodeType (NodeGroup { nodes }) targetId ty = case Type.inputs ty `List.index` inputIndex of
+  Just ty' -> Map.singleton OutputPin ty'
+  Nothing -> mempty
+  where
+  inputIndex = fst $ foldr (uncurry go) (Tuple 0 false) $ (Map.toUnfoldable nodes :: List _)
+
+  go id InputNode (Tuple index false)
+    | id /= targetId = Tuple (index + 1) false
+
+  go id InputNode (Tuple index false)
+    | id == targetId = Tuple index true
+
+  go _ _ data' = data'
+
+-- getInputType :: NodeId -> 
 -- Prettify variable names in types. Should only be used for pretty printing.
 prettify :: Type -> Type
 prettify type' = apply subst type'
