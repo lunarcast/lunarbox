@@ -13,8 +13,9 @@ module Lunarbox.Data.Editor.Project
   ) where
 
 import Prelude
-import Data.Argonaut (class DecodeJson, class EncodeJson)
-import Data.Lens (Lens', Traversal', _Just, set, view)
+import Data.Argonaut (class DecodeJson, class EncodeJson, encodeJson, jsonEmptyObject, (:=), (~>))
+import Data.Filterable (filter)
+import Data.Lens (Lens', Traversal', _Just, is, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Record (prop)
 import Data.Map as Map
@@ -42,7 +43,13 @@ newtype Project
 
 derive instance newtypeProject :: Newtype Project _
 
-derive newtype instance encodeJsonProject :: EncodeJson Project
+instance encodeJsonProject :: EncodeJson Project where
+  encodeJson (Project obj) =
+    "main" := encodeJson obj.main ~> "functions"
+      := encodeJson functions'
+      ~> jsonEmptyObject
+    where
+    functions' = filter (is _VisualFunction) obj.functions
 
 derive newtype instance decodeJsonProject :: DecodeJson Project
 
