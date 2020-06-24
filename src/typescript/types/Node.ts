@@ -40,6 +40,7 @@ export interface NodeGeometry {
   background: Circle
   output: Circle | null
   inputs: (Circle | Arc)[]
+  connections: Line[]
   position: Vec
   lastState: NodeState | null
   inputOverwrites: Record<number, NodeId>

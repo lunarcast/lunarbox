@@ -12,8 +12,8 @@ interface SavedData {
       NodeId,
       {
         position: Vec2Like
-        inputCount: number
         hasOutput: boolean
+        inputCount: number
       }
     ]
   >
@@ -46,7 +46,12 @@ export const geometryCacheFromJson = (
       nodes: new Map(
         nodes.map(([id, data]) => [
           id,
-          createNodeGeometry(data.position, data.inputCount, data.hasOutput)
+          createNodeGeometry(
+            data.position,
+            data.inputCount,
+            // @ts-ignore I use a number as a boolean here which is ok in this context
+            data.hasOutput
+          )
         ])
       )
     })

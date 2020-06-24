@@ -372,34 +372,17 @@ canConnect from (Tuple toId toIndex) state =
 clearPartialConnection :: forall a s m. State a s m -> State a s m
 clearPartialConnection = set _partialFrom Nothing <<< set _partialTo Nothing <<< set _unconnectablePins mempty
 
--- Tries connecting the pins the user selected
-tryConnecting :: forall a s m. State a s m -> State a s m
-tryConnecting state =
-  fromMaybe state do
-    let
-      typeMap = view _typeMap state
-    from <- view _partialFrom state
-    Tuple toId toIndex <- view _partialTo state
-    currentFunction <- view _currentFunction state
-    let
-      previousConnection =
-        join
-          $ preview
-              ( _atCurrentNode toId
-                  <<< _nodeInput toIndex
-              )
-              state
-
-      state' =
-        set
-          ( _atCurrentNode toId
-              <<< _nodeInput toIndex
-          )
-          (Just from)
-          state
-
-      state'' = set _partialTo Nothing $ set _partialFrom Nothing state'
-    pure $ compile state''
+-- Creates a connection from a node id to a node id an an input index
+createConnection :: forall a s m. NodeId -> NodeId -> Int -> State a s m -> State a s m
+createConnection from toId toIndex state = compile state'
+  where
+  state' =
+    set
+      ( _atCurrentNode toId
+          <<< _nodeInput toIndex
+      )
+      (Just from)
+      state
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m

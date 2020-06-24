@@ -1,6 +1,6 @@
 import { DCons } from "@thi.ng/dcons"
 import * as g from "@thi.ng/geom"
-import { closestPoint, withAttribs } from "@thi.ng/geom"
+import { closestPoint, withAttribs, Line } from "@thi.ng/geom"
 import { IHiccupShape, Type } from "@thi.ng/geom-api"
 import { walk } from "@thi.ng/hdom-canvas"
 import { TAU } from "@thi.ng/math"
@@ -108,9 +108,7 @@ const updateConnectionPreview = (cache: GeometryCache, mouse: Vec) => {
 /**
  * Create the geometry for a node input.
  *
- * @param position The position of the input
- * @param step The layer the input lays on.
- * @param input The input-specific data
+ * @param position The position of the node.
  */
 const createInputGeometry = (position: Vec2Like) => {
   const attribs = {
@@ -155,7 +153,15 @@ export const createNodeGeometry = (
     background,
     position,
     lastState: null,
-    inputOverwrites: {}
+    inputOverwrites: {},
+    connections: Array(numberOfInputs)
+      .fill(1)
+      .map(() =>
+        g.line([0, 0], [0, 0], {
+          connected: false,
+          weight: arcStrokeWidth.normal
+        })
+      )
   }
 }
 
@@ -213,11 +219,20 @@ export const renderScene = (
 
   const nodes: IHiccupShape[] = [...cache.zOrder]
     .map((id) => cache.nodes.get(id)!)
-    .flatMap(({ inputs, output, background }) => [
+    .flatMap(({ inputs, output, background, connections, lastState }) => [
       ...(background.attribs!.fill ? [background] : []),
-      ...inputs.map((input) =>
-        input.type === Type.CIRCLE ? input : g.pathFromCubics(g.asCubic(input))
-      ),
+      ...inputs.flatMap((input, index): IHiccupShape[] => {
+        if (input.type === Type.CIRCLE) return [input]
+
+        const arc = g.pathFromCubics(g.asCubic(input))
+        const connection = connections[index]
+
+        if (connection.attribs!.connected) {
+          return [connection, arc]
+        }
+
+        return [arc]
+      }),
       ...(output === null ? [] : [output])
     ])
 
@@ -284,7 +299,7 @@ const createConnection = (
   config: ForeignActionConfig,
   cache: GeometryCache,
   output: IHasNode,
-  input: IHasNode & { index: number }
+  input: InputPartialConnection
 ): ForeignAction => {
   cache.connection._type = PartialKind.Nothing
 
@@ -353,7 +368,7 @@ const selectInput = (
  * @param geom The geometry to move
  * @param offset The offset to move the geometry by.
  */
-export const moveNode = (geom: NodeGeometry, offset: Vec) => {
+const moveNode = (geom: NodeGeometry, offset: Vec) => {
   add2(null, geom.position, offset)
 }
 
@@ -366,6 +381,18 @@ export const moveNode = (geom: NodeGeometry, offset: Vec) => {
 const moveNodes = (cache: GeometryCache, offset: Vec) => {
   for (const id of cache.selectedNodes) {
     moveNode(cache.nodes.get(id)!, offset)
+  }
+
+  for (const [id, node] of cache.nodes.entries()) {
+    if (
+      node.lastState &&
+      ((cache.selectedNodes.has(id) &&
+        node.lastState.inputs.some((id) => id !== null)) ||
+        node.lastState.inputs.some(
+          (id) => id !== null && cache.selectedNodes.has(id)
+        ))
+    )
+      refreshInputArcsImpl(cache, id, node.lastState)
   }
 }
 

@@ -12,7 +12,7 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
-import Data.Foldable (find, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Lens (over, preview, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
@@ -20,7 +20,7 @@ import Data.Set as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -42,15 +42,14 @@ import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, _partialFrom, _partialTo, _unconnectablePins, compile, createNode, deleteFunction, functionExists, initializeFunction, makeUnconnetacbleList, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting, updateNode)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, updateNode)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
+import Lunarbox.Foreign.Render as Native
 import Web.Event.Event (Event, preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
@@ -70,8 +69,6 @@ data Action
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | StartFunctionCreation
-  | SelectInput NodeId Int Event
-  | SelectOutput NodeId Event
   | RemoveConnection NodeId (Tuple NodeId Int) Event
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | TogglePanel
@@ -87,6 +84,7 @@ data Action
   | Navigate Route
   | LoadScene
   | Rerender
+  | CreateConnection NodeId NodeId Int
 
 data Output
   = Save Json
@@ -204,24 +202,6 @@ component =
       handleAction LoadScene
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SelectInput id index event -> do
-      unconnectableList <- gets $ view _unconnectablePins
-      let
-        setTo = set _partialTo $ Just $ Tuple id index
-
-        location = DeepLocation id $ InputPin index
-
-        shouldConnect = isNothing $ find (_ == location) unconnectableList
-      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
-    SelectOutput id event -> do
-      unconnectableList <- gets $ view _unconnectablePins
-      let
-        setFrom = set _partialFrom $ Just id
-
-        location = DeepLocation id OutputPin
-
-        shouldConnect = isNothing $ find (_ == location) unconnectableList
-      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setFrom
     RemoveConnection from to event -> do
       modify_ $ removeConnection from to
     SetRuntimeValue functionName nodeId runtimeValue -> do
@@ -266,11 +246,25 @@ component =
                 <<< tell
                 <<< Scene.LoadScene
             )
+    CreateConnection from toId toIndex -> do
+      modify_ $ createConnection from toId toIndex
+      gets (view _currentFunction)
+        >>= traverse_
+            ( \name -> do
+                cache <- gets $ view $ _atGeometry name
+                (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
+                  >>= traverse_ updateNode
+            )
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
     TreeC.CreatedFunction name -> Just $ CreateFunction name
     TreeC.SelectedFunction name -> Just $ SelectFunction name
+
+  handleSceneOutput :: Scene.Output -> Maybe Action
+  handleSceneOutput (Scene.BubbleForeignAction action) = case action of
+    Native.CreateConnection from toId toIndex -> Just $ CreateConnection from toId toIndex
+    _ -> Nothing
 
   sidebarIcon activeTab current =
     HH.div
@@ -373,7 +367,7 @@ component =
         ]
 
   scene :: HH.ComponentHTML Action ChildSlots m
-  scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit $ const Nothing
+  scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit handleSceneOutput
 
   logoElement =
     container "sidebar-logo-container"

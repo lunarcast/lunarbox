@@ -66,6 +66,7 @@ export const refreshInputArcsImpl = (
 
   for (let i = 0; i < arcs.length; i++) {
     const layer = arcs[i]
+
     for (const arc of layer) {
       const geom = arc.geom
       const radius = i * inputLayerOffset + nodeRadius
@@ -81,6 +82,26 @@ export const refreshInputArcsImpl = (
         geom.end = arc.arc[1] - arcSpacing + (arc.arc[1] < arc.arc[0] ? TAU : 0)
       }
     }
+  }
+
+  for (let index = 0; index < state.inputs.length; index++) {
+    const connectedTo = state.inputs[index]
+    const connection = node.connections[index]
+
+    if (connectedTo === null) {
+      connection.attribs!.connected = false
+      continue
+    }
+
+    const input = node.inputs[index]
+    const start = cache.nodes.get(connectedTo)!.position
+
+    // TODO: handle the rare cases when input color != output color
+    connection.attribs!.connected = true
+    connection.attribs!.stroke = input.attribs!.stroke
+
+    connection.points[0] = start
+    connection.points[1] = g.closestPoint(input, start)!
   }
 }
 
