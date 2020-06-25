@@ -1,7 +1,7 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
-import Control.Monad.State (execState, execStateT, gets, put, runState)
+import Control.Monad.State (class MonadState, execState, execStateT, gets, put, runState)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
@@ -24,6 +24,7 @@ import Data.Newtype as Newtype
 import Data.Nullable as Nullable
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
 import Effect.Class (class MonadEffect)
@@ -48,14 +49,12 @@ import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
-import Lunarbox.Data.Editor.PartialConnection (PartialConnection, _from, _to)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Foreign.Render (GeometryCache, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
-import Svg.Attributes (Color)
 import Svg.Attributes as Color
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
@@ -83,16 +82,13 @@ type State a s m
     , nextId :: Int
     , currentFunction :: Maybe FunctionName
     , typeMap :: Map Location Type
-    , colorMap :: Map Location Color
     , expression :: Expression Location
     , geometries :: Map FunctionName GeometryCache
     , functionData :: Map FunctionName FunctionData
-    , partialConnection :: PartialConnection
     , valueMap :: ValueMap Location
     , functionUis :: Map FunctionName (FunctionUi a s m)
     , runtimeOverwrites :: ValueMap Location
     , inputCountMap :: Map FunctionName Int
-    , unconnectablePins :: Set.Set (ExtendedLocation NodeId Pin)
     , name :: String
     , isExample :: Boolean
     , isAdmin :: Boolean
@@ -109,15 +105,12 @@ emptyState =
     , nextId: 0
     , panelIsOpen: false
     , typeMap: mempty
-    , colorMap: mempty
     , functionData: mempty
     , valueMap: mempty
     , runtimeOverwrites: mempty
     , functionUis: mempty
     , inputCountMap: mempty
-    , unconnectablePins: mempty
     , geometries: mempty
-    , partialConnection: def
     , expression: nothing
     , project: Project { main: FunctionName "main", functions: mempty }
     , name: "Unnamed project"
@@ -135,6 +128,7 @@ createId = do
   modify_ $ over _nextId (_ + 1)
   pure $ NodeId $ show nextId
 
+-- TODO: make it so you don't have to pass exactly this name to createNode to create an input node
 inputNodeName :: FunctionName
 inputNodeName = FunctionName "input"
 
@@ -144,34 +138,33 @@ updateNode :: forall q i o m a s. MonadEffect m => NodeId -> HalogenM (State a s
 updateNode id =
   gets (view _currentGeometryCache)
     >>= traverse_ \cache ->
-        gets (view _currentFunction)
-          >>= traverse_ \currentFunction ->
-              gets (preview $ _atCurrentNode id)
-                >>= traverse_ \node -> do
-                    typeMap <- gets $ view _typeMap
-                    nodeGroup <- gets $ preview (_nodeGroup currentFunction)
-                    let
-                      inputs = List.toUnfoldable $ view _nodeInputs node
+        withCurrentFunction \currentFunction ->
+          gets (preview $ _atCurrentNode id)
+            >>= traverse_ \node -> do
+                typeMap <- gets $ view _typeMap
+                nodeGroup <- gets $ preview (_nodeGroup currentFunction)
+                let
+                  inputs = List.toUnfoldable $ view _nodeInputs node
 
-                      colorMap = case node of
-                        InputNode ->
-                          fromMaybe mempty do
-                            group <- nodeGroup
-                            ty <- Map.lookup (Location currentFunction) typeMap
-                            pure $ typeToColor <$> inputNodeType group id ty
-                        _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ DeepLocation currentFunction $ DeepLocation id pin) node
-                    liftEffect
-                      $ Native.refreshInputArcs cache id
-                          { inputs: Nullable.toNullable <$> inputs
-                          , colorMap:
-                            foldr (uncurry go)
-                              { output: Nullable.null
-                              , inputs: replicate (length inputs) Nullable.null
-                              }
-                              (Map.toUnfoldable colorMap :: Array _)
+                  colorMap = case node of
+                    InputNode ->
+                      fromMaybe mempty do
+                        group <- nodeGroup
+                        ty <- Map.lookup (Location currentFunction) typeMap
+                        pure $ typeToColor <$> inputNodeType group id ty
+                    _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ DeepLocation currentFunction $ DeepLocation id pin) node
+                liftEffect
+                  $ Native.refreshInputArcs cache id
+                      { inputs: Nullable.toNullable <$> inputs
+                      , colorMap:
+                        foldr (uncurry go)
+                          { output: Nullable.null
+                          , inputs: replicate (length inputs) Nullable.null
                           }
+                          (Map.toUnfoldable colorMap :: Array _)
+                      }
   where
-  -- TODO: remove this once I get rid of this trash color system from halogen-svg
+  -- TODO: remove this once I get rid of this _trash_ color system from halogen-svg
   showColor (Color.RGB r g b) = "rgb(" <> show r <> "," <> show g <> "," <> show b <> ")"
 
   showColor (Color.RGBA r g b a) = "rgba(" <> show r <> "," <> show g <> "," <> show b <> "," <> show a <> ")"
@@ -238,64 +231,33 @@ getOutputType functionName id state = do
     Just index -> (inputs currentFunctionType) `List.index` index
     Nothing -> Map.lookup (DeepLocation functionName $ DeepLocation id OutputPin) typeMap
 
--- Get all the input pins in the current function
-currentInputSet :: forall a s m. State a s m -> Set.Set (Tuple NodeId Int)
-currentInputSet state =
-  Set.fromFoldable
-    $ ( \(Tuple id node) ->
-          let
-            inputs = view _nodeInputs node
-          in
-            List.mapWithIndex (const <<< Tuple id) inputs
-      )
-    =<< nodeGroup
+-- Generate the list of inputs can't be connected 
+generateUnconnectableInputs :: forall a s m. NodeId -> State a s m -> Set.Set { id :: NodeId, index :: Int }
+generateUnconnectableInputs output state = Set.map (\(Tuple id index) -> { id, index }) unconnectableInputs
   where
+  unconnectableInputs = Set.filter (not <<< flip (canConnect output) state) allInputs
+
+  allInputs =
+    Set.fromFoldable
+      $ ( \(Tuple id node) ->
+            List.mapWithIndex (const <<< Tuple id) $ view _nodeInputs node
+        )
+      =<< nodeGroup
+
   nodeGroup :: List _
   nodeGroup = maybe mempty Map.toUnfoldable $ preview _currentNodes state
 
--- Ger a list of all the outputs
-currentOutputList :: forall a s m. State a s m -> Set.Set NodeId
-currentOutputList state =
-  let
-    keys = maybe mempty Map.keys $ preview _currentNodes state
-
-    output = preview (_currentNodeGroup <<< _Just <<< _NodeGroupOutput) state
-  in
-    case output of
-      Just id -> Set.difference keys $ Set.singleton id
-      Nothing -> keys
-
--- Generate the list of inputs can't be connected 
-generateUnconnectableInputs :: forall a s m. NodeId -> State a s m -> State a s m
-generateUnconnectableInputs output state =
-  let
-    inputs = currentInputSet state
-
-    unconnectableInputs = Set.filter (not <<< flip (canConnect output) state) inputs
-
-    locations = (\(Tuple nodeId index) -> DeepLocation nodeId $ InputPin index) `Set.map` unconnectableInputs
-  in
-    set _unconnectablePins locations state
-
 -- Generates a list of outputs which can't be connected
-generateUnconnectableOutputs :: forall a s m. Tuple NodeId Int -> State a s m -> State a s m
-generateUnconnectableOutputs input state =
-  let
-    outputs = currentOutputList state
+generateUnconnectableOutputs :: forall a s m. Tuple NodeId Int -> State a s m -> Set.Set NodeId
+generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canConnect outputId input state) outputs
+  where
+  keys = maybe mempty Map.keys $ preview _currentNodes state
 
-    unconnectableOutputs = Set.filter (\outputId -> not $ canConnect outputId input state) outputs
+  outputNode = preview (_currentNodeGroup <<< _Just <<< _NodeGroupOutput) state
 
-    locations = (\outputId -> DeepLocation outputId OutputPin) `Set.map` unconnectableOutputs
-  in
-    set _unconnectablePins locations state
-
--- Make a list with everything which cannot be connected
-makeUnconnetacbleList :: forall a s m. State a s m -> State a s m
-makeUnconnetacbleList state = case view _partialFrom state of
-  Just from -> generateUnconnectableInputs from state
-  Nothing -> case view _partialTo state of
-    Just to -> generateUnconnectableOutputs to state
-    Nothing -> set _unconnectablePins mempty state
+  outputs = case outputNode of
+    Just id -> Set.difference keys $ Set.singleton id
+    Nothing -> keys
 
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
@@ -341,7 +303,6 @@ compile state@{ project, expression, typeMap, valueMap } =
         visualFunctions
   in
     evaluate
-      $ makeUnconnetacbleList
       $ state' { expression = expression', typeMap = typeMap' }
 
 -- Evaluate the current expression and write into the value map
@@ -375,10 +336,6 @@ canConnect from (Tuple toId toIndex) state =
     guard $ canUnify toType fromType
     pure true
 
--- Removes the partial connection. Here to solve #40
-clearPartialConnection :: forall a s m. State a s m -> State a s m
-clearPartialConnection = set _partialFrom Nothing <<< set _partialTo Nothing <<< set _unconnectablePins mempty
-
 -- Creates a connection from a node id to a node id an an input index
 createConnection :: forall a s m. NodeId -> NodeId -> Int -> State a s m -> State a s m
 createConnection from toId toIndex state = compile state'
@@ -393,7 +350,7 @@ createConnection from toId toIndex state = compile state'
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
-setCurrentFunction name = makeUnconnetacbleList <<< set _currentFunction name
+setCurrentFunction name = set _currentFunction name
 
 -- Creates a function, adds an output node and set it as the current edited function
 initializeFunction :: forall a s m monad. MonadEffect monad => FunctionName -> State a s m -> monad (State a s m)
@@ -474,7 +431,7 @@ deleteFunction toDelete state =
           visualFunctions
     modify_ $ set (_atFunctionData toDelete) Nothing
     modify_ $ set (_function toDelete) Nothing
-    -- Todo: make this work with the new foreign system
+    -- TODO: make this work with the new foreign system
     -- modify_ $ over _nodeData $ Map.filterKeys $ (_ /= toDelete) <<< fst
     modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< preview _ExtendedLocation
     modify_ $ set (_atInputCount toDelete) Nothing
@@ -489,6 +446,7 @@ setRuntimeValue functionName nodeId value =
         (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
         (Just value)
 
+-- Count the number of visual user-defined functions in a project
 visualFunctionCount :: forall a s m. State a s m -> Int
 visualFunctionCount = Map.size <<< filter (is _VisualFunction) <<< view _functions
 
@@ -515,6 +473,14 @@ functionExists name = Map.member name <<< view _functionData
 -- Prevent and stop the propagation for any dom event
 preventDefaults :: forall q i o m a s. MonadEffect m => Event -> HalogenM (State a s m) q i o m Unit
 preventDefaults event = liftEffect $ Event.preventDefault event *> Event.stopPropagation event
+
+-- Run an action which needs access to the current function
+withCurrentFunction :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f (Maybe r)
+withCurrentFunction f = gets (view _currentFunction) >>= traverse f
+
+-- Run an action which needs access to the current geometry cache
+withCurrentGeometries :: forall f a s m r. MonadState (State a s m) f => (GeometryCache -> f r) -> f (Maybe r)
+withCurrentGeometries f = gets (view _currentGeometryCache) >>= traverse f
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
@@ -543,12 +509,6 @@ _atFunctionData name = _functionData <<< at name
 
 _project :: forall a s m. Lens' (State a s m) Project
 _project = prop (SProxy :: _ "project")
-
-_colorMap :: forall a s m. Lens' (State a s m) (Map Location Color)
-_colorMap = prop (SProxy :: _ "colorMap")
-
-_atColorMap :: forall a s m. Location -> Traversal' (State a s m) (Maybe Color)
-_atColorMap location = _colorMap <<< at location
 
 _expression :: forall a s m. Lens' (State a s m) (Expression Location)
 _expression = prop (SProxy :: _ "expression")
@@ -582,15 +542,6 @@ _panelIsOpen = prop (SProxy :: _ "panelIsOpen")
 
 _currentTab :: forall a s m. Lens' (State a s m) Tab
 _currentTab = prop (SProxy :: _ "currentTab")
-
-_partialConnection :: forall a s m. Lens' (State a s m) PartialConnection
-_partialConnection = prop (SProxy :: _ "partialConnection")
-
-_partialFrom :: forall a s m. Lens' (State a s m) ((Maybe NodeId))
-_partialFrom = _partialConnection <<< _from
-
-_partialTo :: forall a s m. Lens' (State a s m) (Maybe (Tuple NodeId Int))
-_partialTo = _partialConnection <<< _to
 
 _currentNodeGroup :: forall a s m. Lens' (State a s m) (Maybe NodeGroup)
 _currentNodeGroup =
@@ -632,9 +583,6 @@ _functionUis = prop (SProxy :: _ "functionUis")
 
 _ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
 _ui functionName = _functionUis <<< at functionName
-
-_unconnectablePins :: forall a s m. Lens' (State a s m) (Set.Set (ExtendedLocation NodeId Pin))
-_unconnectablePins = prop (SProxy :: _ "unconnectablePins")
 
 _name :: forall a s m. Lens' (State a s m) String
 _name = prop (SProxy :: _ "name")

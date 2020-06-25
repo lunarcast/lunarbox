@@ -1,10 +1,18 @@
-import type { GeometryCache, NodeId, NodeState } from "./types/Node"
+import {
+  GeometryCache,
+  NodeId,
+  NodeState,
+  UnconnectableInputs,
+  PartialKind
+} from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
 import type { Vec2Like } from "@thi.ng/vectors"
 import { inputLayerOffset, nodeRadius, arcSpacing } from "./constants"
 import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
+import * as color from "@thi.ng/color"
+import { IHiccupShape } from "@thi.ng/geom-api"
 
 /**
  * Generate the geometries for a new node.
@@ -51,6 +59,10 @@ export const refreshInputArcsImpl = (
 
   if (node.output !== null && colorMap.output) {
     node.output.attribs!.fill = colorMap.output
+
+    if (node.output.attribs!.oldColor !== null) {
+      shadeOut(node.output)
+    }
   }
 
   if (!node.inputs[0].attribs!.selectable) {
@@ -77,7 +89,12 @@ export const refreshInputArcsImpl = (
       const radius = i * inputLayerOffset + nodeRadius
 
       geom.r = [radius, radius]
+
       geom.attribs!.stroke = arc.color
+
+      if (geom.attribs!.oldColor !== null) {
+        shadeOut(geom, "stroke")
+      }
 
       if (arc.isCircle) {
         geom.start = 0
@@ -116,3 +133,60 @@ export const refreshInputArcsImpl = (
 export const refreshInputArcs = (cache: GeometryCache) => (id: NodeId) => (
   state: NodeState
 ) => () => refreshInputArcsImpl(cache, id, state)
+
+/**
+ * Reduce the opacity of a specific attribute on a shape
+ * and save it in the oldColor attribute.
+ *
+ * @param shape The shape to fade out a little bit.
+ * @param attr The name of the attribute to shade out.
+ * @param alpha The amount to do it to.
+ */
+const shadeOut = (shape: IHiccupShape, attr = "fill", alpha = 0.3) => {
+  const oldColor = shape.attribs![attr]
+
+  shape.attribs!.oldColor = oldColor
+  shape.attribs![attr] = color.setAlpha([], color.parseCss(oldColor), alpha)
+}
+
+/**
+ * Update the list of inputs we cannot currently connect to.
+ *
+ * @param cache The cache to mutate.
+ * @param unconnectable The set of unconnectable inputs.
+ */
+export const setUnconnectableInputs = (cache: GeometryCache) => (
+  unconnectable: UnconnectableInputs
+) => () => {
+  if (cache.connection._type === PartialKind.Output) {
+    cache.connection.unconnectable = unconnectable
+
+    for (const { id, index } of unconnectable) {
+      const input = cache.nodes.get(id)!.inputs[index]
+
+      shadeOut(input, "stroke")
+    }
+  }
+}
+
+/**
+ * Update the list of outputs we cannot currently connect to.
+ *
+ * @param cache The cache to mutate.
+ * @param unconnectable The set of unconnectable inputs.
+ */
+export const setUnconnectableOutputs = (cache: GeometryCache) => (
+  unconnectable: Set<NodeId>
+) => () => {
+  if (cache.connection._type === PartialKind.Input) {
+    cache.connection.unconnectable = unconnectable
+
+    for (const id of unconnectable) {
+      const node = cache.nodes.get(id)!
+
+      if (!node.output) continue
+
+      shadeOut(node.output)
+    }
+  }
+}

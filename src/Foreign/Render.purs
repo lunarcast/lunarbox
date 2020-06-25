@@ -16,6 +16,8 @@ module Lunarbox.Foreign.Render
   , createNode
   , refreshInputArcs
   , emptyGeometryCache
+  , setUnconnectableInputs
+  , setUnconnectableOutputs
   ) where
 
 import Prelude
@@ -28,6 +30,7 @@ import Data.Generic.Rep.Show (genericShow)
 import Data.Nullable (Nullable)
 import Effect (Effect)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Set (NativeSet)
 import Web.HTML (HTMLCanvasElement)
 import Web.UIEvent.MouseEvent (MouseEvent)
 
@@ -62,6 +65,10 @@ foreign import geometryCacheToJson :: GeometryCache -> Json
 foreign import createNode :: GeometryCache -> NodeId -> Int -> Boolean -> Effect Unit
 
 foreign import refreshInputArcs :: GeometryCache -> NodeId -> NodeState -> Effect Unit
+
+foreign import setUnconnectableInputs :: GeometryCache -> NativeSet { id :: NodeId, index :: Int } -> Effect Unit
+
+foreign import setUnconnectableOutputs :: GeometryCache -> NativeSet NodeId -> Effect Unit
 
 instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:

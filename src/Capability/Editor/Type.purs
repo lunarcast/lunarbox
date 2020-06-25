@@ -8,7 +8,7 @@ module Lunarbox.Capability.Editor.Type
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array (fold, foldMap, foldr, (!!))
+import Data.Array (fold, foldMap, (!!))
 import Data.Array as Array
 import Data.Enum (enumFromTo)
 import Data.Filterable (filterMap)
@@ -20,7 +20,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String.CodeUnits as String
-import Data.Tuple (Tuple(..), fst, uncurry)
+import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply)
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeNumber, typeString)
 import Lunarbox.Data.Dataflow.Type as Type
@@ -108,19 +108,11 @@ generateColorMap getType node = Map.fromFoldable pairs
 
 -- More complex version of generateColorMap specialised on input nodes
 inputNodeType :: NodeGroup -> NodeId -> Type -> Map.Map Pin Type
-inputNodeType (NodeGroup { nodes }) targetId ty = case Type.inputs ty `List.index` inputIndex of
+inputNodeType (NodeGroup { nodes, inputs }) id ty = case List.index (Type.inputs ty) =<< inputIndex of
   Just ty' -> Map.singleton OutputPin ty'
   Nothing -> mempty
   where
-  inputIndex = fst $ foldr (uncurry go) (Tuple 0 false) $ (Map.toUnfoldable nodes :: List _)
-
-  go id InputNode (Tuple index false)
-    | id /= targetId = Tuple (index + 1) false
-
-  go id InputNode (Tuple index false)
-    | id == targetId = Tuple index true
-
-  go _ _ data' = data'
+  inputIndex = List.findIndex (id == _) inputs
 
 -- getInputType :: NodeId -> 
 -- Prettify variable names in types. Should only be used for pretty printing.

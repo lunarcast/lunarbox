@@ -118,7 +118,8 @@ const createInputGeometry = (position: Vec2Like) => {
   const attribs = {
     stroke: "black",
     weight: arcStrokeWidth.normal,
-    selectable: true
+    selectable: true,
+    oldColor: null
   }
 
   const arc = g.arc(position, nodeRadius, 0, 0, TAU)
@@ -145,7 +146,9 @@ export const createNodeGeometry = (
           .fill(1)
           .map(() => createInputGeometry(position))
 
-  const output = hasOutput ? g.circle(position, 10, { fill: "yellow" }) : null
+  const output = hasOutput
+    ? g.circle(position, 10, { fill: "yellow", oldColor: null })
+    : null
 
   const background = g.withAttribs(g.circle(position, nodeRadius), {
     alpha: nodeBackgroundOpacity
@@ -292,6 +295,38 @@ const unselectNode = (cache: GeometryCache, node: NodeGeometry, id: NodeId) => {
 }
 
 /**
+ * Reset the color of a specific attribute on a shape to it's old state.
+ *
+ * @param shape The shape to mutate.
+ * @param attr The attribute to reset.
+ */
+const resetColor = (shape: IHiccupShape, attr = "fill") => {
+  if (shape.attribs!.oldColor !== null) {
+    shape.attribs![attr] = shape.attribs!.oldColor
+    shape.attribs!.oldColor = null
+  }
+}
+
+/**
+ * Returns the brightness of all unconnectable pins to normal.
+ *
+ * @param cache The cache to mutate.
+ */
+const resetUnconnectableColor = (cache: GeometryCache) => {
+  // TODO: move this to some sort of callback when I need to ask in a modal about stuff.
+  if (cache.connection._type === PartialKind.Nothing) return
+  else if (cache.connection._type === PartialKind.Output) {
+    for (const { id, index } of cache.connection.unconnectable) {
+      resetColor(cache.nodes.get(id)!.inputs[index], "stroke")
+    }
+  } else if (cache.connection._type === PartialKind.Input) {
+    for (const id of cache.connection.unconnectable) {
+      resetColor(cache.nodes.get(id)!.output!)
+    }
+  }
+}
+
+/**
  * Connect 2 pins together
  *
  * @param config The config for the action to return
@@ -303,8 +338,10 @@ const createConnection = (
   config: ForeignActionConfig,
   cache: GeometryCache,
   output: IHasNode,
-  input: InputPartialConnection
+  input: Omit<InputPartialConnection, "unconnectable">
 ): ForeignAction => {
+  resetUnconnectableColor(cache)
+
   cache.connection._type = PartialKind.Nothing
 
   return config.createConnection(output.id, input.id, input.index)
@@ -325,11 +362,16 @@ const selectOutput = (
   mouse: Vec
 ): ForeignAction => {
   if (cache.connection._type === PartialKind.Input) {
+    if (cache.connection.unconnectable.has(output.id)) {
+      return config.nothing
+    }
+
     return createConnection(config, cache, output, cache.connection)
   }
 
   cache.connection = {
     ...output,
+    unconnectable: new Set(),
     _type: PartialKind.Output
   }
 
@@ -349,15 +391,23 @@ const selectOutput = (
 const selectInput = (
   config: ForeignActionConfig,
   cache: GeometryCache,
-  input: InputPartialConnection,
+  input: Omit<InputPartialConnection, "unconnectable">,
   mouse: Vec
 ): ForeignAction => {
   if (cache.connection._type === PartialKind.Output) {
+    // TODO: there's no point in using sets here so we can just plain arrays
+    for (const { index, id } of cache.connection.unconnectable) {
+      if (index === input.index && id === input.id) {
+        return config.nothing
+      }
+    }
+
     return createConnection(config, cache, cache.connection, input)
   }
 
   cache.connection = {
     ...input,
+    unconnectable: new Set(),
     _type: PartialKind.Input
   }
 
@@ -464,6 +514,8 @@ export const onMouseDown = (
         cache.connection.node.lastState
       )
     }
+
+    resetUnconnectableColor(cache)
 
     cache.connection._type = PartialKind.Nothing
   }

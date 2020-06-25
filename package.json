@@ -10,6 +10,7 @@
     "test": "spago test"
   },
   "dependencies": {
+    "@thi.ng/color": "^1.2.4",
     "@thi.ng/dcons": "^2.2.20",
     "@thi.ng/geom": "^1.9.7",
     "@thi.ng/geom-api": "^1.0.20",
@@ -21,7 +22,6 @@
     "@thi.ng/vectors": "^4.4.3",
     "normalize.css": "^8.0.1",
     "seedrandom": "^3.0.5",
-    "src": "^1.1.2",
     "ts-adt": "^1.0.1",
     "tslib": "^1.13.0"
   },

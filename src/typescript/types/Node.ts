@@ -65,14 +65,25 @@ export const enum PartialKind {
 /**
  * We take this as an argument to some stuff so I made a separate type for it.
  */
-export type InputPartialConnection = IHasNode & { index: number; geom: Arc }
+export type InputPartialConnection = IHasNode & {
+  index: number
+  geom: Arc
+  unconnectable: Set<NodeId>
+}
+
+/**
+ * Type for the current inputs we cannot connect to.
+ */
+export type UnconnectableInputs = Set<{ index: number; id: NodeId }>
 
 /**
  * We can either have nothing selected or a kind of pin (input or output).
  */
 export type PartialConnection = ADT<{
   [PartialKind.Input]: InputPartialConnection
-  [PartialKind.Output]: IHasNode
+  [PartialKind.Output]: IHasNode & {
+    unconnectable: UnconnectableInputs
+  }
   [PartialKind.Nothing]: {}
 }>
 

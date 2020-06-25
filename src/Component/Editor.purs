@@ -16,11 +16,12 @@ import Data.Foldable (for_, traverse_)
 import Data.Lens (over, preview, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
-import Data.Set as Set
+import Data.Set (toUnfoldable) as Set
+import Lunarbox.Data.Set (toNative) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple)
+import Data.Tuple (Tuple(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -46,9 +47,10 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, updateNode)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, updateNode, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
+import Lunarbox.Foreign.Render (setUnconnectableInputs, setUnconnectableOutputs)
 import Lunarbox.Foreign.Render as Native
 import Web.Event.Event (Event, preventDefault, stopPropagation)
 import Web.Event.Event as Event
@@ -84,7 +86,10 @@ data Action
   | Navigate Route
   | LoadScene
   | Rerender
+  -- Handle foreign actions bubbled by the Scene component
   | CreateConnection NodeId NodeId Int
+  | SelectInput NodeId Int
+  | SelectOutput NodeId
 
 data Output
   = Save Json
@@ -255,6 +260,21 @@ component =
                 (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
                   >>= traverse_ updateNode
             )
+    SelectInput id index ->
+      void
+        $ withCurrentGeometries \cache -> do
+            state <- get
+            liftEffect $ setUnconnectableOutputs cache
+              $ Set.toNative
+              $ generateUnconnectableOutputs (Tuple id index) state
+            handleAction Rerender
+    SelectOutput id ->
+      void
+        $ withCurrentGeometries \cache -> do
+            state <- get
+            liftEffect $ setUnconnectableInputs cache $ Set.toNative
+              $ generateUnconnectableInputs id state
+            handleAction Rerender
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -264,6 +284,8 @@ component =
   handleSceneOutput :: Scene.Output -> Maybe Action
   handleSceneOutput (Scene.BubbleForeignAction action) = case action of
     Native.CreateConnection from toId toIndex -> Just $ CreateConnection from toId toIndex
+    Native.SelectOutput id -> Just $ SelectOutput id
+    Native.SelectInput id index -> Just $ SelectInput id index
     _ -> Nothing
 
   sidebarIcon activeTab current =
