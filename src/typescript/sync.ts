@@ -7,7 +7,7 @@ import {
 } from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
-import type { Vec2Like } from "@thi.ng/vectors"
+import { Vec2Like, sub2, polar2, cartesian2 } from "@thi.ng/vectors"
 import { inputLayerOffset, nodeRadius, arcSpacing } from "./constants"
 import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
@@ -115,14 +115,22 @@ export const refreshInputArcsImpl = (
       continue
     }
 
-    const input = node.inputs[index]
-    const start = cache.nodes.get(connectedTo)!.position
+    const input = node.inputs[index] as g.Arc
+    const startNode = cache.nodes.get(connectedTo)!
+    const start = startNode.position
 
     // TODO: handle the rare cases when input color != output color
     connection.attribs!.connected = true
     connection.attribs!.stroke = input.attribs!.stroke
 
-    connection.points[0] = start
+    connection.points[0] = sub2(
+      [],
+      start,
+      cartesian2(
+        [],
+        [(input.start + input.end) / 2, startNode.output!.r].reverse()
+      )
+    )
     connection.points[1] = g.closestPoint(input, start)!
   }
 }

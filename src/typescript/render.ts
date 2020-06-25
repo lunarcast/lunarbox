@@ -225,8 +225,8 @@ export const renderScene = (
   const matrix = getTransform(ctx, cache)
 
   const nodes: IHiccupShape[] = [...cache.zOrder]
-    .map((id) => cache.nodes.get(id)!)
-    .flatMap(({ inputs, output, background, connections, lastState }) => [
+    .map((id) => ({ ...cache.nodes.get(id)!, id }))
+    .flatMap(({ inputs, output, background, connections, id }) => [
       ...(background.attribs!.fill ? [background] : []),
       ...inputs.flatMap((input, index): IHiccupShape[] => {
         if (input.type === Type.CIRCLE) return [input]
@@ -234,7 +234,12 @@ export const renderScene = (
         const arc = g.pathFromCubics(g.asCubic(input))
         const connection = connections[index]
 
-        if (connection.attribs!.connected) {
+        const isPreviewed =
+          cache.connection._type === PartialKind.Input &&
+          cache.connection.id === id &&
+          cache.connection.index === index
+
+        if (connection.attribs!.connected && !isPreviewed) {
           return [connection, arc]
         }
 
@@ -571,8 +576,13 @@ export const onMouseMove = (
         cache.selectedOutput.output.r = nodeOutputRadius.normal
       }
 
-      cache.selectedOutput = target.node
-      target.node!.output.r = nodeOutputRadius.onHover
+      if (
+        cache.connection._type !== PartialKind.Input ||
+        !cache.connection.unconnectable.has(target.id)
+      ) {
+        cache.selectedOutput = target.node
+        target.node!.output.r = nodeOutputRadius.onHover
+      }
     }
 
     // On hover effect for inputs

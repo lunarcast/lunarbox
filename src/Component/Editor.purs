@@ -71,7 +71,7 @@ data Action
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | StartFunctionCreation
-  | RemoveConnection NodeId (Tuple NodeId Int) Event
+  | RemoveConnection (Tuple NodeId Int) Event
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | TogglePanel
   | ChangeInputCount FunctionName Int
@@ -207,8 +207,8 @@ component =
       handleAction LoadScene
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    RemoveConnection from to event -> do
-      modify_ $ removeConnection from to
+    RemoveConnection to event -> do
+      modify_ $ removeConnection to
     SetRuntimeValue functionName nodeId runtimeValue -> do
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
     ChangeInputCount function amount -> do

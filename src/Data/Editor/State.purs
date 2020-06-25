@@ -249,11 +249,13 @@ generateUnconnectableInputs output state = Set.map (\(Tuple id index) -> { id, i
 
 -- Generates a list of outputs which can't be connected
 generateUnconnectableOutputs :: forall a s m. Tuple NodeId Int -> State a s m -> Set.Set NodeId
-generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canConnect outputId input state) outputs
+generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canConnect outputId input state') outputs
   where
-  keys = maybe mempty Map.keys $ preview _currentNodes state
+  state' = removeConnection input state
 
-  outputNode = preview (_currentNodeGroup <<< _Just <<< _NodeGroupOutput) state
+  keys = maybe mempty Map.keys $ preview _currentNodes state'
+
+  outputNode = preview (_currentNodeGroup <<< _Just <<< _NodeGroupOutput) state'
 
   outputs = case outputNode of
     Just id -> Set.difference keys $ Set.singleton id
@@ -367,8 +369,8 @@ initializeFunction name state =
     modify_ compile
 
 -- Remove a conenction from the current function
-removeConnection :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> State a s m
-removeConnection from (Tuple toId toIndex) state = compile state'
+removeConnection :: forall a s m. Tuple NodeId Int -> State a s m -> State a s m
+removeConnection (Tuple toId toIndex) state = compile state'
   where
   state' = set (_atCurrentNode toId <<< _nodeInput toIndex) Nothing state
 

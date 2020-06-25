@@ -74,18 +74,16 @@ const full = <T>(inner: T): T & IArc => ({
  *
  * @param arcs The array to search in
  */
-const collectIntersections = <T extends IArc>(arcs: T[]) => {
-  const result: Set<T> = new Set()
-
+const firstIntersection = <T extends IArc>(arcs: T[]): [T, T] | null => {
   for (const arc1 of arcs) {
     for (const arc2 of arcs) {
       if (arc1 !== arc2 && intersect(arc1, arc2)) {
-        result.add(arc1).add(arc2)
+        return [arc1, arc2]
       }
     }
   }
 
-  return [...result]
+  return null
 }
 
 /**
@@ -96,13 +94,25 @@ const collectIntersections = <T extends IArc>(arcs: T[]) => {
 const moveIntersections = <T extends IArc>(
   arcs: T[]
 ): { newLayer: T[]; oldLayer: T[] } => {
-  const intersections = collectIntersections(arcs)
+  const intersection = firstIntersection(arcs)
 
-  if (intersections.length) {
-    const moved = moveIntersections(intersections.slice(1))
+  if (intersection !== null) {
+    const nextAttempt0 = moveIntersections(
+      arcs.filter((arc) => arc !== intersection[0])
+    )
+
+    const nextAttempt1 = moveIntersections(
+      arcs.filter((arc) => arc !== intersection[1])
+    )
+
+    const [next, moved] =
+      nextAttempt0.oldLayer.length > nextAttempt1.oldLayer.length
+        ? [nextAttempt0, intersection[0]]
+        : [nextAttempt1, intersection[1]]
+
     return {
-      ...moved,
-      newLayer: [intersections[0], ...moved.newLayer]
+      oldLayer: next.oldLayer,
+      newLayer: [moved, ...next.newLayer]
     }
   } else {
     return { newLayer: [], oldLayer: arcs }
@@ -286,5 +296,7 @@ export const placeInputs = <T extends { output: NodeId | null }>(
     connectedLayered[index] = fillWith(unconnected, connectedLayered[index])
   }
 
-  return connectedLayered.map((arr) => arr.map((arc) => rotate(HALF_PI, arc)))
+  return connectedLayered
+    .map((arr) => arr.map((arc) => rotate(HALF_PI, arc)))
+    .reverse()
 }
