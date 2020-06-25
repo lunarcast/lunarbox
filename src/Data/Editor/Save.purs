@@ -8,6 +8,7 @@ import Prelude
 import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Either (Either)
 import Data.Map (Map)
+import Data.Maybe (Maybe)
 import Effect.Unsafe (unsafePerformEffect)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
@@ -24,6 +25,7 @@ type StatePermanentData
     , nextId :: Int
     , geometries :: Map FunctionName GeometryCache
     , runtimeOverwrites :: ValueMap Location
+    , currentFunction :: Maybe FunctionName
     }
 
 type Save
@@ -37,7 +39,7 @@ type Save
 
 -- Encoding and decoding
 stateToJson :: forall a s m. State a s m -> Json
-stateToJson state@{ project, nextId, geometries, runtimeOverwrites, isExample, name, isVisible } = encodeJson save
+stateToJson state@{ project, nextId, geometries, runtimeOverwrites, isExample, name, isVisible, currentFunction } = encodeJson save
   where
   save :: Save
   save =
@@ -53,6 +55,7 @@ stateToJson state@{ project, nextId, geometries, runtimeOverwrites, isExample, n
       , nextId
       , geometries
       , runtimeOverwrites
+      , currentFunction
       }
     }
 

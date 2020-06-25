@@ -153,6 +153,7 @@ component =
           { currentTab, panelIsOpen } <- get
           when (currentTab /= Add || not panelIsOpen) do
             modify_ $ set _panelIsOpen true <<< set _currentTab Add
+            void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
           liftEffect $ preventDefault $ KE.toEvent event
           getHTMLElementRef searchNodeInputRef >>= traverse_ (liftEffect <<< focus)
       | otherwise -> pure unit
@@ -201,8 +202,9 @@ component =
         void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     CreateFunction name -> do
       get >>= initializeFunction name >>= put
+      handleAction LoadScene
+      handleAction Rerender
     SelectFunction name -> do
-      oldFunction <- gets $ view _currentFunction
       modify_ $ setCurrentFunction name
       handleAction LoadScene
     StartFunctionCreation -> do
