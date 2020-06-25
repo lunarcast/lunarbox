@@ -203,7 +203,6 @@ component =
     CreateFunction name -> do
       get >>= initializeFunction name >>= put
       handleAction LoadScene
-      handleAction Rerender
     SelectFunction name -> do
       modify_ $ setCurrentFunction name
       handleAction LoadScene
