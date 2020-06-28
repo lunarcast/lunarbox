@@ -39,9 +39,10 @@ import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
+import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
@@ -261,51 +262,32 @@ generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canCon
     Just id -> Set.difference keys $ Set.singleton id
     Nothing -> keys
 
+-- Generate the next expression / typeMap of a project
+tryCompiling :: forall a s m. State a s m -> { expression :: Expression Location, typeMap :: Either (TypeError Location) (Map Location Type) }
+tryCompiling state@{ project, expression, typeMap, valueMap } = { expression: expression', typeMap: typeMap' }
+  where
+  expression' = compileProject project
+
+  typeMap' =
+    -- we only run the type inference algorithm if the expression changed
+    if (expression == expression') then
+      pure typeMap
+    else
+      Map.delete Nowhere <$> solveExpression expression'
+
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
-compile state@{ project, expression, typeMap, valueMap } =
-  let
-    expression' = compileProject project
-
-    typeMap' =
-      -- we only run the type inference algorithm if the expression changed
-      if (expression == expression') then
-        typeMap
-      else case solveExpression expression' of
-        Right map -> Map.delete Nowhere map
-        -- WARNING: in case of errors we just return an empty typemap
-        -- This is not a good idea since in theory this "could" break
-        -- even tho in practice we never get to this point...
-        -- It would still be useful to do something with the error message
-        -- for debugging or stuff like that
-        Left _ -> mempty
-
-    visualFunctions :: List FunctionName
-    visualFunctions =
-      Set.toUnfoldable
-        $ Map.keys
-        $ Map.filter (is _VisualFunction)
-        $ view _functions state
-
-    state' =
-      foldr
-        ( \functionName state'' ->
-            fromMaybe state'' do
-              functionType <- Map.lookup (Location functionName) typeMap
-              let
-                inputDocs =
-                  List.toUnfoldable
-                    $ List.mapWithIndex (\index -> const { name: "Input " <> show index, description: "An input for a custom function" })
-                    $ inputs functionType
-
-                functionData = internal inputDocs { name: show functionName <> " output", description: "The output of a custom function" }
-              pure $ set (_atFunctionData functionName) (Just functionData) state''
-        )
-        state
-        visualFunctions
-  in
-    evaluate
-      $ state' { expression = expression', typeMap = typeMap' }
+compile state =
+  evaluate
+    $ state
+        { expression = expression
+        , typeMap =
+          case typeMap of
+            Left _ -> mempty
+            Right m -> m
+        }
+  where
+  { expression, typeMap } = tryCompiling state
 
 -- Evaluate the current expression and write into the value map
 evaluate :: forall a s m. State a s m -> State a s m

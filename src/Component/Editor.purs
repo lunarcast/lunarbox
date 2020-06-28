@@ -2,6 +2,7 @@ module Lunarbox.Component.Editor
   ( component
   , Action(..)
   , Output(..)
+  , ConfirmConnectionAction(..)
   , EditorState
   , ChildSlots
   ) where
@@ -16,8 +17,8 @@ import Data.Foldable (for_, traverse_)
 import Data.Lens (over, preview, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
+import Data.Newtype (unwrap)
 import Data.Set (toUnfoldable) as Set
-import Lunarbox.Data.Set (toNative) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
@@ -37,6 +38,7 @@ import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
+import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
@@ -50,6 +52,7 @@ import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, updateNode, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
+import Lunarbox.Data.Set (toNative) as Set
 import Lunarbox.Foreign.Render (setUnconnectableInputs, setUnconnectableOutputs)
 import Lunarbox.Foreign.Render as Native
 import Web.Event.Event (Event, preventDefault, stopPropagation)
@@ -97,6 +100,7 @@ data Output
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
     , scene :: Slot Scene.Query Scene.Output Unit
+    , confirmConnection :: Slot Modal.Query (Modal.Output ConfirmConnectionAction) Unit
     )
 
 -- Shorthand for manually passing the types of the actions and child slots
@@ -110,6 +114,30 @@ searchNodeInputRef = RefLabel "search node"
 -- We need this to only trigger events when in focus
 searchNodeClassName :: String
 searchNodeClassName = "search-node"
+
+-- | Actions which can be triggered from the connection confirmation modal.
+data ConfirmConnectionAction
+  = ConfirmConnection
+  | CancelConnection
+
+-- | The actual config for how to display the connection confirmation modal
+confirmConnectionModal :: forall m. Modal.InputType ConfirmConnectionAction m
+confirmConnectionModal =
+  { id: "confirm-connection"
+  , title: "Confirm connection"
+  , content: HH.text "Connecting those nodes would change the type of this function. Do you want to unconnect all other nodes from it to prevent type errors?"
+  , buttons:
+    [ { text: "Connect nodes"
+      , primary: true
+      , value: ConfirmConnection
+      }
+    , { text: "Cancel connection"
+      , primary: false
+      , value: CancelConnection
+      }
+    ]
+  , onClose: CancelConnection
+  }
 
 component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
 component =
@@ -142,7 +170,8 @@ component =
       -- TODO: readd this with the new foreign system
       -- | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
       --   modify_ deleteSelection
-      | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
+      | KE.ctrlKey event && KE.key event == "b" -> do
+        handleAction TogglePanel
       | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
       | KE.key event == "s" -> do
         let
@@ -289,6 +318,11 @@ component =
     Native.SelectInput id index -> Just $ SelectInput id index
     _ -> Nothing
 
+  handleConnectionConfirmation :: ConfirmConnectionAction -> Maybe Action
+  handleConnectionConfirmation CancelConnection = Nothing
+
+  handleConnectionConfirmation ConfirmConnection = Nothing
+
   sidebarIcon activeTab current =
     HH.div
       [ classes $ ClassName <$> [ "sidebar-icon" ] <> (guard isActive $> "active")
@@ -414,4 +448,7 @@ component =
       , container "scene"
           [ scene
           ]
+      , HH.slot (SProxy :: SProxy "confirmConnection") unit Modal.component
+          confirmConnectionModal
+          (handleConnectionConfirmation <<< unwrap)
       ]
