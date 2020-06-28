@@ -9,7 +9,7 @@ module Lunarbox.Component.Modal
   ) where
 
 import Prelude
-import Control.Monad.State (gets, modify_)
+import Control.Monad.State (get, gets)
 import Control.MonadZero (guard)
 import Control.Promise (Promise, toAff)
 import Data.Lens (Lens')
@@ -26,8 +26,6 @@ import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as AP
 import Lunarbox.Component.Utils (className)
-import Lunarbox.Control.Monad.Effect (printString)
-import Record as Record
 import Web.HTML (HTMLElement)
 
 foreign import showModal :: String -> Effect (Promise HTMLElement)
@@ -40,7 +38,6 @@ data Action v
 data Query a
   = Close a
   | Open a
-  | IsOpen (Boolean -> a)
 
 type ButtonConfig v
   = { text :: String
@@ -59,9 +56,7 @@ type Input h a v r
     )
 
 type State h a v
-  = Input h a v
-      ( open :: Boolean
-      )
+  = Input h a v ()
 
 _open :: forall r. Lens' { open :: Boolean | r } Boolean
 _open = prop (SProxy :: SProxy "open")
@@ -88,7 +83,7 @@ component ::
   MonadAff m => Component HH.HTML Query (InputType v m) (Output v) m
 component =
   mkComponent
-    { initialState: Record.merge { open: false }
+    { initialState: identity
     , render
     , eval:
       mkEval
@@ -104,29 +99,21 @@ component =
     case action of
       CloseModal value -> do
         liftEffect $ closeModal id
-        modify_ _ { open = false }
         raise $ ClosedWith value
 
   handleQuery :: forall a. Query a -> HalogenM { | State _ _ v } (Action v) ChildSlots (Output v) m (Maybe a)
   handleQuery = case _ of
     Open return -> do
-      printString "opening the modal"
-      id <- gets _.id
-      modify_ _ { open = true }
+      { id, onClose } <- get
       void
         $ fork do
-            onClose <- gets _.onClose
-            promise <- liftEffect $ showModal id
-            void $ liftAff $ toAff promise
-            modify_ _ { open = false }
+            void $ liftAff $ map toAff $ liftEffect $ showModal id
             raise $ ClosedWith onClose
-      pure $ Just $ return
+      pure $ Just return
     Close a -> do
       id <- gets _.id
-      modify_ _ { open = false }
       liftEffect $ closeModal id
       pure $ Just a
-    IsOpen return -> Just <$> return <$> gets _.open
 
   render { id, title, content, buttons } =
     HH.div

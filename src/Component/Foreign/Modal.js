@@ -1,6 +1,8 @@
 "use strict"
 
-const micromodal = require("micromodal")
+const micromodal = require("micromodal").default
+
+console.log(micromodal)
 
 // Reexporting those for use from withing purescript
 exports.showModal = (name) => () =>

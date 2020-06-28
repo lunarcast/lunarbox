@@ -5,7 +5,6 @@ import Control.Monad.State (class MonadState, execState, execStateT, gets, put, 
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
-import Data.Default (def)
 import Data.Either (Either(..))
 import Data.Filterable (filter, filterMap)
 import Data.Foldable (foldMap, foldr, length, traverse_)
@@ -42,7 +41,7 @@ import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
+import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location)
@@ -90,6 +89,12 @@ type State a s m
     , functionUis :: Map FunctionName (FunctionUi a s m)
     , runtimeOverwrites :: ValueMap Location
     , inputCountMap :: Map FunctionName Int
+    , pendingConnection ::
+      Maybe
+        { from :: NodeId
+        , toId :: NodeId
+        , toIndex :: Int
+        }
     , name :: String
     , isExample :: Boolean
     , isAdmin :: Boolean
@@ -119,6 +124,7 @@ emptyState =
     , isExample: false
     , isAdmin: false
     , isVisible: false
+    , pendingConnection: Nothing
     }
 
 -- Helpers
@@ -209,7 +215,11 @@ createNode name = do
       gets (view _currentFunction)
         >>= traverse_ \currentFunction -> do
             modify_ $ set (_atNode currentFunction id) $ Just node
-            when isInput $ modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
+            when isInput do
+              modify_
+                $ over (_atFunctionData currentFunction <<< _Just <<< _FunctionDataInputs)
+                    (_ <> [ { name: "input", description: "The input of a custom function" } ])
+              modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
             modify_ compile
       pure $ Tuple id inputCount
   Tuple (Tuple id inputs) newState <- gets $ runState create
@@ -322,15 +332,12 @@ canConnect from (Tuple toId toIndex) state =
 
 -- Creates a connection from a node id to a node id an an input index
 createConnection :: forall a s m. NodeId -> NodeId -> Int -> State a s m -> State a s m
-createConnection from toId toIndex state = compile state'
-  where
-  state' =
-    set
-      ( _atCurrentNode toId
-          <<< _nodeInput toIndex
-      )
-      (Just from)
-      state
+createConnection from toId toIndex =
+  set
+    ( _atCurrentNode toId
+        <<< _nodeInput toIndex
+    )
+    (Just from)
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
@@ -347,7 +354,7 @@ initializeFunction name state =
     modify_ $ over _project $ createFunction name id
     modify_ $ setCurrentFunction (Just name)
     modify_ $ set _currentGeometryCache $ Just cache
-    modify_ $ set (_atFunctionData name) (Just def)
+    modify_ $ set (_atFunctionData name) $ Just $ internal [] { name: show name <> "-output", description: "The output of a custom functions" }
     modify_ compile
 
 -- Remove a conenction from the current function

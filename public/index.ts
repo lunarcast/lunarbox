@@ -1,5 +1,5 @@
 import "./styles/index.scss"
-import { main as mainImpl } from "../dce-output/Main"
+import { main as mainImpl } from "../output/Main"
 
 type Effect<T> = (v: T) => void
 

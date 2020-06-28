@@ -13,6 +13,7 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
+import Data.Either (Either(..))
 import Data.Foldable (for_, traverse_)
 import Data.Lens (over, preview, set, view)
 import Data.Map as Map
@@ -42,6 +43,7 @@ import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
@@ -49,7 +51,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, updateNode, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateNode, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -93,6 +95,7 @@ data Action
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
   | SelectOutput NodeId
+  | HandleConnectionConfirmation ConfirmConnectionAction
 
 data Output
   = Save Json
@@ -282,14 +285,23 @@ component =
                 <<< Scene.LoadScene
             )
     CreateConnection from toId toIndex -> do
-      modify_ $ createConnection from toId toIndex
-      gets (view _currentFunction)
-        >>= traverse_
-            ( \name -> do
-                cache <- gets $ view $ _atGeometry name
-                (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
-                  >>= traverse_ updateNode
-            )
+      state <- createConnection from toId toIndex <$> get
+      let
+        { expression, typeMap } = tryCompiling state
+      case typeMap of
+        Left _ -> do
+          modify_ _ { pendingConnection = Just { from, toId, toIndex } }
+          void $ query (SProxy :: SProxy "confirmConnection") unit $ tell Modal.Open
+        Right typeMap' -> do
+          put $ state { expression = expression, typeMap = typeMap' }
+          printString "wth"
+          gets (view _currentFunction)
+            >>= traverse_
+                ( \name -> do
+                    cache <- gets $ view $ _atGeometry name
+                    (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
+                      >>= traverse_ updateNode
+                )
     SelectInput id index ->
       void
         $ withCurrentGeometries \cache -> do
@@ -305,6 +317,12 @@ component =
             liftEffect $ setUnconnectableInputs cache $ Set.toNative
               $ generateUnconnectableInputs id state
             handleAction Rerender
+    HandleConnectionConfirmation CancelConnection -> modify_ _ { pendingConnection = Nothing }
+    HandleConnectionConfirmation ConfirmConnection ->
+      gets _.pendingConnection
+        >>= traverse_ \{ from, toId, toIndex } -> do
+            printString "yay"
+            modify_ _ { pendingConnection = Nothing }
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -317,11 +335,6 @@ component =
     Native.SelectOutput id -> Just $ SelectOutput id
     Native.SelectInput id index -> Just $ SelectInput id index
     _ -> Nothing
-
-  handleConnectionConfirmation :: ConfirmConnectionAction -> Maybe Action
-  handleConnectionConfirmation CancelConnection = Nothing
-
-  handleConnectionConfirmation ConfirmConnection = Nothing
 
   sidebarIcon activeTab current =
     HH.div
@@ -450,5 +463,7 @@ component =
           ]
       , HH.slot (SProxy :: SProxy "confirmConnection") unit Modal.component
           confirmConnectionModal
-          (handleConnectionConfirmation <<< unwrap)
+          handleConnectionConfirmation
       ]
+    where
+    handleConnectionConfirmation = Just <<< HandleConnectionConfirmation <<< unwrap
