@@ -2,6 +2,7 @@
 , dependencies =
   [ "aff"
   , "aff-bus"
+  , "aff-promise"
   , "affjax"
   , "argonaut"
   , "argonaut-generic"

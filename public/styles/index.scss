@@ -10,6 +10,7 @@
 @import "./components/with-logo.scss";
 @import "./components/loading.scss";
 @import "./components/error.scss";
+@import "./components/modal.scss";
 
 // Pages
 @import "./pages/home.scss";
@@ -27,6 +28,10 @@ img,
 .material-icons,
 .unselectable {
   user-select: none;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 // Helper for text elements which should show ... after they overflow their container

@@ -1,0 +1,170 @@
+@use "../fonts";
+@use "../theme.scss";
+/**************************\
+  Basic Modal Styles
+\**************************/
+
+.modal {
+  font-family: fonts.$montserrat;
+}
+
+.modal__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal__container {
+  background-color: theme.$primary;
+  padding: 30px;
+  max-width: min(500px, 80vw);
+  min-width: 30vw;
+  max-height: 80vh;
+  border-radius: 4px;
+  overflow-y: auto;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+}
+
+.modal__title {
+  margin-right: 1rem;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  color: theme.$on-primary;
+}
+
+.modal__content {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+  color: theme.$on-primary;
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.modal__btn {
+  font-size: 0.875rem;
+
+  margin: 0;
+  padding: 1rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  background-color: theme.$primary;
+  color: theme.$on-primary;
+
+  border-radius: 0.25rem;
+  border: none;
+  outline: none;
+
+  cursor: pointer;
+  text-transform: none;
+  overflow: visible;
+  line-height: 1.15;
+
+  backface-visibility: hidden;
+
+  will-change: transform;
+  transform: translateZ(0);
+  transition: transform theme.$transition-time ease-out,
+    filter theme.$transition-time ease-out;
+
+  &:focus,
+  &:hover {
+    filter: brightness(1.4);
+    transform: scale(1.05);
+  }
+}
+
+.modal__btn-primary {
+  background-color: theme.$blue;
+  color: theme.$on-primary;
+
+  &:focus,
+  &:hover {
+    filter: brightness(1.2);
+  }
+}
+
+// Animations:
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(15%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalSlideOut {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-10%);
+  }
+}
+
+.micromodal-slide {
+  display: none;
+}
+
+.micromodal-slide.is-open {
+  display: block;
+}
+
+.micromodal-slide[aria-hidden="false"] .modal__overlay {
+  animation: modalFadeIn 0.3s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.micromodal-slide[aria-hidden="false"] .modal__container {
+  animation: modalSlideIn 0.3s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.micromodal-slide[aria-hidden="true"] .modal__overlay {
+  animation: modalFadeOut 0.3s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.micromodal-slide[aria-hidden="true"] .modal__container {
+  animation: modalSlideOut 0.3s cubic-bezier(0, 0, 0.2, 1);
+}
+
+// I think this helps a little bit with performance
+.micromodal-slide .modal__container,
+.micromodal-slide .modal__overlay {
+  will-change: transform;
+}

@@ -1796,6 +1796,11 @@
   resolved "https://registry.yarnpkg.com/@types/color-name/-/color-name-1.1.1.tgz#1c1261bbeaa10a8055bbc5d8ab84b7b2afc846a0"
   integrity sha512-rr+OQyAjxze7GgWrSaJwydHStIhHq2lvY3BOC2Mj7KnzI7XK0Uw1TOOdI9lDoajEbSWLiYgoo4f1R51erQfhPQ==
 
+"@types/micromodal@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@types/micromodal/-/micromodal-0.3.1.tgz#7f57527819e9f8e3b8617e8bef1928118ba1b876"
+  integrity sha512-95qa5gdb6L4RJ3d036wNYclwRHPfWgbCEika+OEoWwHzRwwku3YkFNkcaU56UbBUr8aADB9yGVgbz/OG10UBTw==
+
 "@types/minimist@^1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@types/minimist/-/minimist-1.2.0.tgz#69a23a3ad29caf0097f06eda59b361ee2f0639f6"
@@ -6321,6 +6326,11 @@ micromatch@^4.0.0, micromatch@^4.0.2:
   dependencies:
     braces "^3.0.1"
     picomatch "^2.0.5"
+
+micromodal@^0.4.6:
+  version "0.4.6"
+  resolved "https://registry.yarnpkg.com/micromodal/-/micromodal-0.4.6.tgz#0425ad026c47923208cf826de6b58ed0693cb25a"
+  integrity sha512-2VDso2a22jWPpqwuWT/4RomVpoU3Bl9qF9D01xzwlNp5UVsImeA0gY4nSpF44vqcQtQOtkiMUV9EZkAJSRxBsg==
 
 miller-rabin@^4.0.0:
   version "4.0.1"
