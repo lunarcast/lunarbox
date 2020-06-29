@@ -2,7 +2,7 @@ module Lunarbox.Component.Editor
   ( component
   , Action(..)
   , Output(..)
-  , ConfirmConnectionAction(..)
+  , PendingConnectionAction(..)
   , EditorState
   , ChildSlots
   ) where
@@ -13,16 +13,14 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
-import Data.Either (Either(..))
 import Data.Foldable (for_, traverse_)
-import Data.Lens (over, preview, set, view)
+import Data.Lens (over, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Newtype (unwrap)
 import Data.Set (toUnfoldable) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
-import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
@@ -45,13 +43,15 @@ import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
+import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Dataflow.TypeError (printError)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atGeometry, _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _nodes, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateNode, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, showLocation, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -95,7 +95,7 @@ data Action
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
   | SelectOutput NodeId
-  | HandleConnectionConfirmation ConfirmConnectionAction
+  | HandleConnectionConfirmation PendingConnectionAction
 
 data Output
   = Save Json
@@ -103,7 +103,7 @@ data Output
 type ChildSlots
   = ( tree :: Slot TreeC.Query TreeC.Output Unit
     , scene :: Slot Scene.Query Scene.Output Unit
-    , confirmConnection :: Slot Modal.Query (Modal.Output ConfirmConnectionAction) Unit
+    , pendingConnection :: Slot Modal.Query (Modal.Output PendingConnectionAction) Unit
     )
 
 -- Shorthand for manually passing the types of the actions and child slots
@@ -119,27 +119,32 @@ searchNodeClassName :: String
 searchNodeClassName = "search-node"
 
 -- | Actions which can be triggered from the connection confirmation modal.
-data ConfirmConnectionAction
-  = ConfirmConnection
-  | CancelConnection
+data PendingConnectionAction
+  = AutofixConnection
+  | CancelConnecting
+  | ProceedConnecting
 
 -- | The actual config for how to display the connection confirmation modal
-confirmConnectionModal :: forall m. Modal.InputType ConfirmConnectionAction m
-confirmConnectionModal =
+pendingConnectionModal :: forall m. Modal.InputType PendingConnectionAction m
+pendingConnectionModal =
   { id: "confirm-connection"
   , title: "Confirm connection"
-  , content: HH.text "Connecting those nodes would change the type of this function. Do you want to unconnect all other nodes from it to prevent type errors?"
+  , content: HH.text "Connecting those nodes would change the type of this function creating a type error."
   , buttons:
-    [ { text: "Connect nodes"
+    [ { text: "Autofix"
       , primary: true
-      , value: ConfirmConnection
+      , value: AutofixConnection
       }
-    , { text: "Cancel connection"
+    , { text: "Continue"
       , primary: false
-      , value: CancelConnection
+      , value: ProceedConnecting
+      }
+    , { text: "Cancel"
+      , primary: false
+      , value: CancelConnecting
       }
     ]
-  , onClose: CancelConnection
+  , onClose: CancelConnecting
   }
 
 component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
@@ -260,6 +265,9 @@ component =
       liftAff $ delay interval
       name <- gets $ view _name
       if String.length name >= 2 then do
+        { errors, expression } <- get
+        printString $ printSource expression
+        for_ errors $ printString <<< printError showLocation
         newState <- gets stateToJson
         raise $ Save newState
         handleAction $ Autosave newState
@@ -269,15 +277,7 @@ component =
     Navigate route -> navigate route
     Rerender -> void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
     LoadScene -> do
-      gets (view _currentFunction)
-        >>= traverse
-            ( \name -> do
-                cache <- gets $ view $ _atGeometry name
-                (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
-                  >>= traverse_ updateNode
-                pure cache
-            )
-        <#> join
+      updateAll
         >>= traverse_
             ( void
                 <<< query (SProxy :: _ "scene") unit
@@ -287,21 +287,27 @@ component =
     CreateConnection from toId toIndex -> do
       state <- createConnection from toId toIndex <$> get
       let
-        { expression, typeMap } = tryCompiling state
-      case typeMap of
-        Left _ -> do
-          modify_ _ { pendingConnection = Just { from, toId, toIndex } }
-          void $ query (SProxy :: SProxy "confirmConnection") unit $ tell Modal.Open
-        Right typeMap' -> do
-          put $ state { expression = expression, typeMap = typeMap' }
+        { expression, typeMap, errors } = tryCompiling state
+      case errors of
+        [] -> do
+          put $ state { expression = expression, typeMap = typeMap, errors = errors }
           printString "wth"
-          gets (view _currentFunction)
-            >>= traverse_
-                ( \name -> do
-                    cache <- gets $ view $ _atGeometry name
-                    (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
-                      >>= traverse_ updateNode
-                )
+          void updateAll
+        _ -> do
+          modify_
+            _
+              { pendingConnection =
+                Just
+                  { from
+                  , toId
+                  , toIndex
+                  , expression
+                  , errors
+                  , typeMap
+                  }
+              }
+          handleAction (HandleConnectionConfirmation ProceedConnecting)
+          void $ query (SProxy :: SProxy "pendingConnection") unit $ tell Modal.Open
     SelectInput id index ->
       void
         $ withCurrentGeometries \cache -> do
@@ -317,12 +323,26 @@ component =
             liftEffect $ setUnconnectableInputs cache $ Set.toNative
               $ generateUnconnectableInputs id state
             handleAction Rerender
-    HandleConnectionConfirmation CancelConnection -> modify_ _ { pendingConnection = Nothing }
-    HandleConnectionConfirmation ConfirmConnection ->
+    HandleConnectionConfirmation CancelConnecting -> modify_ _ { pendingConnection = Nothing }
+    HandleConnectionConfirmation other -> do
+      p <- gets _.pendingConnection
       gets _.pendingConnection
-        >>= traverse_ \{ from, toId, toIndex } -> do
-            printString "yay"
-            modify_ _ { pendingConnection = Nothing }
+        >>= traverse_ \{ from, toId, toIndex, errors, expression, typeMap } -> case other of
+            ProceedConnecting -> do
+              state <- get
+              put
+                $ createConnection from toId toIndex
+                $ state
+                    { pendingConnection = Nothing
+                    , errors = errors
+                    , typeMap = typeMap
+                    , expression = expression
+                    }
+              void updateAll
+              handleAction Rerender
+            AutofixConnection -> modify_ _ { pendingConnection = Nothing }
+            -- WARNING: this should never happen
+            _ -> pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -461,8 +481,8 @@ component =
       , container "scene"
           [ scene
           ]
-      , HH.slot (SProxy :: SProxy "confirmConnection") unit Modal.component
-          confirmConnectionModal
+      , HH.slot (SProxy :: SProxy "pendingConnection") unit Modal.component
+          pendingConnectionModal
           handleConnectionConfirmation
       ]
     where

@@ -5,7 +5,6 @@ import Control.Monad.State (class MonadState, execState, execStateT, gets, put, 
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
-import Data.Either (Either(..))
 import Data.Filterable (filter, filterMap)
 import Data.Foldable (foldMap, foldr, length, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
@@ -31,6 +30,7 @@ import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret)
+import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
@@ -75,6 +75,15 @@ tabIcon = case _ of
   Add -> "add"
   Tree -> "account_tree"
 
+-- | The result of compiling and typechecking the program
+type CompilationResult r
+  = ( expression :: Expression Location
+    , typeMap :: Map Location Type
+    , errors :: Array (TypeError Location)
+    | r
+    )
+
+-- | The state of the entire editor
 type State a s m
   = { currentTab :: Tab
     , panelIsOpen :: Boolean
@@ -91,10 +100,14 @@ type State a s m
     , inputCountMap :: Map FunctionName Int
     , pendingConnection ::
       Maybe
-        { from :: NodeId
-        , toId :: NodeId
-        , toIndex :: Int
+        { 
+        | CompilationResult
+          ( from :: NodeId
+          , toId :: NodeId
+          , toIndex :: Int
+          )
         }
+    , errors :: Array (TypeError Location)
     , name :: String
     , isExample :: Boolean
     , isAdmin :: Boolean
@@ -125,6 +138,7 @@ emptyState =
     , isAdmin: false
     , isVisible: false
     , pendingConnection: Nothing
+    , errors: []
     }
 
 -- Helpers
@@ -141,7 +155,7 @@ inputNodeName = FunctionName "input"
 
 -- 
 -- Update the way a node looks to fit the latest data
-updateNode :: forall q i o m a s. MonadEffect m => NodeId -> HalogenM (State a s m) q i o m Unit
+updateNode :: forall m a s n. MonadState (State a s n) m => MonadEffect m => NodeId -> m Unit
 updateNode id =
   gets (view _currentGeometryCache)
     >>= traverse_ \cache ->
@@ -187,7 +201,7 @@ updateNode id =
 
 --
 -- Create a new node and save all the data in the different required places
-createNode :: forall q i o m a s. MonadEffect m => FunctionName -> HalogenM (State a s m) q i o m Unit
+createNode :: forall m a s n. MonadEffect m => MonadState (State a s n) m => FunctionName -> m Unit
 createNode name = do
   let
     create = do
@@ -273,17 +287,22 @@ generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canCon
     Nothing -> keys
 
 -- Generate the next expression / typeMap of a project
-tryCompiling :: forall a s m. State a s m -> { expression :: Expression Location, typeMap :: Either (TypeError Location) (Map Location Type) }
-tryCompiling state@{ project, expression, typeMap, valueMap } = { expression: expression', typeMap: typeMap' }
+tryCompiling ::
+  forall a s m.
+  State a s m ->
+  { | CompilationResult () }
+tryCompiling state@{ project, expression, typeMap, errors } = { expression: expression', typeMap: typeMap', errors: errors' }
   where
   expression' = compileProject project
 
-  typeMap' =
+  (Tuple typeMap' errors') =
     -- we only run the type inference algorithm if the expression changed
     if (expression == expression') then
-      pure typeMap
+      Tuple typeMap errors
     else
-      Map.delete Nowhere <$> solveExpression expression'
+      Tuple typeMap' errors'
+    where
+    (Tuple typeMap' (SolveState { errors: errors' })) = solveExpression expression'
 
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
@@ -291,13 +310,11 @@ compile state =
   evaluate
     $ state
         { expression = expression
-        , typeMap =
-          case typeMap of
-            Left _ -> mempty
-            Right m -> m
+        , typeMap = typeMap
+        , errors = errors
         }
   where
-  { expression, typeMap } = tryCompiling state
+  { expression, typeMap, errors } = tryCompiling state
 
 -- Evaluate the current expression and write into the value map
 evaluate :: forall a s m. State a s m -> State a s m
@@ -341,7 +358,7 @@ createConnection from toId toIndex =
 
 -- Set the function the user is editing at the moment
 setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
-setCurrentFunction name = set _currentFunction name
+setCurrentFunction = set _currentFunction
 
 -- Creates a function, adds an output node and set it as the current edited function
 initializeFunction :: forall a s m monad. MonadEffect monad => FunctionName -> State a s m -> monad (State a s m)
@@ -472,6 +489,47 @@ withCurrentFunction f = gets (view _currentFunction) >>= traverse f
 -- Run an action which needs access to the current geometry cache
 withCurrentGeometries :: forall f a s m r. MonadState (State a s m) f => (GeometryCache -> f r) -> f (Maybe r)
 withCurrentGeometries f = gets (view _currentGeometryCache) >>= traverse f
+
+-- Update all nodes in the current geometry
+updateAll :: forall a s m n. MonadState (State a s n) m => MonadEffect m => m (Maybe GeometryCache)
+updateAll =
+  gets (view _currentFunction)
+    >>= traverse
+        ( \name -> do
+            cache <- gets $ view $ _atGeometry name
+            (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
+              >>= traverse_ updateNode
+            pure cache
+        )
+    <#> join
+
+-- | Pretty prints a location in the program
+showLocation :: Location -> String
+showLocation Nowhere = "???"
+
+showLocation (Location name) = "at function " <> show name
+
+showLocation (DeepLocation name Nowhere) = "inside function " <> show name
+
+showLocation (DeepLocation name deep) = showDeepLocation deep <> " in function " <> show name
+
+-- | Shows the second part of the Location type
+showDeepLocation :: ExtendedLocation NodeId Pin -> String
+showDeepLocation Nowhere = "???"
+
+showDeepLocation (Location id) = "at node " <> show id
+
+showDeepLocation (DeepLocation id OutputPin) = "at the output of node " <> show id
+
+showDeepLocation (DeepLocation id (InputPin index)) = "at the " <> showIndex index <> "input of node " <> show id
+  where
+  showIndex 0 = "first"
+
+  showIndex 1 = "second"
+
+  showIndex 2 = "third"
+
+  showIndex n = show (n - 1) <> "th"
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)

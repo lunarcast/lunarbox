@@ -7,16 +7,12 @@ import { DCons } from "@thi.ng/dcons"
 // The following section is for stuff related to saving / loading caches from / to json
 interface SavedData {
   camera: Mat23Like
-  nodes: Array<
-    [
-      NodeId,
-      {
-        position: Vec2Like
-        hasOutput: boolean
-        inputCount: number
-      }
-    ]
-  >
+  nodes: Array<{
+    id: NodeId
+    position: Vec2Like
+    hasOutput: boolean
+    inputCount: number
+  }>
 }
 
 // Those are here so we can do purescript interop properly
@@ -42,15 +38,15 @@ export const geometryCacheFromJson = (
       ...emptyGeometryCache(),
       selectedNodes: new Set(),
       camera: camera,
-      zOrder: new DCons(nodes.map(([id]) => id)),
+      zOrder: new DCons(nodes.map(({ id }) => id)),
       nodes: new Map(
-        nodes.map(([id, data]) => [
+        nodes.map(({ id, position, inputCount, hasOutput }) => [
           id,
           createNodeGeometry(
-            data.position,
-            data.inputCount,
+            position,
+            inputCount,
             // @ts-ignore I use a number as a boolean here which is ok in this context
-            data.hasOutput
+            hasOutput
           )
         ])
       )
@@ -70,16 +66,12 @@ export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
     camera: cache.camera,
     nodes: [...cache.zOrder].map((id) => {
       const node = cache.nodes.get(id)!
-      return [
+      return {
         id,
-        {
-          position: node.position as Vec2Like,
-          inputCount: node.inputs[0].attribs!.selectable
-            ? node.inputs.length
-            : 0,
-          hasOutput: node.output !== null
-        }
-      ]
+        position: node.position as Vec2Like,
+        inputCount: node.inputs[0].attribs!.selectable ? node.inputs.length : 0,
+        hasOutput: node.output !== null
+      }
     })
   }
 

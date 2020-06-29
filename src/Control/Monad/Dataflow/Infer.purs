@@ -4,7 +4,6 @@ module Lunarbox.Control.Monad.Dataflow.Infer
   , InferEnv(..)
   , Infer(..)
   , _count
-  , _usedNames
   , _location
   , _typeEnv
   , _constraints
@@ -13,19 +12,16 @@ module Lunarbox.Control.Monad.Dataflow.Infer
   , withLocation
   , createConstraint
   , rememberType
+  , createError
   ) where
 
 import Prelude
-import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (Except, runExcept)
-import Control.Monad.RWS (RWST, asks, evalRWST, local, tell)
+import Control.Monad.RWS (RWS, asks, evalRWS, local, tell)
 import Control.Monad.Reader (class MonadAsk, class MonadReader)
 import Control.Monad.State (class MonadState)
 import Control.Monad.Writer (class MonadTell, class MonadWriter)
-import Data.Either (Either)
 import Data.Lens (Lens', iso, over, set, view)
 import Data.Lens.Record (prop)
-import Data.List (List(..))
 import Data.Map as Map
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Symbol (SProxy(..))
@@ -44,6 +40,7 @@ newtype InferOutput l
   = InferOutput
   { constraints :: ConstraintSet l
   , typeMap :: Map.Map l Type
+  , errors :: Array (TypeError l)
   }
 
 derive instance newtypeInferOutput :: Newtype (InferOutput l) _
@@ -61,26 +58,21 @@ _typeMap = newtypeIso <<< prop (SProxy :: _ "typeMap")
 newtype InferState
   = InferState
   { count :: Int
-  , usedNames :: List String
   }
 
 derive instance newtypeInferState :: Newtype InferState _
 
 instance semigruopInferState :: Semigroup InferState where
-  append (InferState { count, usedNames }) (InferState { count: count', usedNames: usedNames' }) =
+  append (InferState { count }) (InferState { count: count' }) =
     InferState
       { count: count + count'
-      , usedNames: usedNames <> usedNames'
       }
 
 instance monoidInferState :: Monoid InferState where
-  mempty = InferState { count: 0, usedNames: Nil }
+  mempty = InferState { count: 0 }
 
 _count :: Lens' InferState Int
 _count = iso unwrap wrap <<< prop (SProxy :: _ "count")
-
-_usedNames :: Lens' InferState (List String)
-_usedNames = iso unwrap wrap <<< prop (SProxy :: _ "usedNames")
 
 newtype InferEnv l
   = InferEnv
@@ -102,11 +94,11 @@ _location = iso unwrap wrap <<< prop (SProxy :: _ "location")
 
 -- The infer monad is the place where the type inference algorithm runs
 newtype Infer l a
-  = Infer (RWST (InferEnv l) (InferOutput l) InferState (Except (TypeError l)) a)
+  = Infer (RWS (InferEnv l) (InferOutput l) InferState a)
 
 -- This is a helper to transform an Infer monad into a single value
-runInfer :: forall l a. InferEnv l -> Infer l a -> Either (TypeError l) (Tuple a (InferOutput l))
-runInfer env (Infer m) = runExcept $ evalRWST m env mempty
+runInfer :: forall l a. InferEnv l -> Infer l a -> Tuple a (InferOutput l)
+runInfer env (Infer m) = evalRWS m env mempty
 
 -- run a monad in a specific location
 withLocation :: forall a l. Ord l => l -> Infer l a -> Infer l a
@@ -126,6 +118,7 @@ createConstraint typeLeft typeRight = do
                 , typeLeft
                 }
         , typeMap: mempty
+        , errors: []
         }
 
 -- helper to mark a type in the typemap at the current location
@@ -136,8 +129,20 @@ rememberType type' = do
     $ InferOutput
         { constraints: mempty
         , typeMap: Map.singleton location type'
+        , errors: []
         }
   pure type'
+
+-- Add a new error to the output
+createError :: forall l. Ord l => (l -> TypeError l) -> Infer l Unit
+createError getError = do
+  location <- asks $ view _location
+  tell
+    $ InferOutput
+        { errors: [ getError location ]
+        , typeMap: mempty
+        , constraints: mempty
+        }
 
 derive newtype instance functorInfer :: Functor (Infer l)
 
@@ -158,5 +163,3 @@ derive newtype instance monadTellInfer :: Ord l => MonadTell (InferOutput l) (In
 derive newtype instance monadWriterInfer :: Ord l => MonadWriter (InferOutput l) (Infer l)
 
 derive newtype instance monadStateInfer :: Ord l => MonadState InferState (Infer l)
-
-derive newtype instance monadThrowInfer :: Ord l => MonadThrow (TypeError l) (Infer l)

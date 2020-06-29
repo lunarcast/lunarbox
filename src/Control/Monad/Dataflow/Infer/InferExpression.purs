@@ -3,21 +3,19 @@ module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression
   ) where
 
 import Prelude
-import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.State (gets, modify_)
 import Control.Monad.Writer (listen)
 import Data.Array (zip)
-import Data.Either (Either(..))
 import Data.Lens (over, view)
 import Data.List (List(..), (:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
-import Data.Traversable (sequence)
+import Data.Traversable (for_, sequence)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _location, _typeEnv, createConstraint, rememberType, withLocation)
-import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _typeEnv, createConstraint, createError, rememberType, withLocation)
+import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), SolveState(..), runSolve)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), VarName, getLocation)
@@ -69,10 +67,11 @@ generalize t = do
 -- Lookup a TypeEnv and return the type. If the type doen't exist an error is thrown 
 lookupEnv :: forall l. Ord l => Show l => VarName -> Infer l Type
 lookupEnv var = do
-  location <- asks $ view _location
   (TypeEnv env) <- asks $ view _typeEnv
   case Map.lookup var env of
-    Nothing -> throwError $ UnboundVariable var location
+    Nothing -> do
+      createError $ UnboundVariable var
+      fresh false
     Just s -> instantiate s
 
 -- Infers a type and marks it location on the typeMap
@@ -95,9 +94,9 @@ infer expression =
       Let location name value body -> do
         env <- ask
         Tuple valueType (InferOutput { constraints }) <- listen $ infer value
-        subst <- case runSolve (SolveContext { location }) $ solve constraints of
-          Right result -> pure result
-          Left err -> throwError err
+        let
+          (Tuple subst (SolveState { errors })) = runSolve (SolveContext { location }) $ solve constraints
+        for_ errors $ createError <<< Stacked
         generalized <- local (const $ apply subst env) $ generalize $ apply subst valueType
         createClosure name generalized $ infer body
       FixPoint _ body -> do

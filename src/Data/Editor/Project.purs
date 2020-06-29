@@ -25,7 +25,7 @@ import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression, optimize)
+import Lunarbox.Data.Dataflow.Expression (Expression)
 import Lunarbox.Data.Dataflow.Graph (compileGraph)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -63,7 +63,7 @@ _ProjectMain :: Lens' Project FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
 compileProject :: Project -> Expression Location
-compileProject project@(Project { main }) = optimize $ compileGraph compileDataflowFunction (toGraph project) main
+compileProject project@(Project { main }) = compileGraph compileDataflowFunction (toGraph project) main
 
 createEmptyFunction :: NodeId -> DataflowFunction
 createEmptyFunction id =

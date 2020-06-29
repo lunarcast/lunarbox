@@ -410,6 +410,10 @@ const selectInput = (
     return createConnection(config, cache, cache.connection, input)
   }
 
+  if (cache.connection._type === PartialKind.Input) {
+    resetUnconnectableColor(cache)
+  }
+
   cache.connection = {
     ...input,
     unconnectable: new Set(),
