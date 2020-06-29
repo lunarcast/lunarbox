@@ -16,13 +16,12 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Class.GraphRep (toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression, VarName(..), functionDeclaration)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), functionDeclaration)
 import Lunarbox.Data.Editor.Class.Depends (class Depends)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node (Node(..), compileNode)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation)
+import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
 import Lunarbox.Data.Graph (topologicalSort)
 import Lunarbox.Data.Lens (newtypeIso)
 
@@ -50,7 +49,7 @@ instance dependencyNodeGroup :: Depends NodeGroup FunctionName where
           ComplexNode { function } -> Set.singleton function
           _ -> mempty
 
-compileNodeGroup :: NodeGroup -> Expression NodeOrPinLocation
+compileNodeGroup :: NodeGroup -> Expression ScopedLocation
 compileNodeGroup group@(NodeGroup { nodes, output, inputs }) =
   let
     graph = toGraph nodes
@@ -62,10 +61,10 @@ compileNodeGroup group@(NodeGroup { nodes, output, inputs }) =
     return =
       foldr
         (compileNode graph)
-        nothing
+        (TypedHole PlaceholderPosition)
         bodyNodes
   in
-    functionDeclaration Nowhere return $ VarName <$> unwrap <$> inputs
+    functionDeclaration FunctionDeclaration return $ VarName <$> unwrap <$> inputs
 
 -- Prism
 _NodeGroupInputs :: Lens' NodeGroup (List NodeId)

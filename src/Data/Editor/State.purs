@@ -10,6 +10,7 @@ import Data.Foldable (foldMap, foldr, length, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.List (List)
 import Data.List as List
@@ -34,20 +35,19 @@ import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression)
+import Lunarbox.Data.Dataflow.Expression (Expression(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), _ExtendedLocation, nothing)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
-import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..), _FunctionName)
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
-import Lunarbox.Data.Editor.Location (Location)
+import Lunarbox.Data.Editor.Location (Location(..), _Function, _ScopedLocation)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
-import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..), ScopedLocation(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
@@ -130,7 +130,7 @@ emptyState =
     , functionUis: mempty
     , inputCountMap: mempty
     , geometries: mempty
-    , expression: nothing
+    , expression: TypedHole UnknownLocation
     , project: Project { main: FunctionName "main", functions: mempty }
     , name: "Unnamed project"
     , nodeSearchTerm: ""
@@ -171,9 +171,9 @@ updateNode id =
                     InputNode ->
                       fromMaybe mempty do
                         group <- nodeGroup
-                        ty <- Map.lookup (Location currentFunction) typeMap
+                        ty <- Map.lookup (AtFunction currentFunction) typeMap
                         pure $ typeToColor <$> inputNodeType group id ty
-                    _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ DeepLocation currentFunction $ DeepLocation id pin) node
+                    _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ InsideFunction currentFunction $ PinLocation id pin) node
                 liftEffect
                   $ Native.refreshInputArcs cache id
                       { inputs: Nullable.toNullable <$> inputs
@@ -249,12 +249,12 @@ getOutputType functionName id state = do
   let
     typeMap = view _typeMap state
   nodeGroup <- preview (_nodeGroup functionName) state
-  currentFunctionType <- Map.lookup (Location functionName) typeMap
+  currentFunctionType <- Map.lookup (AtFunction functionName) typeMap
   let
     inputIndex = List.findIndex (_ == id) $ view _NodeGroupInputs nodeGroup
   case inputIndex of
     Just index -> (inputs currentFunctionType) `List.index` index
-    Nothing -> Map.lookup (DeepLocation functionName $ DeepLocation id OutputPin) typeMap
+    Nothing -> Map.lookup (InsideFunction functionName $ PinLocation id OutputPin) typeMap
 
 -- Generate the list of inputs can't be connected 
 generateUnconnectableInputs :: forall a s m. NodeId -> State a s m -> Set.Set { id :: NodeId, index :: Int }
@@ -322,7 +322,7 @@ evaluate state = set _valueMap valueMap state
   where
   context =
     InterpreterContext
-      { location: Nowhere
+      { location: UnknownLocation
       , termEnv: mempty
       , overwrites: view _runtimeOverwrites state
       }
@@ -343,7 +343,7 @@ canConnect from (Tuple toId toIndex) state =
     guard $ not $ G.wouldCreateCycle from toId $ toGraph nodes
     currentFunction <- view _currentFunction state
     fromType <- getOutputType currentFunction from state
-    toType <- Map.lookup (DeepLocation currentFunction $ DeepLocation toId $ InputPin toIndex) typeMap
+    toType <- Map.lookup (InsideFunction currentFunction $ PinLocation toId $ InputPin toIndex) typeMap
     guard $ canUnify toType fromType
     pure true
 
@@ -441,7 +441,7 @@ deleteFunction toDelete state =
     modify_ $ set (_function toDelete) Nothing
     -- TODO: make this work with the new foreign system
     -- modify_ $ over _nodeData $ Map.filterKeys $ (_ /= toDelete) <<< fst
-    modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< preview _ExtendedLocation
+    modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
     modify_ $ set (_atInputCount toDelete) Nothing
     when (view _currentFunction state == Just toDelete) $ modify_ $ set _currentFunction Nothing
     modify_ compile
@@ -451,7 +451,7 @@ setRuntimeValue :: forall a s m. FunctionName -> NodeId -> RuntimeValue -> State
 setRuntimeValue functionName nodeId value =
   evaluate
     <<< set
-        (_runtimeOverwrites <<< newtypeIso <<< at (DeepLocation functionName $ Location nodeId))
+        (_runtimeOverwrites <<< _Newtype <<< at (InsideFunction functionName $ NodeLocation nodeId))
         (Just value)
 
 -- Count the number of visual user-defined functions in a project
@@ -502,34 +502,6 @@ updateAll =
             pure cache
         )
     <#> join
-
--- | Pretty prints a location in the program
-showLocation :: Location -> String
-showLocation Nowhere = "???"
-
-showLocation (Location name) = "at function " <> show name
-
-showLocation (DeepLocation name Nowhere) = "inside function " <> show name
-
-showLocation (DeepLocation name deep) = showDeepLocation deep <> " in function " <> show name
-
--- | Shows the second part of the Location type
-showDeepLocation :: ExtendedLocation NodeId Pin -> String
-showDeepLocation Nowhere = "???"
-
-showDeepLocation (Location id) = "at node " <> show id
-
-showDeepLocation (DeepLocation id OutputPin) = "at the output of node " <> show id
-
-showDeepLocation (DeepLocation id (InputPin index)) = "at the " <> showIndex index <> "input of node " <> show id
-  where
-  showIndex 0 = "first"
-
-  showIndex 1 = "second"
-
-  showIndex 2 = "third"
-
-  showIndex n = show (n - 1) <> "th"
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)

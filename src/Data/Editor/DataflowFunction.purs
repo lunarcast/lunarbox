@@ -10,9 +10,8 @@ import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression)
 import Lunarbox.Data.Editor.Class.Depends (class Depends, getDependencies)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation)
+import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup, compileNodeGroup)
 
 -- A dataflow function can either be:
@@ -36,9 +35,9 @@ instance dependencyDataflowFunction :: Depends DataflowFunction FunctionName whe
   getDependencies (NativeFunction _) = mempty
   getDependencies (VisualFunction g) = getDependencies g
 
-compileDataflowFunction :: DataflowFunction -> Expression NodeOrPinLocation
+compileDataflowFunction :: DataflowFunction -> Expression ScopedLocation
 compileDataflowFunction = case _ of
-  NativeFunction f -> Native Nowhere f
+  NativeFunction f -> Native InsideNative f
   VisualFunction g -> compileNodeGroup g
 
 _VisualFunction :: Prism' DataflowFunction NodeGroup

@@ -23,10 +23,9 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.Location (Location)
+import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
@@ -69,7 +68,7 @@ nodeInput inputCount typeMap name functionData =
   , mousePosition: zero
   , colorMap:
     generateColorMap
-      (\pin -> Map.lookup (Location name) typeMap >>= resolvePin pin)
+      (\pin -> Map.lookup (AtFunction name) typeMap >>= resolvePin pin)
       node
   , value: Nothing
   , ui: Nothing
@@ -128,7 +127,7 @@ makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, can
                 $ pure
                 <<< highlightTypeToHTML
                 <<< prettify
-                <$> Map.lookup (Location name) typeMap
+                <$> Map.lookup (AtFunction name) typeMap
             , container "curry-node"
                 [ container "curry-text" [ HH.text "inputs:" ]
                 , HH.input
