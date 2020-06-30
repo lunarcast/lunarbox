@@ -28,15 +28,13 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
-import Lunarbox.Data.Graph (topologicalSort)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (newtypeIso)
 
@@ -85,7 +83,7 @@ compileProject project@(Project { main }) =
     $ compileFunction
     <$> sorted
   where
-  compileFunction name = Tuple name <$> map (InsideFunction name) <$> compileDataflowFunction <$> G.lookup name graph
+  compileFunction name = Tuple name <$> wrap (AtFunction name) <$> map (InsideFunction name) <$> compileDataflowFunction <$> G.lookup name graph
 
   graph = toGraph project
 

@@ -6,6 +6,8 @@ module Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression
 import Prelude
 import Data.Array (foldr)
 import Data.Array as Array
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (class GenericShow, genericShow)
 import Data.Map as Map
 import Data.Tuple (Tuple(..))
 import Lunarbox.Capability.Editor.Type (prettify)
@@ -36,8 +38,8 @@ solveExpression expression = Tuple (apply substitution <$> typeMap) (SolveState 
   (Tuple substitution otherState) = runSolve solveContext $ solve constraints
 
 -- helper to print a typemap
-printTypeMap :: forall l. Show l => Ord l => Map.Map l Type -> String
+printTypeMap :: forall l r. Show l => Generic l r => GenericShow r => Ord l => Map.Map l Type -> String
 printTypeMap =
-  foldr (\(Tuple location type') result -> result <> "\n" <> show location <> " = " <> show (prettify $ type')) ""
+  foldr (\(Tuple location type') result -> result <> "\n" <> genericShow location <> " = " <> show (prettify $ type')) ""
     <<< Array.sortBy (\(Tuple _ a) (Tuple _ b) -> compare (show a) $ show b)
     <<< Map.toUnfoldable

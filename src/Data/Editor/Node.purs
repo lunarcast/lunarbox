@@ -19,11 +19,12 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
 import Data.Compactable (compact)
+import Data.FoldableWithIndex (foldlWithIndex)
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.List (List(..), foldl, mapWithIndex, (!!))
+import Data.List (List(..), mapWithIndex, (!!))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as Set
@@ -96,8 +97,8 @@ connectedInputs :: Node -> List (Tuple Int NodeId)
 connectedInputs = List.catMaybes <<< map (uncurry $ (<$>) <<< Tuple) <<< indexed <<< getInputs
 
 -- Declare a call on a curried function with any number of arguments
-functionCall :: ScopedLocation -> Expression ScopedLocation -> List (Expression ScopedLocation) -> Expression ScopedLocation
-functionCall location calee = wrap location <<< foldl (FunctionCall AtApplication) calee
+functionCall :: ScopedLocation -> Expression ScopedLocation -> NodeId -> List (Expression ScopedLocation) -> Expression ScopedLocation
+functionCall location calee id = wrap location <<< foldlWithIndex (FunctionCall <<< AtApplication id) calee
 
 -- Compile a node into an expression
 compileNode :: G.Graph NodeId Node -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation
@@ -128,7 +129,7 @@ compileNode nodes id child =
           )
           inputs
 
-      value = wrap (NodeLocation id) $ functionCall (PinLocation id OutputPin) calee arguments
+      value = wrap (NodeLocation id) $ functionCall (PinLocation id OutputPin) calee id arguments
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData

@@ -78,5 +78,6 @@ instance defaultLocation :: Default Location where
 instance showLocation :: Show Location where
   show (AtFunction name) = "inside function" <> show name
   show (InsideFunction name FunctionDeclaration) = "at the declaration of function " <> show name
-  show (InsideFunction name location) = show location <> " at function " <> show name
+  show (InsideFunction name (NodeDefinition id)) = "at node " <> show id <> " in function " <> show name
+  show (InsideFunction name location) = show location <> " in function " <> show name
   show UnknownLocation = "at an unknown location"

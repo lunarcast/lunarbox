@@ -43,7 +43,6 @@ import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
-import Lunarbox.Data.Dataflow.Expression (printSource)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.TypeError (printError)
@@ -265,8 +264,7 @@ component =
       liftAff $ delay interval
       name <- gets $ view _name
       if String.length name >= 2 then do
-        { errors, expression } <- get
-        printString $ printSource expression
+        { errors, expression, typeMap } <- get
         for_ errors $ printString <<< printError show
         newState <- gets stateToJson
         raise $ Save newState

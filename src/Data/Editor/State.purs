@@ -42,16 +42,15 @@ import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
-import Lunarbox.Data.Editor.FunctionName (FunctionName(..), _FunctionName)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
-import Lunarbox.Data.Editor.Location (Location(..), _Function, _ScopedLocation)
+import Lunarbox.Data.Editor.Location (Location(..), _Function)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..), ScopedLocation(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.Lens (newtypeIso)
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Foreign.Render (GeometryCache, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
@@ -83,36 +82,43 @@ type CompilationResult r
     | r
     )
 
+type StatePermanentData r
+  = ( project :: Project
+    , nextId :: Int
+    , geometries :: Map FunctionName GeometryCache
+    , runtimeOverwrites :: ValueMap Location
+    , currentFunction :: Maybe FunctionName
+    | r
+    )
+
 -- | The state of the entire editor
 type State a s m
-  = { currentTab :: Tab
-    , panelIsOpen :: Boolean
-    , project :: Project
-    , nextId :: Int
-    , currentFunction :: Maybe FunctionName
-    , typeMap :: Map Location Type
-    , expression :: Expression Location
-    , geometries :: Map FunctionName GeometryCache
-    , functionData :: Map FunctionName FunctionData
-    , valueMap :: ValueMap Location
-    , functionUis :: Map FunctionName (FunctionUi a s m)
-    , runtimeOverwrites :: ValueMap Location
-    , inputCountMap :: Map FunctionName Int
-    , pendingConnection ::
-      Maybe
-        { 
-        | CompilationResult
-          ( from :: NodeId
-          , toId :: NodeId
-          , toIndex :: Int
-          )
-        }
-    , errors :: Array (TypeError Location)
-    , name :: String
-    , isExample :: Boolean
-    , isAdmin :: Boolean
-    , nodeSearchTerm :: String
-    , isVisible :: Boolean
+  = { 
+    | StatePermanentData
+      ( currentTab :: Tab
+      , panelIsOpen :: Boolean
+      , functionData :: Map FunctionName FunctionData
+      , valueMap :: ValueMap Location
+      , functionUis :: Map FunctionName (FunctionUi a s m)
+      , inputCountMap :: Map FunctionName Int
+      , pendingConnection ::
+        Maybe
+          { 
+          | CompilationResult
+            ( from :: NodeId
+            , toId :: NodeId
+            , toIndex :: Int
+            )
+          }
+      , name :: String
+      , isExample :: Boolean
+      , isAdmin :: Boolean
+      , nodeSearchTerm :: String
+      , isVisible :: Boolean
+      , expression :: Expression Location
+      , errors :: Array (TypeError Location)
+      , typeMap :: Map Location Type
+      )
     }
 
 -- Starting state which contains nothing

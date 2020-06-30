@@ -43,7 +43,7 @@ data ScopedLocation
   | FunctionDeclaration
   | PinLocation NodeId Pin
   | FunctionUsage FunctionName
-  | AtApplication
+  | AtApplication NodeId Int
   | InsideNative
   | PlaceholderPosition
 
@@ -62,32 +62,32 @@ instance decodeJsonScopedLocation :: DecodeJson ScopedLocation where
 instance showScopedLocation :: Show ScopedLocation where
   show PlaceholderPosition = "(This position is a placeholder. If you see this then please open an issue on github)"
   show InsideNative = "inside a native function"
-  show AtApplication = "at a function application"
   show FunctionDeclaration = "at the declaration of a function"
+  show (AtApplication id index) = "at the " <> showIndex index <> " input of node " <> show id
   show (NodeDefinition id) = "at definition of node " <> show id
   show (FunctionUsage name) = "at function reference " <> show name
   show (NodeLocation id) = "at node " <> show id
   show (UnexistingNode id) = "at node " <> show id <> " which doesn't exist"
   show (PinLocation id OutputPin) = "at the output of node " <> show id
   show (PinLocation id (InputPin index)) = "at the " <> showIndex index <> "input of node " <> show id
-    where
-    showIndex 0 = "first"
 
-    showIndex 1 = "second"
+-- | We use this for better error messages
+showIndex :: Int -> String
+showIndex 0 = "first"
 
-    showIndex 2 = "third"
+showIndex 1 = "second"
 
-    showIndex n = show (n - 1) <> "th"
+showIndex 2 = "third"
+
+showIndex n = show (n - 1) <> "th"
 
 -- This is an internal function used to both mark a node and one of it's pins
 mark :: Pin -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation
-mark pin id =
-  let
-    location = NodeLocation id
+mark pin id = wrap location <<< wrap pinLocation
+  where
+  location = NodeLocation id
 
-    pinLocation = PinLocation id pin
-  in
-    wrap location <<< wrap pinLocation
+  pinLocation = PinLocation id pin
 
 -- Wrap an input node and mark the position of it's output
 inputNode :: NodeId -> Expression ScopedLocation -> Expression ScopedLocation
