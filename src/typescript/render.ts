@@ -4,6 +4,7 @@ import { closestPoint, withAttribs, Line } from "@thi.ng/geom"
 import { IHiccupShape, Type } from "@thi.ng/geom-api"
 import { walk } from "@thi.ng/hdom-canvas"
 import { TAU } from "@thi.ng/math"
+import type { IToHiccup } from "@thi.ng/api"
 import {
   concat,
   invert23,
@@ -34,6 +35,7 @@ import {
   NodeId,
   PartialKind
 } from "./types/Node"
+import { TextElement } from "./types/Hiccup"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache = (): GeometryCache => ({
@@ -168,7 +170,8 @@ export const createNodeGeometry = (
           connected: false,
           weight: arcStrokeWidth.normal
         })
-      )
+      ),
+    valueText: ["text", { stroke: "yellow" }, [0, 0], ""]
   }
 }
 
@@ -224,11 +227,12 @@ export const renderScene = (
 
   const matrix = getTransform(ctx, cache)
 
-  const nodes: IHiccupShape[] = [...cache.zOrder]
+  const nodes: Array<null | IToHiccup | TextElement> = [...cache.zOrder]
     .map((id) => ({ ...cache.nodes.get(id)!, id }))
-    .flatMap(({ inputs, output, background, connections, id }) => [
-      ...(background.attribs!.fill ? [background] : []),
-      ...inputs.flatMap((input, index): IHiccupShape[] => {
+    .flatMap(({ inputs, output, background, connections, id, valueText }) => {
+      const backgroundShape = background.attribs!.fill ? background : null
+
+      const inputShapes = inputs.flatMap((input, index): IHiccupShape[] => {
         if (input.type === Type.CIRCLE) return [input]
 
         const arc = g.pathFromCubics(g.asCubic(input))
@@ -244,16 +248,27 @@ export const renderScene = (
         }
 
         return [arc]
-      }),
-      ...(output === null ? [] : [output])
-    ])
+      })
+
+      const value = valueText[3] === "" ? null : valueText
+
+      return [backgroundShape, ...inputShapes, output, value]
+    })
 
   const withPreview =
     cache.connection._type === PartialKind.Nothing
       ? nodes
       : nodes.concat([cache.connectionPreview])
 
-  const shapes = g.group({ transform: matrix }, withPreview).toHiccup()
+  const shapes = [
+    "g",
+    { transform: matrix },
+    ...withPreview
+      .filter((a): a is IHiccupShape | TextElement => a !== null)
+      .map((x) =>
+        Reflect.has(x, "toHiccup") ? (x as IHiccupShape).toHiccup() : x
+      )
+  ]
 
   walk(ctx, [shapes], {
     attribs: {},
@@ -433,6 +448,7 @@ const selectInput = (
  */
 const moveNode = (geom: NodeGeometry, offset: Vec) => {
   add2(null, geom.position, offset)
+  add2(null, geom.valueText[2], offset)
 }
 
 /**

@@ -1,9 +1,10 @@
 import type { Mat23Like } from "@thi.ng/matrices"
 import type { Circle, Arc, Line } from "@thi.ng/geom"
-import type { Vec } from "@thi.ng/vectors"
+import type { Vec, Vec2 } from "@thi.ng/vectors"
 import type { DCons } from "@thi.ng/dcons"
 import type { MouseTarget } from "../target"
 import type { ADT } from "ts-adt"
+import { TextElement } from "./Hiccup"
 
 /**
  * Interface for everything which keeps track of a node.
@@ -21,6 +22,7 @@ export interface NodeState {
     inputs: Array<string | null>
     output: string | null
   }
+  value: string | null
   inputs: Array<NodeId | null>
 }
 
@@ -44,6 +46,7 @@ export interface NodeGeometry {
   position: Vec
   lastState: NodeState | null
   inputOverwrites: Record<number, NodeId>
+  valueText: TextElement
 }
 
 /**

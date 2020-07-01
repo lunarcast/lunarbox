@@ -109,6 +109,7 @@ type ForeignTypeMap
 type NodeState
   = { inputs :: Array InputData
     , colorMap :: ForeignTypeMap
+    , value :: String
     }
 
 -- | Stuff the ts side of things can tell us to do

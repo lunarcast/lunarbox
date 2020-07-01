@@ -3,7 +3,8 @@ import {
   NodeId,
   NodeState,
   UnconnectableInputs,
-  PartialKind
+  PartialKind,
+  NodeGeometry
 } from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
@@ -13,6 +14,8 @@ import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
 import * as color from "@thi.ng/color"
 import { IHiccupShape } from "@thi.ng/geom-api"
+import { text } from "@thi.ng/hdom-canvas"
+import { geometryCacheFromJson } from "./save"
 
 /**
  * Generate the geometries for a new node.
@@ -55,7 +58,7 @@ export const refreshInputArcsImpl = (
     return
   }
 
-  const { colorMap, inputs } = state
+  const { colorMap, inputs, value } = state
 
   if (node.output !== null && colorMap.output) {
     node.output.attribs!.fill = colorMap.output
@@ -133,6 +136,11 @@ export const refreshInputArcsImpl = (
     )
     connection.points[1] = g.closestPoint(input, start)!
   }
+
+  node.valueText[2][0] = node.position[0]
+  node.valueText[2][1] =
+    node.position[1] + nodeRadius + arcs.length * inputLayerOffset
+  node.valueText[3] = value ?? ""
 }
 
 /**

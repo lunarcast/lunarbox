@@ -168,9 +168,16 @@ updateNode id =
         withCurrentFunction \currentFunction ->
           gets (preview $ _atCurrentNode id)
             >>= traverse_ \node -> do
-                typeMap <- gets $ view _typeMap
+                { typeMap, valueMap: ValueMap valueMap } <- get
                 nodeGroup <- gets $ preview (_nodeGroup currentFunction)
                 let
+                  value :: String
+                  value =
+                    maybe "" show
+                      $ Map.lookup
+                          (InsideFunction currentFunction $ NodeLocation id)
+                          valueMap
+
                   inputs = List.toUnfoldable $ view _nodeInputs node
 
                   colorMap = case node of
@@ -183,6 +190,7 @@ updateNode id =
                 liftEffect
                   $ Native.refreshInputArcs cache id
                       { inputs: Nullable.toNullable <$> inputs
+                      , value
                       , colorMap:
                         foldr (uncurry go)
                           { output: Nullable.null
