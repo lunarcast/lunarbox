@@ -1,7 +1,7 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
-import Control.Monad.State (class MonadState, execState, execStateT, gets, put, runState)
+import Control.Monad.State (class MonadState, execState, execStateT, get, gets, put, runState)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
@@ -41,7 +41,7 @@ import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type, inputs)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs, internal)
+import Lunarbox.Data.Editor.FunctionData (FunctionData(..), _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location(..), _Function)
@@ -96,8 +96,8 @@ type State a s m
   = { 
     | StatePermanentData
       ( currentTab :: Tab
-      , panelIsOpen :: Boolean
       , functionData :: Map FunctionName FunctionData
+      , panelIsOpen :: Boolean
       , valueMap :: ValueMap Location
       , functionUis :: Map FunctionName (FunctionUi a s m)
       , inputCountMap :: Map FunctionName Int
@@ -211,18 +211,19 @@ createNode :: forall m a s n. MonadEffect m => MonadState (State a s n) m => Fun
 createNode name = do
   let
     create = do
-      let
-        isInput = name == inputNodeName
+      state <- get
       id <- createId
       desiredInputCount <- gets $ preview $ _atInputCount name
-      functionDataInputs <-
-        if isInput then
-          pure []
-        else
-          gets
-            $ view (_atFunctionData name <<< _Just <<< _FunctionDataInputs)
       let
-        inputCount = fromMaybe (length functionDataInputs) $ join desiredInputCount
+        isInput = name == inputNodeName
+
+        maxInputs =
+          if isInput then
+            0
+          else
+            getMaxInputs name state
+
+        inputCount = fromMaybe maxInputs $ join desiredInputCount
 
         node =
           if isInput then
@@ -232,15 +233,14 @@ createNode name = do
               { inputs: replicate inputCount Nothing
               , function: name
               }
-      gets (view _currentFunction)
-        >>= traverse_ \currentFunction -> do
-            modify_ $ set (_atNode currentFunction id) $ Just node
-            when isInput do
-              modify_
-                $ over (_atFunctionData currentFunction <<< _Just <<< _FunctionDataInputs)
-                    (_ <> [ { name: "input", description: "The input of a custom function" } ])
-              modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
-            modify_ compile
+      withCurrentFunction_ \currentFunction -> do
+        modify_ $ set (_atNode currentFunction id) $ Just node
+        when isInput do
+          modify_
+            $ over (_atFunctionData currentFunction <<< _Just <<< _FunctionDataInputs)
+                (_ <> [ { name: "input", description: "The input of a custom function" } ])
+          modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ (_ <> pure id)
+        modify_ compile
       pure $ Tuple id inputCount
   Tuple (Tuple id inputs) newState <- gets $ runState create
   gets (view _currentGeometryCache)
@@ -488,13 +488,33 @@ functionExists name = Map.member name <<< view _functionData
 preventDefaults :: forall q i o m a s. MonadEffect m => Event -> HalogenM (State a s m) q i o m Unit
 preventDefaults event = liftEffect $ Event.preventDefault event *> Event.stopPropagation event
 
--- Run an action which needs access to the current function
+-- | Run an action which needs access to the current function
 withCurrentFunction :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f (Maybe r)
 withCurrentFunction f = gets (view _currentFunction) >>= traverse f
+
+-- | Run an action which need access to the current function and which returns nothing
+withCurrentFunction_ :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f Unit
+withCurrentFunction_ = void <<< withCurrentFunction
 
 -- Run an action which needs access to the current geometry cache
 withCurrentGeometries :: forall f a s m r. MonadState (State a s m) f => (GeometryCache -> f r) -> f (Maybe r)
 withCurrentGeometries f = gets (view _currentGeometryCache) >>= traverse f
+
+-- | Get the maximum number of inputs a node can take
+getMaxInputs ::
+  forall r.
+  FunctionName ->
+  Record
+    ( functionData :: Map.Map FunctionName FunctionData
+    , project :: Project
+    | r
+    ) ->
+  Int
+getMaxInputs name { project: Project { functions }, functionData } = case Map.lookup name functionData of
+  Just (FunctionData { inputs }) -> Array.length inputs
+  Nothing -> case Map.lookup name functions of
+    Just (VisualFunction (NodeGroup { inputs })) -> List.length inputs
+    _ -> 0
 
 -- Update all nodes in the current geometry
 updateAll :: forall a s m n. MonadState (State a s n) m => MonadEffect m => m (Maybe GeometryCache)

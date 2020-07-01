@@ -3,10 +3,8 @@ module Lunarbox.Component.Editor.Add
   ) where
 
 import Prelude
-import Data.Array as Array
 import Data.Default (def)
 import Data.Int (fromString, toNumber)
-import Data.Lens (view)
 import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -23,13 +21,14 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
 import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
-import Lunarbox.Data.Editor.FunctionData (FunctionData, _FunctionDataInputs)
+import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
+import Lunarbox.Data.Editor.State (getMaxInputs)
 import Lunarbox.Data.Ord (sortBySearch)
 import Svg.Attributes as SA
 import Svg.Elements as SE
@@ -94,9 +93,10 @@ makeNode ::
   Actions a ->
   NodeDescriptor ->
   FunctionName ->
+  Int ->
   Map.Map Location Type ->
   Map.Map FunctionName Int -> FunctionData -> HH.ComponentHTML a s m
-makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, canBeDeleted } name typeMap inputCountMap functionData =
+makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, canBeDeleted } name maxInputs typeMap inputCountMap functionData =
   HH.div [ className "node" ]
     [ SE.svg
         [ SA.width 75.0
@@ -142,18 +142,16 @@ makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, can
         ]
     ]
   where
-  maxInputs = Array.length $ view _FunctionDataInputs functionData
-
   inputCount = fromMaybe maxInputs $ Map.lookup name inputCountMap
 
 add :: forall a s m. Input -> Actions a -> HH.ComponentHTML a s m
-add { project, currentFunction, functionData, typeMap, inputCountMap, nodeSearchTerm } actions =
+add input@{ project, currentFunction, functionData, typeMap, inputCountMap, nodeSearchTerm } actions =
   container "nodes"
     $ ( \(Tuple name descriptor) ->
           let
             functionData' = fromMaybe def $ Map.lookup name functionData
           in
-            makeNode actions descriptor name typeMap inputCountMap functionData'
+            makeNode actions descriptor name (getMaxInputs name input) typeMap inputCountMap functionData'
       )
     <$> sortBySearch (show <<< fst) nodeSearchTerm
         ( Map.toUnfoldable
