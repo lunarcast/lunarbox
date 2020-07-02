@@ -68,84 +68,87 @@ export const refreshInputArcsImpl = (
     }
   }
 
-  if (!node.inputs[0].attribs!.selectable) {
-    return
-  }
-
   node.lastState = state
 
-  const arcs = Arc.placeInputs(
-    (id) => positionOverwrites[id] ?? cache.nodes.get(id)?.position ?? [0, 0],
-    inputs.map((output, index) => ({
-      output: node.inputOverwrites[index] ?? output,
-      color: colorMap.inputs[index],
-      geom: node.inputs[index] as g.Arc
-    })),
-    node.position as Vec2Like
-  )
-
-  for (let i = 0; i < arcs.length; i++) {
-    const layer = arcs[i]
-
-    for (const arc of layer) {
-      const geom = arc.geom
-      const radius = i * inputLayerOffset + nodeRadius
-
-      geom.r = [radius, radius]
-
-      geom.attribs!.stroke = arc.color
-
-      if (geom.attribs!.oldColor !== null) {
-        shadeOut(geom, "stroke")
-      }
-
-      if (arc.isCircle) {
-        geom.start = 0
-        geom.end = TAU
-      } else {
-        geom.start = arc.arc[0] + arcSpacing
-        geom.end = arc.arc[1] - arcSpacing + (arc.arc[1] < arc.arc[0] ? TAU : 0)
-      }
-    }
-  }
-
-  for (let index = 0; index < state.inputs.length; index++) {
-    const connectedTo = state.inputs[index]
-    const connection = node.connections[index]
-
-    if (connectedTo === null) {
-      connection.attribs!.connected = false
-      continue
-    }
-
-    const input = node.inputs[index] as g.Arc
-    const startNode = cache.nodes.get(connectedTo)!
-    const start = startNode.position
-
-    // TODO: handle the rare cases when input color != output color
-    connection.attribs!.connected = true
-    connection.attribs!.stroke = input.attribs!.stroke
-
-    connection.points[0] = sub2(
-      [],
-      start,
-      cartesian2(
-        [],
-        [(input.start + input.end) / 2, startNode.output!.r].reverse()
-      )
+  if (node.inputs[0].attribs!.selectable) {
+    const arcs = Arc.placeInputs(
+      (id) => positionOverwrites[id] ?? cache.nodes.get(id)?.position ?? [0, 0],
+      inputs.map((output, index) => ({
+        output: node.inputOverwrites[index] ?? output,
+        color: colorMap.inputs[index],
+        geom: node.inputs[index] as g.Arc
+      })),
+      node.position as Vec2Like
     )
-    connection.points[1] = g.closestPoint(input, start)!
+
+    for (let i = 0; i < arcs.length; i++) {
+      const layer = arcs[i]
+
+      for (const arc of layer) {
+        const geom = arc.geom
+        const radius = i * inputLayerOffset + nodeRadius
+
+        geom.r = [radius, radius]
+
+        geom.attribs!.stroke = arc.color
+
+        if (geom.attribs!.oldColor !== null) {
+          shadeOut(geom, "stroke")
+        }
+
+        if (arc.isCircle) {
+          geom.start = 0
+          geom.end = TAU
+        } else {
+          geom.start = arc.arc[0] + arcSpacing
+          geom.end =
+            arc.arc[1] - arcSpacing + (arc.arc[1] < arc.arc[0] ? TAU : 0)
+        }
+      }
+    }
+
+    for (let index = 0; index < state.inputs.length; index++) {
+      const connectedTo = state.inputs[index]
+      const connection = node.connections[index]
+
+      if (connectedTo === null) {
+        connection.attribs!.connected = false
+        continue
+      }
+
+      const input = node.inputs[index] as g.Arc
+      const startNode = cache.nodes.get(connectedTo)!
+      const start = startNode.position
+
+      // TODO: handle the rare cases when input color != output color
+      connection.attribs!.connected = true
+      connection.attribs!.stroke = input.attribs!.stroke
+
+      connection.points[0] = sub2(
+        [],
+        start,
+        cartesian2(
+          [],
+          [(input.start + input.end) / 2, startNode.output!.r].reverse()
+        )
+      )
+      connection.points[1] = g.closestPoint(input, start)!
+    }
+
+    node.valueText[2][1] =
+      node.position[1] + nodeRadius + arcs.length * inputLayerOffset
+  } else {
+    node.valueText[2][1] = node.position[1] + nodeRadius + inputLayerOffset
   }
 
   node.valueText[2][0] = node.position[0]
-  node.valueText[2][1] =
-    node.position[1] + nodeRadius + arcs.length * inputLayerOffset
   node.valueText[3] = value ?? ""
 
   // This only works because of the assumption a node needs to
   // either have an output or at least an input
   node.valueText[1].fill =
     node.output?.attribs!.fill ?? node.inputs[0].attribs!.stroke
+  node.valueText[2][1] = node.position[1] + nodeRadius + inputLayerOffset
 }
 
 /**

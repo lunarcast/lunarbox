@@ -168,15 +168,12 @@ updateNode id =
         withCurrentFunction \currentFunction ->
           gets (preview $ _atCurrentNode id)
             >>= traverse_ \node -> do
-                { typeMap, valueMap: ValueMap valueMap } <- get
+                { typeMap, valueMap } <- get
                 nodeGroup <- gets $ preview (_nodeGroup currentFunction)
                 let
-                  value :: String
                   value =
-                    maybe "" show
-                      $ Map.lookup
-                          (InsideFunction currentFunction $ NodeLocation id)
-                          valueMap
+                    Nullable.toNullable $ show
+                      <$> getNodeValue currentFunction valueMap id node
 
                   inputs = List.toUnfoldable $ view _nodeInputs node
 
@@ -187,6 +184,11 @@ updateNode id =
                         ty <- Map.lookup (AtFunction currentFunction) typeMap
                         pure $ typeToColor <$> inputNodeType group id ty
                     _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ InsideFunction currentFunction $ PinLocation id pin) node
+                -- let
+                -- (ValueMap v) = valueMap
+                -- 
+                -- (m :: Array _) = Map.toUnfoldable v
+                -- trace m \_ -> pure unit
                 liftEffect
                   $ Native.refreshInputArcs cache id
                       { inputs: Nullable.toNullable <$> inputs
@@ -523,6 +525,13 @@ getMaxInputs name { project: Project { functions }, functionData } = case Map.lo
   Nothing -> case Map.lookup name functions of
     Just (VisualFunction (NodeGroup { inputs })) -> List.length inputs
     _ -> 0
+
+-- | Get the value to be displayed underneath a node
+getNodeValue :: FunctionName -> ValueMap Location -> NodeId -> Node -> Maybe RuntimeValue
+getNodeValue currentFunction (ValueMap vmap) id = case _ of
+  ComplexNode _ -> Map.lookup (InsideFunction currentFunction $ NodeLocation id) vmap
+  OutputNode _ -> Map.lookup (InsideFunction currentFunction $ PinLocation id $ InputPin 0) vmap
+  _ -> Nothing
 
 -- Update all nodes in the current geometry
 updateAll :: forall a s m n. MonadState (State a s n) m => MonadEffect m => m (Maybe GeometryCache)
