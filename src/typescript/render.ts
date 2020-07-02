@@ -171,7 +171,18 @@ export const createNodeGeometry = (
           weight: arcStrokeWidth.normal
         })
       ),
-    valueText: ["text", { stroke: "yellow" }, [0, 0], ""]
+    valueText: [
+      "text",
+      {
+        fill: "yellow",
+        align: "center",
+        scale: 1,
+        baseline: "hanging",
+        font: "normal normal bold 20px '2Roboto Mono', monospace"
+      },
+      [0, 0],
+      ""
+    ]
   }
 }
 

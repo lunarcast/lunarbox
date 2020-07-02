@@ -141,6 +141,11 @@ export const refreshInputArcsImpl = (
   node.valueText[2][1] =
     node.position[1] + nodeRadius + arcs.length * inputLayerOffset
   node.valueText[3] = value ?? ""
+
+  // This only works because of the assumption a node needs to
+  // either have an output or at least an input
+  node.valueText[1].fill =
+    node.output?.attribs!.fill ?? node.inputs[0].attribs!.stroke
 }
 
 /**

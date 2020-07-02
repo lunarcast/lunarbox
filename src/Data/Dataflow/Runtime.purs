@@ -59,8 +59,8 @@ instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
 
 instance showRuntimeValue :: Show RuntimeValue where
   show = case _ of
-    Null -> "null"
-    Bool value -> show value
+    Null -> ""
+    Bool value -> if value then "True" else "False"
     Number value -> show value
     String value -> show value
     NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
