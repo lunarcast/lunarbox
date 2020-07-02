@@ -149,6 +149,9 @@ export const refreshInputArcsImpl = (
   node.valueText[1].fill =
     node.output?.attribs!.fill ?? node.inputs[0].attribs!.stroke
   node.valueText[2][1] = node.position[1] + nodeRadius + inputLayerOffset
+
+  // This basically tells the render function to resize the background of this text
+  node.valueText[1].__dirtyBackground = true
 }
 
 /**

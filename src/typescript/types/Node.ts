@@ -1,5 +1,5 @@
 import type { Mat23Like } from "@thi.ng/matrices"
-import type { Circle, Arc, Line } from "@thi.ng/geom"
+import type { Circle, Arc, Line, Rect } from "@thi.ng/geom"
 import type { Vec, Vec2 } from "@thi.ng/vectors"
 import type { DCons } from "@thi.ng/dcons"
 import type { MouseTarget } from "../target"
@@ -47,6 +47,7 @@ export interface NodeGeometry {
   lastState: NodeState | null
   inputOverwrites: Record<number, NodeId>
   valueText: TextElement
+  valueBackground: Rect
 }
 
 /**

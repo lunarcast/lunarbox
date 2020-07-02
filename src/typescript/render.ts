@@ -1,6 +1,6 @@
 import { DCons } from "@thi.ng/dcons"
 import * as g from "@thi.ng/geom"
-import { closestPoint, withAttribs, Line } from "@thi.ng/geom"
+import { closestPoint, withAttribs, rect } from "@thi.ng/geom"
 import { IHiccupShape, Type } from "@thi.ng/geom-api"
 import { walk } from "@thi.ng/hdom-canvas"
 import { TAU } from "@thi.ng/math"
@@ -21,7 +21,8 @@ import {
   nodeBackgroundOpacity,
   nodeBackgrounds,
   nodeOutputRadius,
-  nodeRadius
+  nodeRadius,
+  textBgPadding
 } from "./constants"
 import { isPressed, MouseButtons } from "./mouse"
 import { refreshInputArcsImpl } from "./sync"
@@ -36,6 +37,7 @@ import {
   PartialKind
 } from "./types/Node"
 import { TextElement } from "./types/Hiccup"
+import { createTextElement } from "@thi.ng/hdom"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache = (): GeometryCache => ({
@@ -176,13 +178,16 @@ export const createNodeGeometry = (
       {
         fill: "yellow",
         align: "center",
-        scale: 1,
         baseline: "hanging",
         font: "normal normal bold 20px '2Roboto Mono', monospace"
       },
-      [0, 0],
+      [0, 0] as Vec2Like,
       ""
-    ]
+    ],
+    valueBackground: rect([0, 0], [100, 20], {
+      baseline: "hanging",
+      fill: "#262335"
+    })
   }
 }
 
@@ -240,31 +245,60 @@ export const renderScene = (
 
   const nodes: Array<null | IToHiccup | TextElement> = [...cache.zOrder]
     .map((id) => ({ ...cache.nodes.get(id)!, id }))
-    .flatMap(({ inputs, output, background, connections, id, valueText }) => {
-      const backgroundShape = background.attribs!.fill ? background : null
+    .flatMap(
+      ({
+        inputs,
+        output,
+        background,
+        connections,
+        id,
+        valueText,
+        valueBackground
+      }) => {
+        const backgroundShape = background.attribs!.fill ? background : null
 
-      const inputShapes = inputs.flatMap((input, index): IHiccupShape[] => {
-        if (input.type === Type.CIRCLE) return [input]
+        const inputShapes = inputs.flatMap((input, index): IHiccupShape[] => {
+          if (input.type === Type.CIRCLE) return [input]
 
-        const arc = g.pathFromCubics(g.asCubic(input))
-        const connection = connections[index]
+          const arc = g.pathFromCubics(g.asCubic(input))
+          const connection = connections[index]
 
-        const isPreviewed =
-          cache.connection._type === PartialKind.Input &&
-          cache.connection.id === id &&
-          cache.connection.index === index
+          const isPreviewed =
+            cache.connection._type === PartialKind.Input &&
+            cache.connection.id === id &&
+            cache.connection.index === index
 
-        if (connection.attribs!.connected && !isPreviewed) {
-          return [connection, arc]
+          if (connection.attribs!.connected && !isPreviewed) {
+            return [connection, arc]
+          }
+
+          return [arc]
+        })
+
+        let value: Array<null | IToHiccup | TextElement> = []
+
+        if (valueText[3] !== "") {
+          if (valueText[1].__dirtyBackground) {
+            ctx.save()
+            ctx.font = valueText[1].font ?? ""
+
+            const metrics = ctx.measureText(valueText[3])
+            const width = metrics.width + textBgPadding
+
+            ctx.restore()
+
+            valueBackground.size[0] = width
+            valueBackground.pos = [valueText[2][0] - width / 2, valueText[2][1]]
+
+            valueText[1].__dirtyBackground = false
+          }
+
+          value = [valueBackground, valueText]
         }
 
-        return [arc]
-      })
-
-      const value = valueText[3] === "" ? null : valueText
-
-      return [backgroundShape, ...inputShapes, output, value]
-    })
+        return [backgroundShape, ...inputShapes, output, ...value]
+      }
+    )
 
   const withPreview =
     cache.connection._type === PartialKind.Nothing
