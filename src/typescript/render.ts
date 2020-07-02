@@ -494,6 +494,7 @@ const selectInput = (
 const moveNode = (geom: NodeGeometry, offset: Vec) => {
   add2(null, geom.position, offset)
   add2(null, geom.valueText[2], offset)
+  add2(null, geom.valueBackground.pos, offset)
 }
 
 /**
