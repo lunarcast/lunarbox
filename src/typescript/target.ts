@@ -9,7 +9,8 @@ import * as g from "@thi.ng/geom"
 import { Vec, dist, distSq2 } from "@thi.ng/vectors"
 import { minBy } from "./helpers/minBy"
 import { pickDistance } from "./constants"
-import { closestPoint } from "@thi.ng/geom"
+import { closestPoint, pointInside } from "@thi.ng/geom"
+import { findLast } from "./helpers/findLast"
 
 /**
  * Possible tags for the MouseTarget adt.
@@ -106,14 +107,14 @@ export const getMouseTarget = (
     }
   }
 
-  const closestNode = minBy(([, a], [, b]) => {
-    return distanceToMouseSq(a.position) < distanceToMouseSq(b.position)
-  }, nodes)
+  const closestNode = findLast(
+    [...cache.zOrder].map((id) => [id, cache.nodes.get(id)!] as const),
+    ([, a]) => {
+      return pointInside(a.background, mousePosition)
+    }
+  )
 
-  if (
-    closestNode &&
-    distanceToMouse(closestNode[1].position) < pickDistance.node
-  ) {
+  if (closestNode) {
     return {
       _type: MouseTargetKind.Node,
       node: closestNode[1],

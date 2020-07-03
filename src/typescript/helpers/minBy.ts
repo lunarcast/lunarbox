@@ -14,9 +14,5 @@ export const minBy = <T>(
       return curr
     }
 
-    if (curr === null) {
-      return acc
-    }
-
     return isSmaller(curr, acc) ? curr : acc
   }, null as T | null)
