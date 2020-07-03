@@ -3,19 +3,16 @@ import {
   NodeId,
   NodeState,
   UnconnectableInputs,
-  PartialKind,
-  NodeGeometry
+  PartialKind
 } from "./types/Node"
 import * as Native from "./render"
 import * as Arc from "./arcs"
-import { Vec2Like, sub2, polar2, cartesian2 } from "@thi.ng/vectors"
+import { Vec2Like, sub2, cartesian2 } from "@thi.ng/vectors"
 import { inputLayerOffset, nodeRadius, arcSpacing } from "./constants"
 import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
 import * as color from "@thi.ng/color"
 import { IHiccupShape } from "@thi.ng/geom-api"
-import { text } from "@thi.ng/hdom-canvas"
-import { geometryCacheFromJson } from "./save"
 
 /**
  * Generate the geometries for a new node.

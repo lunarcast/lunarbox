@@ -2,7 +2,6 @@ import { DCons } from "@thi.ng/dcons"
 import * as g from "@thi.ng/geom"
 import { closestPoint, withAttribs, rect } from "@thi.ng/geom"
 import { IHiccupShape, Type } from "@thi.ng/geom-api"
-import { walk } from "@thi.ng/hdom-canvas"
 import { TAU } from "@thi.ng/math"
 import type { IToHiccup } from "@thi.ng/api"
 import {
@@ -36,8 +35,8 @@ import {
   NodeId,
   PartialKind
 } from "./types/Node"
-import { TextElement } from "./types/Hiccup"
-import { createTextElement } from "@thi.ng/hdom"
+import { TextElement, CanvasElement } from "./types/Hiccup"
+import { draw } from "@thi.ng/hiccup-canvas"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache = (): GeometryCache => ({
@@ -243,7 +242,7 @@ export const renderScene = (
 
   const matrix = getTransform(ctx, cache)
 
-  const nodes: Array<null | IToHiccup | TextElement> = [...cache.zOrder]
+  const nodes: CanvasElement = [...cache.zOrder]
     .map((id) => ({ ...cache.nodes.get(id)!, id }))
     .flatMap(
       ({
@@ -275,7 +274,7 @@ export const renderScene = (
           return [arc]
         })
 
-        let value: Array<null | IToHiccup | TextElement> = []
+        let value: CanvasElement = []
 
         if (valueText[3] !== "") {
           if (valueText[1].__dirtyBackground) {
@@ -302,20 +301,12 @@ export const renderScene = (
 
   const withPreview =
     cache.connection._type === PartialKind.Nothing
-      ? nodes
-      : nodes.concat([cache.connectionPreview])
+      ? null
+      : cache.connectionPreview
 
-  const shapes = [
-    "g",
-    { transform: matrix },
-    ...withPreview
-      .filter((a): a is IHiccupShape | TextElement => a !== null)
-      .map((x) =>
-        Reflect.has(x, "toHiccup") ? (x as IHiccupShape).toHiccup() : x
-      )
-  ]
+  const shapes = ["g", { transform: matrix }, ...nodes, withPreview]
 
-  walk(ctx, [shapes], {
+  draw(ctx, [shapes], {
     attribs: {},
     edits: []
   })
