@@ -132,6 +132,7 @@ newtype ForeignActionConfig
   = ForeignActionConfig
   { createConnection :: Fn3 NodeId NodeId Int ForeignAction
   , selectInput :: Fn2 NodeId Int ForeignAction
+  , deleteConnection :: Fn2 NodeId Int ForeignAction
   , selectOutput :: NodeId -> ForeignAction
   , nothing :: ForeignAction
   }
@@ -141,6 +142,7 @@ instance defaultForeignActionConfig :: Default ForeignActionConfig where
     ForeignActionConfig
       { createConnection: mkFn3 CreateConnection
       , selectInput: mkFn2 SelectInput
+      , deleteConnection: mkFn2 DeleteConnection
       , selectOutput: SelectOutput
       , nothing: NoAction
       }

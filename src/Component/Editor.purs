@@ -75,7 +75,7 @@ data Action
   | SelectFunction (Maybe FunctionName)
   | CreateNode FunctionName
   | StartFunctionCreation
-  | RemoveConnection (Tuple NodeId Int) Event
+  | RemoveConnection NodeId Int
   | SetRuntimeValue FunctionName NodeId RuntimeValue
   | TogglePanel
   | ChangeInputCount FunctionName Int
@@ -244,8 +244,10 @@ component =
       handleAction LoadScene
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    RemoveConnection to event -> do
-      modify_ $ removeConnection to
+    RemoveConnection id index -> do
+      modify_ $ removeConnection $ Tuple id index
+      void updateAll
+      handleAction Rerender
     SetRuntimeValue functionName nodeId runtimeValue -> do
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
     ChangeInputCount function amount -> do
@@ -352,6 +354,7 @@ component =
     Native.CreateConnection from toId toIndex -> Just $ CreateConnection from toId toIndex
     Native.SelectOutput id -> Just $ SelectOutput id
     Native.SelectInput id index -> Just $ SelectInput id index
+    Native.DeleteConnection id index -> Just $ RemoveConnection id index
     _ -> Nothing
 
   sidebarIcon activeTab current =

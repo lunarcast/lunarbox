@@ -26,7 +26,7 @@ export enum MouseTargetKind {
 /**
  * The data we carry around to show what input the mouse is over.
  */
-interface InputSelection<T> extends IHasNode {
+export interface InputSelection<T> extends IHasNode {
   index: number
   geom: T
 }

@@ -24,7 +24,12 @@ import {
 } from "./constants"
 import { isPressed, MouseButtons } from "./mouse"
 import { refreshInputArcsImpl } from "./sync"
-import { getMouseTarget, MouseTarget, MouseTargetKind } from "./target"
+import {
+  getMouseTarget,
+  MouseTarget,
+  MouseTargetKind,
+  InputSelection
+} from "./target"
 import type { ForeignAction, ForeignActionConfig } from "./types/ForeignAction"
 import {
   GeometryCache,
@@ -512,6 +517,12 @@ const moveNodes = (cache: GeometryCache, offset: Vec) => {
   }
 }
 
+/**
+ * Pan the camera by a certain amount.
+ *
+ * @param cache The cache to mutate.
+ * @param offset The amount to move the camera by.
+ */
 const pan = (cache: GeometryCache, offset: Vec) => {
   concat(null, cache.camera, translation23([], offset))
 }
@@ -586,6 +597,8 @@ export const onMouseDown = (
     action = selectInput(config, cache, target, mousePosition)
   } else if (target._type === MouseTargetKind.NodeOutput) {
     action = selectOutput(config, cache, target, mousePosition)
+  } else if (target._type === MouseTargetKind.Connection) {
+    action = config.deleteConnection(target.id, target.index)
   } else {
     cache.dragging = target
   }
@@ -665,7 +678,7 @@ export const onMouseMove = (
       }
 
       cache.selectedConnection = target.geom
-      target.geom.attribs!.weight = arcStrokeWidth.onHover
+      target.geom.attribs!.weight = connectionWidth.onHover
     }
 
     // On hover effects for nodes
