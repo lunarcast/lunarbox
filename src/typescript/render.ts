@@ -3,7 +3,6 @@ import * as g from "@thi.ng/geom"
 import { closestPoint, withAttribs, rect } from "@thi.ng/geom"
 import { IHiccupShape, Type } from "@thi.ng/geom-api"
 import { TAU } from "@thi.ng/math"
-import type { IToHiccup } from "@thi.ng/api"
 import {
   concat,
   invert23,
@@ -35,7 +34,7 @@ import {
   NodeId,
   PartialKind
 } from "./types/Node"
-import { TextElement, CanvasElement } from "./types/Hiccup"
+import { CanvasElement } from "./types/Hiccup"
 import { draw } from "@thi.ng/hiccup-canvas"
 
 // Used in the Default purescript implementation of GeomCache
@@ -45,12 +44,13 @@ export const emptyGeometryCache = (): GeometryCache => ({
   selectedOutput: null,
   selectedInput: null,
   selectedNode: null,
+  selectedConnection: null,
   dragging: null,
   selectedNodes: new Set(),
   zOrder: new DCons(),
   connection: { _type: PartialKind.Nothing },
   connectionPreview: g.line([0, 0], [0, 0], {
-    weight: connectionWidth
+    weight: connectionWidth.normal
   })
 })
 
@@ -655,6 +655,19 @@ export const onMouseMove = (
       target.geom.attribs!.weight = arcStrokeWidth.onHover
     }
 
+    // On hover effects for connections
+    if (
+      target._type === MouseTargetKind.Connection &&
+      cache.selectedConnection !== target.geom
+    ) {
+      if (cache.selectedConnection) {
+        cache.selectedConnection.attribs!.weight = connectionWidth.normal
+      }
+
+      cache.selectedConnection = target.geom
+      target.geom.attribs!.weight = arcStrokeWidth.onHover
+    }
+
     // On hover effects for nodes
     if (
       target._type === MouseTargetKind.Node &&
@@ -680,6 +693,11 @@ export const onMouseMove = (
   if (target._type !== MouseTargetKind.NodeInput && cache.selectedInput) {
     cache.selectedInput.attribs!.weight = arcStrokeWidth.normal
     cache.selectedInput = null
+  }
+
+  if (target._type !== MouseTargetKind.Connection && cache.selectedConnection) {
+    cache.selectedConnection.attribs!.weight = connectionWidth.normal
+    cache.selectedConnection = null
   }
 
   if (

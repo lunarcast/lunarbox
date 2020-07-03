@@ -100,9 +100,11 @@ export type PartialConnection = ADT<{
 export type GeometryCache = {
   nodes: Map<NodeId, NodeGeometry>
   camera: Mat23Like
+  // TODO: make this use a single prop
   selectedOutput: NodeWithOutput | null
   selectedNode: NodeGeometry | null
   selectedInput: Arc | null
+  selectedConnection: Line | null
   selectedNodes: Set<NodeId>
   zOrder: DCons<NodeId>
   dragging: null | MouseTarget

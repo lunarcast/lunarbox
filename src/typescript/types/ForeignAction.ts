@@ -7,10 +7,12 @@ export type ForeignAction =
   | { readonly selectInput: unique symbol }
   | { readonly selectOutput: unique symbol }
   | { readonly nothing: unique symbol }
+  | { readonly deleteConnection: unique symbol }
 
 export interface ForeignActionConfig {
   createConnection: Fn3<NodeId, NodeId, number, ForeignAction>
   selectInput: Fn2<NodeId, number, ForeignAction>
   selectOutput: Fn<NodeId, ForeignAction>
+  deleteConnection: Fn2<NodeId, number, ForeignAction>
   nothing: ForeignAction
 }

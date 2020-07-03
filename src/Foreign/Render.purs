@@ -116,10 +116,9 @@ type NodeState
 data ForeignAction
   -- Create a connection from output-id to input-id, input-index
   = CreateConnection NodeId NodeId Int
-  -- Select an input pin
   | SelectInput NodeId Int
-  -- Select an output pin
   | SelectOutput NodeId
+  | DeleteConnection NodeId Int
   -- This just does nothing
   | NoAction
 

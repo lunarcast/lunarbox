@@ -16,7 +16,6 @@ import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Config (Config)
-import Lunarbox.Control.Monad.Effect (print)
 import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, emptyGeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
@@ -110,9 +109,7 @@ component =
         handleAction $ HandleForeignAction action
     HandleForeignAction action -> case action of
       NoAction -> pure unit
-      _ -> do
-        print action
-        raise $ BubbleForeignAction action
+      _ -> raise $ BubbleForeignAction action
 
   handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
