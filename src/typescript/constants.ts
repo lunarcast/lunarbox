@@ -1,3 +1,5 @@
+import { Vec2Like } from "@thi.ng/vectors"
+
 export const inputLayerOffset = 10
 export const nodeRadius = 50
 export const arcSpacing = 0.1
@@ -30,3 +32,6 @@ export const pickDistance = {
   input: 10,
   node: nodeRadius
 }
+
+export const font = "normal normal bold 20px 'Roboto Mono', monospace"
+export const textPadding: Vec2Like = [5, 5]

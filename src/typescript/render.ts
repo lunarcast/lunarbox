@@ -20,7 +20,9 @@ import {
   nodeBackgrounds,
   nodeOutputRadius,
   nodeRadius,
-  textBgPadding
+  textBgPadding,
+  font,
+  textPadding
 } from "./constants"
 import { isPressed, MouseButtons } from "./mouse"
 import { refreshInputArcsImpl } from "./sync"
@@ -41,6 +43,8 @@ import {
 } from "./types/Node"
 import { CanvasElement } from "./types/Hiccup"
 import { draw } from "@thi.ng/hiccup-canvas"
+import { TextWithBackground } from "./components/TextWithBackground"
+import { geometryCacheFromJson } from "./save"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache = (): GeometryCache => ({
@@ -162,6 +166,22 @@ export const createNodeGeometry = (
     alpha: nodeBackgroundOpacity
   })
 
+  const value = new TextWithBackground(
+    {
+      fill: "yellow",
+      align: "center",
+      baseline: "hanging"
+    },
+    {
+      baseline: "hanging",
+      fill: "#262335",
+      padding: textPadding
+    }
+  )
+
+  value.pos[0] = position[0]
+  value.font = font
+
   return {
     inputs: inputGeom,
     output,
@@ -177,21 +197,7 @@ export const createNodeGeometry = (
           weight: arcStrokeWidth.normal
         })
       ),
-    valueText: [
-      "text",
-      {
-        fill: "yellow",
-        align: "center",
-        baseline: "hanging",
-        font: "normal normal bold 20px '2Roboto Mono', monospace"
-      },
-      [0, 0] as Vec2Like,
-      ""
-    ],
-    valueBackground: rect([0, 0], [100, 20], {
-      baseline: "hanging",
-      fill: "#262335"
-    })
+    valueText: value
   }
 }
 
@@ -249,60 +255,37 @@ export const renderScene = (
 
   const nodes: CanvasElement = [...cache.zOrder]
     .map((id) => ({ ...cache.nodes.get(id)!, id }))
-    .flatMap(
-      ({
-        inputs,
-        output,
-        background,
-        connections,
-        id,
-        valueText,
-        valueBackground
-      }) => {
-        const backgroundShape = background.attribs!.fill ? background : null
+    .flatMap(({ inputs, output, background, connections, id, valueText }) => {
+      const backgroundShape = background.attribs!.fill ? background : null
 
-        const inputShapes = inputs.flatMap((input, index): IHiccupShape[] => {
-          if (input.type === Type.CIRCLE) return [input]
+      const inputShapes = inputs.flatMap((input, index): IHiccupShape[] => {
+        if (input.type === Type.CIRCLE) return [input]
 
-          const arc = g.pathFromCubics(g.asCubic(input))
-          const connection = connections[index]
+        const arc = g.pathFromCubics(g.asCubic(input))
+        const connection = connections[index]
 
-          const isPreviewed =
-            cache.connection._type === PartialKind.Input &&
-            cache.connection.id === id &&
-            cache.connection.index === index
+        const isPreviewed =
+          cache.connection._type === PartialKind.Input &&
+          cache.connection.id === id &&
+          cache.connection.index === index
 
-          if (connection.attribs!.connected && !isPreviewed) {
-            return [connection, arc]
-          }
-
-          return [arc]
-        })
-
-        let value: CanvasElement = []
-
-        if (valueText[3] !== "") {
-          if (valueText[1].__dirtyBackground) {
-            ctx.save()
-            ctx.font = valueText[1].font ?? ""
-
-            const metrics = ctx.measureText(valueText[3])
-            const width = metrics.width + textBgPadding
-
-            ctx.restore()
-
-            valueBackground.size[0] = width
-            valueBackground.pos = [valueText[2][0] - width / 2, valueText[2][1]]
-
-            valueText[1].__dirtyBackground = false
-          }
-
-          value = [valueBackground, valueText]
+        if (connection.attribs!.connected && !isPreviewed) {
+          return [connection, arc]
         }
 
-        return [backgroundShape, ...inputShapes, output, ...value]
+        return [arc]
+      })
+
+      let value: CanvasElement = null
+
+      if (valueText.value !== "") {
+        valueText.resize(ctx)
+
+        value = valueText
       }
-    )
+
+      return [backgroundShape, ...inputShapes, output, value]
+    })
 
   const withPreview =
     cache.connection._type === PartialKind.Nothing
@@ -489,8 +472,9 @@ const selectInput = (
  */
 const moveNode = (geom: NodeGeometry, offset: Vec) => {
   add2(null, geom.position, offset)
-  add2(null, geom.valueText[2], offset)
-  add2(null, geom.valueBackground.pos, offset)
+  add2(null, geom.valueText.pos, offset)
+
+  geom.valueText.refresh()
 }
 
 /**

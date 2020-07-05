@@ -132,23 +132,20 @@ export const refreshInputArcsImpl = (
       connection.points[1] = g.closestPoint(input, start)!
     }
 
-    node.valueText[2][1] =
+    node.valueText.pos[1] =
       node.position[1] + nodeRadius + arcs.length * inputLayerOffset
   } else {
-    node.valueText[2][1] = node.position[1] + nodeRadius + inputLayerOffset
+    node.valueText.pos[1] = node.position[1] + nodeRadius + inputLayerOffset
   }
 
-  node.valueText[2][0] = node.position[0]
-  node.valueText[3] = value ?? ""
+  node.valueText.value = value ?? ""
 
   // This only works because of the assumption a node needs to
   // either have an output or at least an input
-  node.valueText[1].fill =
+  node.valueText.attribs.fill =
     node.output?.attribs!.fill ?? node.inputs[0].attribs!.stroke
-  node.valueText[2][1] = node.position[1] + nodeRadius + inputLayerOffset
 
-  // This basically tells the render function to resize the background of this text
-  node.valueText[1].__dirtyBackground = true
+  node.valueText.refresh()
 }
 
 /**

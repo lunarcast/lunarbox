@@ -5,6 +5,7 @@ import type { DCons } from "@thi.ng/dcons"
 import type { MouseTarget } from "../target"
 import type { ADT } from "ts-adt"
 import { TextElement } from "./Hiccup"
+import { TextWithBackground } from "../components/TextWithBackground"
 
 /**
  * Interface for everything which keeps track of a node.
@@ -46,8 +47,7 @@ export interface NodeGeometry {
   position: Vec
   lastState: NodeState | null
   inputOverwrites: Record<number, NodeId>
-  valueText: TextElement
-  valueBackground: Rect
+  valueText: TextWithBackground
 }
 
 /**

@@ -66,6 +66,7 @@ export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
     camera: cache.camera,
     nodes: [...cache.zOrder].map((id) => {
       const node = cache.nodes.get(id)!
+
       return {
         id,
         position: node.position as Vec2Like,

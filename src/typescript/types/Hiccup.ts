@@ -1,5 +1,5 @@
 import { Vec2Like } from "@thi.ng/vectors"
-import { IHiccupShape } from "@thi.ng/geom-api"
+import { IToHiccup } from "@thi.ng/api"
 
 type TextAlign = "center"
 
@@ -20,4 +20,4 @@ export type TextElement = ["text", Partial<TextAttribs>, Vec2Like, string]
 /**
  * Elements which can be rendered on a canvas.
  */
-export type CanvasElement = TextElement | IHiccupShape | null | CanvasElement[]
+export type CanvasElement = TextElement | IToHiccup | null | CanvasElement[]
