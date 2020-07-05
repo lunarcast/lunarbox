@@ -253,9 +253,21 @@ export const renderScene = (
 
   const matrix = getTransform(ctx, cache)
 
-  const nodes: CanvasElement = [...cache.zOrder]
-    .map((id) => ({ ...cache.nodes.get(id)!, id }))
-    .flatMap(({ inputs, output, background, connections, id, valueText }) => {
+  const nodes = [...cache.zOrder].map((id) => ({
+    ...cache.nodes.get(id)!,
+    id
+  }))
+
+  const nodeTexts = nodes.map(({ valueText }) => {
+    if (valueText.value === "") return null
+
+    valueText.resize(ctx)
+
+    return valueText
+  })
+
+  const nodesShapes = nodes.flatMap(
+    ({ inputs, output, background, connections, id, valueText }) => {
       const backgroundShape = background.attribs!.fill ? background : null
 
       const inputShapes = inputs.flatMap((input, index): IHiccupShape[] => {
@@ -276,23 +288,22 @@ export const renderScene = (
         return [arc]
       })
 
-      let value: CanvasElement = null
-
-      if (valueText.value !== "") {
-        valueText.resize(ctx)
-
-        value = valueText
-      }
-
-      return [backgroundShape, ...inputShapes, output, value]
-    })
+      return [backgroundShape, ...inputShapes, output]
+    }
+  )
 
   const withPreview =
     cache.connection._type === PartialKind.Nothing
       ? null
       : cache.connectionPreview
 
-  const shapes = ["g", { transform: matrix }, ...nodes, withPreview]
+  const shapes = [
+    "g",
+    { transform: matrix },
+    ...nodesShapes,
+    ...nodeTexts,
+    withPreview
+  ]
 
   draw(ctx, [shapes], {
     attribs: {},
