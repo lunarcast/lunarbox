@@ -14,8 +14,6 @@ export class TextWithBackground<
   T extends Omit<any, keyof TextAttribs> = {},
   U extends Omit<any, keyof TWBAttribs> = {}
 > implements IToHiccup {
-  private _value = ""
-  private _font = ""
   private dirty = false
   public bg = new Rect([0, 0], [0, 0], {}) as Rect & {
     attribs: Partial<TWBAttribs> & U
@@ -24,6 +22,8 @@ export class TextWithBackground<
   public constructor(
     public attribs: Partial<Omit<TextAttribs, "font">> & T,
     bgAttribs: Partial<TWBAttribs> & U,
+    private _value = "",
+    private _font = "",
     public pos: Vec2Like = [0, 0]
   ) {
     this.bg.attribs = bgAttribs

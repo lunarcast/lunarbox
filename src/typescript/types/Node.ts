@@ -48,6 +48,7 @@ export interface NodeGeometry {
   lastState: NodeState | null
   inputOverwrites: Record<number, NodeId>
   valueText: TextWithBackground
+  name: TextWithBackground | null
 }
 
 /**

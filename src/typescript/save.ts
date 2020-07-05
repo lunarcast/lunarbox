@@ -12,6 +12,7 @@ interface SavedData {
     position: Vec2Like
     hasOutput: boolean
     inputCount: number
+    name?: string
   }>
 }
 
@@ -40,13 +41,14 @@ export const geometryCacheFromJson = (
       camera: camera,
       zOrder: new DCons(nodes.map(({ id }) => id)),
       nodes: new Map(
-        nodes.map(({ id, position, inputCount, hasOutput }) => [
+        nodes.map(({ id, position, inputCount, hasOutput, name }) => [
           id,
           createNodeGeometry(
             position,
             inputCount,
             // @ts-ignore I use a number as a boolean here which is ok in this context
-            hasOutput
+            hasOutput,
+            name
           )
         ])
       )
@@ -71,7 +73,8 @@ export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
         id,
         position: node.position as Vec2Like,
         inputCount: node.inputs[0].attribs!.selectable ? node.inputs.length : 0,
-        hasOutput: node.output !== null
+        hasOutput: node.output !== null,
+        name: node.name === null ? undefined : node.name.value
       }
     })
   }

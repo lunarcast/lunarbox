@@ -67,6 +67,8 @@ export const refreshInputArcsImpl = (
 
   node.lastState = state
 
+  let offset = 0
+
   if (node.inputs[0].attribs!.selectable) {
     const arcs = Arc.placeInputs(
       (id) => positionOverwrites[id] ?? cache.nodes.get(id)?.position ?? [0, 0],
@@ -131,12 +133,11 @@ export const refreshInputArcsImpl = (
       )
       connection.points[1] = g.closestPoint(input, start)!
     }
+    offset = nodeRadius + arcs.length * inputLayerOffset
+  } else offset = nodeRadius + inputLayerOffset
 
-    node.valueText.pos[1] =
-      node.position[1] + nodeRadius + arcs.length * inputLayerOffset
-  } else {
-    node.valueText.pos[1] = node.position[1] + nodeRadius + inputLayerOffset
-  }
+  node.valueText.pos[1] = node.position[1] + offset
+  if (node.name) node.name.pos[1] = node.position[1] - offset
 
   node.valueText.value = value ?? ""
 

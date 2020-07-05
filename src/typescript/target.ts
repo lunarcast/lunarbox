@@ -118,18 +118,18 @@ export const getMouseTarget = (
   }
   {
     const closestConnection = minBy(
-      (a, b) => {
-        return distanceToMouse(a.closest) < distanceToMouse(b.closest)
-      },
+      (a, b) => distanceToMouse(a.closest) < distanceToMouse(b.closest),
       nodes.flatMap(([id, node]) =>
         node.inputs[0].attribs?.selectable
-          ? node.connections.map((connection, index) => ({
-              index,
-              node,
-              id,
-              closest: closestPoint(connection, mousePosition)!,
-              geom: connection
-            }))
+          ? node.connections
+              .filter((connection) => connection.attribs!.connected)
+              .map((connection, index) => ({
+                index,
+                node,
+                id,
+                closest: closestPoint(connection, mousePosition)!,
+                geom: connection
+              }))
           : []
       )
     )

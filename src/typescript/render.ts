@@ -145,11 +145,13 @@ const createInputGeometry = (position: Vec2Like) => {
  * @param position The position of the node
  * @param numberOfInputs The number of input arcs to create.
  * @param hasOutput If this is true a geometry for the output will be generated as well
+ * @param name The name to display on top of the node.
  */
 export const createNodeGeometry = (
   position: Vec2Like,
   numberOfInputs: number,
-  hasOutput: boolean
+  hasOutput: boolean,
+  name?: string
 ): NodeGeometry => {
   const inputGeom =
     numberOfInputs === 0
@@ -168,16 +170,30 @@ export const createNodeGeometry = (
 
   const value = new TextWithBackground(
     {
-      fill: "yellow",
       align: "center",
       baseline: "hanging"
     },
     {
-      baseline: "hanging",
       fill: "#262335",
       padding: textPadding
     }
   )
+
+  const nameGeom =
+    name === undefined
+      ? null
+      : new TextWithBackground(
+          {
+            algin: "center"
+          },
+          {
+            fill: "green", //"#262335",
+            padding: textPadding,
+            baseline: "baseline"
+          },
+          name,
+          font
+        )
 
   value.pos[0] = position[0]
   value.font = font
@@ -197,7 +213,8 @@ export const createNodeGeometry = (
           weight: arcStrokeWidth.normal
         })
       ),
-    valueText: value
+    valueText: value,
+    name: nameGeom
   }
 }
 
@@ -258,12 +275,20 @@ export const renderScene = (
     id
   }))
 
-  const nodeTexts = nodes.map(({ valueText }) => {
-    if (valueText.value === "") return null
+  const nodeTexts = nodes.flatMap(({ valueText, name }) => {
+    const result: CanvasElement = []
 
-    valueText.resize(ctx)
+    if (valueText.value !== "") {
+      valueText.resize(ctx)
+      result.push(valueText)
+    }
 
-    return valueText
+    if (name !== null) {
+      name.resize(ctx)
+      result.push(name)
+    }
+
+    return result
   })
 
   const nodesShapes = nodes.flatMap(
@@ -484,6 +509,11 @@ const selectInput = (
 const moveNode = (geom: NodeGeometry, offset: Vec) => {
   add2(null, geom.position, offset)
   add2(null, geom.valueText.pos, offset)
+
+  if (geom.name) {
+    add2(null, geom.name.pos, offset)
+    geom.name.refresh()
+  }
 
   geom.valueText.refresh()
 }
