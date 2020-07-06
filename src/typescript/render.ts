@@ -20,18 +20,12 @@ import {
   nodeBackgrounds,
   nodeOutputRadius,
   nodeRadius,
-  textBgPadding,
   font,
   textPadding
 } from "./constants"
 import { isPressed, MouseButtons } from "./mouse"
 import { refreshInputArcsImpl } from "./sync"
-import {
-  getMouseTarget,
-  MouseTarget,
-  MouseTargetKind,
-  InputSelection
-} from "./target"
+import { getMouseTarget, MouseTarget, MouseTargetKind } from "./target"
 import type { ForeignAction, ForeignActionConfig } from "./types/ForeignAction"
 import {
   GeometryCache,
@@ -44,7 +38,6 @@ import {
 import { CanvasElement } from "./types/Hiccup"
 import { draw } from "@thi.ng/hiccup-canvas"
 import { TextWithBackground } from "./components/TextWithBackground"
-import { geometryCacheFromJson } from "./save"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache = (): GeometryCache => ({
@@ -184,17 +177,19 @@ export const createNodeGeometry = (
       ? null
       : new TextWithBackground(
           {
-            algin: "center"
+            align: "center",
+            fill: "white",
+            baseline: "baseline"
           },
           {
-            fill: "green", //"#262335",
-            padding: textPadding,
-            baseline: "baseline"
+            fill: "#262335",
+            padding: textPadding
           },
           name,
           font
         )
 
+  if (nameGeom !== null) nameGeom.pos[0] = position[0]
   value.pos[0] = position[0]
   value.font = font
 
@@ -205,6 +200,8 @@ export const createNodeGeometry = (
     position,
     lastState: null,
     inputOverwrites: {},
+    valueText: value,
+    name: nameGeom,
     connections: Array(numberOfInputs)
       .fill(1)
       .map(() =>
@@ -212,9 +209,7 @@ export const createNodeGeometry = (
           connected: false,
           weight: arcStrokeWidth.normal
         })
-      ),
-    valueText: value,
-    name: nameGeom
+      )
   }
 }
 
@@ -508,13 +503,13 @@ const selectInput = (
  */
 const moveNode = (geom: NodeGeometry, offset: Vec) => {
   add2(null, geom.position, offset)
-  add2(null, geom.valueText.pos, offset)
 
-  if (geom.name) {
+  if (geom.name !== null) {
     add2(null, geom.name.pos, offset)
     geom.name.refresh()
   }
 
+  add2(null, geom.valueText.pos, offset)
   geom.valueText.refresh()
 }
 

@@ -62,7 +62,7 @@ foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeometryC
 
 foreign import geometryCacheToJson :: GeometryCache -> Json
 
-foreign import createNode :: GeometryCache -> NodeId -> Int -> Boolean -> Effect Unit
+foreign import createNode :: GeometryCache -> NodeId -> Int -> Boolean -> Nullable String -> Effect Unit
 
 foreign import refreshInputArcs :: GeometryCache -> NodeId -> NodeState -> Effect Unit
 

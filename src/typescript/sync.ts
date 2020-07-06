@@ -12,7 +12,7 @@ import { inputLayerOffset, nodeRadius, arcSpacing } from "./constants"
 import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
 import * as color from "@thi.ng/color"
-import { IHiccupShape } from "@thi.ng/geom-api"
+import type { IHiccupShape } from "@thi.ng/geom-api"
 
 /**
  * Generate the geometries for a new node.
@@ -24,11 +24,12 @@ import { IHiccupShape } from "@thi.ng/geom-api"
  */
 export const createNode = (cache: GeometryCache) => (id: NodeId) => (
   inputCount: number
-) => (hasOutput: boolean) => () => {
+) => (hasOutput: boolean) => (name: string | null) => () => {
   const shape = Native.createNodeGeometry(
     [0, 0], // TODO: find a better way to place nodes
     inputCount,
-    hasOutput
+    hasOutput,
+    name ?? undefined
   )
 
   cache.zOrder.push(id)
@@ -133,11 +134,17 @@ export const refreshInputArcsImpl = (
       )
       connection.points[1] = g.closestPoint(input, start)!
     }
+
     offset = nodeRadius + arcs.length * inputLayerOffset
   } else offset = nodeRadius + inputLayerOffset
 
   node.valueText.pos[1] = node.position[1] + offset
-  if (node.name) node.name.pos[1] = node.position[1] - offset
+
+  if (node.name) {
+    node.name.pos[1] = node.position[1] - offset
+    node.name.refresh()
+    console.log(`The size of node ${id} is ${node.name.bg.size}`)
+  }
 
   node.valueText.value = value ?? ""
 

@@ -220,13 +220,13 @@ updateNode id =
 createNode :: forall m a s n. MonadEffect m => MonadState (State a s n) m => FunctionName -> m Unit
 createNode name = do
   let
+    isInput = name == inputNodeName
+
     create = do
       state <- get
       id <- createId
       desiredInputCount <- gets $ preview $ _atInputCount name
       let
-        isInput = name == inputNodeName
-
         maxInputs =
           if isInput then
             0
@@ -255,7 +255,9 @@ createNode name = do
   Tuple (Tuple id inputs) newState <- gets $ runState create
   gets (view _currentGeometryCache)
     >>= traverse_ \cache -> do
-        liftEffect $ Native.createNode cache id inputs true
+        let
+          displayName = if isInput then Nullable.null else Nullable.notNull $ show name
+        liftEffect $ Native.createNode cache id inputs true displayName
         void $ put newState
         updateNode id
 
@@ -383,7 +385,7 @@ initializeFunction name state =
     let
       id = NodeId $ show name <> "-output"
     cache <- liftEffect emptyGeometryCache
-    liftEffect $ Native.createNode cache id 1 false
+    liftEffect $ Native.createNode cache id 1 false Nullable.null
     modify_ $ over _project $ createFunction name id
     modify_ $ setCurrentFunction (Just name)
     modify_ $ set _currentGeometryCache $ Just cache

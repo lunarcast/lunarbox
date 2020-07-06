@@ -1,6 +1,6 @@
-import { IToHiccup } from "@thi.ng/api"
-import { TextAttribs, TextElement } from "../types/Hiccup"
-import { Vec2Like, add2, mul2, mulN2 } from "@thi.ng/vectors"
+import type { IToHiccup } from "@thi.ng/api"
+import type { TextAttribs, TextElement } from "../types/Hiccup"
+import { Vec2Like, add2, mulN2 } from "@thi.ng/vectors"
 import { Rect } from "@thi.ng/geom"
 
 export interface TWBAttribs {
@@ -15,6 +15,7 @@ export class TextWithBackground<
   U extends Omit<any, keyof TWBAttribs> = {}
 > implements IToHiccup {
   private dirty = false
+  private doublePadding: Vec2Like
   public bg = new Rect([0, 0], [0, 0], {}) as Rect & {
     attribs: Partial<TWBAttribs> & U
   }
@@ -27,13 +28,32 @@ export class TextWithBackground<
     public pos: Vec2Like = [0, 0]
   ) {
     this.bg.attribs = bgAttribs
+    this.doublePadding = mulN2(
+      [],
+      this.bg.attribs.padding ?? [0, 0],
+      2
+    ) as Vec2Like
+
+    if (_font !== "" || _value !== "") {
+      this.dirty = true
+    }
   }
 
   private get textElement(): TextElement {
+    const paddingY = this.bg.attribs.padding?.[1] ?? 0
+
     return [
       "text",
       { ...this.attribs, font: this._font },
-      [this.pos[0], this.pos[1] + (this.bg.attribs.padding?.[1] ?? 0)],
+      [
+        this.pos[0],
+        this.pos[1] +
+          (this.attribs.baseline === "baseline"
+            ? -paddingY
+            : this.attribs.baseline === "hanging"
+            ? paddingY
+            : 0)
+      ],
       this.value
     ]
   }
@@ -64,12 +84,14 @@ export class TextWithBackground<
 
     const metrics = ctx.measureText(this._value)
 
+    ctx.restore()
+
     this.bg.size = [
       metrics.width,
       metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
     ]
 
-    add2(null, this.bg.size, mulN2([], this.bg.attribs.padding ?? [0, 0], 2))
+    add2(null, this.bg.size, this.doublePadding)
 
     this.refresh()
 
@@ -81,7 +103,13 @@ export class TextWithBackground<
       this.bg.pos[0] = this.pos[0] - this.bg.size[0] / 2
     }
 
-    this.bg.pos[1] = this.pos[1]
+    if (this.attribs.baseline === "baseline") {
+      this.bg.pos[1] = this.pos[1] - this.bg.size[1]
+    } else if (this.attribs.baseline === "middle") {
+      this.bg.pos[1] = this.pos[1] - this.bg.size[1] / 2
+    } else {
+      this.bg.pos[1] = this.pos[1]
+    }
   }
 
   public toHiccup() {
