@@ -39,7 +39,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
-import Lunarbox.Component.Utils (className, container, whenElem)
+import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
@@ -109,13 +109,13 @@ type ChildSlots
 type EditorState m
   = State Action ChildSlots m
 
--- We use this to automatically focus on the correct elemtn when pressing S
+-- We use this to automatically focus on the correct element when pressing S
 searchNodeInputRef :: RefLabel
 searchNodeInputRef = RefLabel "search node"
 
 -- We need this to only trigger events when in focus
 searchNodeClassName :: String
-searchNodeClassName = "search-node"
+searchNodeClassName = "node-search__input"
 
 -- | Actions which can be triggered from the connection confirmation modal.
 data PendingConnectionAction
@@ -376,20 +376,23 @@ component =
     icon = sidebarIcon currentTab
 
   mkPanel :: _
-  mkPanel { title, actions, content } =
+  mkPanel { title, actions, content, footer, header } =
     [ HH.header [ className "panel__header" ]
-        $ [ HH.h1 [ className "panel__title" ] [ HH.text title ]
-          ]
-        <> ( ( \action ->
-                HH.div [ className "panel__action", onClick $ const action.onClick ]
-                  [ icon action.icon
-                  ]
-            )
-              <$> actions
-          )
-    , HH.main [ className "panel__content" ]
-        [ content
+        [ HH.div [ className "panel__title-container" ]
+            $ [ HH.h1 [ className "panel__title" ] [ HH.text title ]
+              ]
+            <> ( ( \action ->
+                    HH.div [ className "panel__action", onClick $ const action.onClick ]
+                      [ icon action.icon
+                      ]
+                )
+                  <$> actions
+              )
+        , maybeElement header identity
         ]
+    , HH.main [ className "panel__content" ]
+        content
+    , maybeElement footer \inner -> HH.footer [ className "panel__footer" ] [ inner ]
     ]
 
   panel :: State Action ChildSlots m -> Array (HH.ComponentHTML Action ChildSlots m)
@@ -398,58 +401,61 @@ component =
       mkPanel
         { title: "Project settings"
         , actions: []
+        , footer: Nothing
+        , header: Nothing
         , content:
-          HH.div_
-            [ HH.div
-                [ className "setting" ]
-                [ HH.div [ className "setting__label" ] [ HH.text "Name:" ]
-                , HH.input
-                    [ HP.value name
-                    , HP.placeholder "Project name"
-                    , className "setting__text-input"
-                    , onValueInput $ Just <<< SetName
-                    ]
-                ]
-            , HH.div [ className "setting" ]
-                [ HH.div [ className "setting__label" ] [ HH.text "Visibility:" ]
-                , HH.div [ className "setting__switch-input" ]
-                    [ switch { checked: isVisible, round: true } (Just <<< SetVisibility)
-                    ]
-                ]
-            , whenElem isAdmin \_ ->
-                HH.div [ className "project-setting" ]
-                  [ HH.div [ className "setting__label" ] [ HH.text "Example:" ]
-                  , HH.div [ className "setting__switch-input" ]
-                      [ switch { checked: isExample, round: true } (Just <<< SetExample)
-                      ]
+          [ HH.div
+              [ className "setting" ]
+              [ HH.div [ className "setting__label" ] [ HH.text "Name:" ]
+              , HH.input
+                  [ HP.value name
+                  , HP.placeholder "Project name"
+                  , className "setting__text-input"
+                  , onValueInput $ Just <<< SetName
                   ]
-            ]
+              ]
+          , HH.div [ className "setting" ]
+              [ HH.div [ className "setting__label" ] [ HH.text "Visibility:" ]
+              , HH.div [ className "setting__switch-input" ]
+                  [ switch { checked: isVisible, round: true } (Just <<< SetVisibility)
+                  ]
+              ]
+          , whenElem isAdmin \_ ->
+              HH.div [ className "project-setting" ]
+                [ HH.div [ className "setting__label" ] [ HH.text "Example:" ]
+                , HH.div [ className "setting__switch-input" ]
+                    [ switch { checked: isExample, round: true } (Just <<< SetExample)
+                    ]
+                ]
+          ]
         }
     Tree ->
       mkPanel
         { title: "Explorer"
         , actions: [ { icon: "note_add", onClick: Just StartFunctionCreation } ]
+        , footer: Nothing
+        , header: Nothing
         , content:
-          HH.slot (SProxy :: _ "tree") unit TreeC.component
-            { functions:
-              (maybe mempty pure currentFunction)
-                <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
-                  )
-            , selected: currentFunction
-            }
-            handleTreeOutput
+          [ HH.slot (SProxy :: _ "tree") unit TreeC.component
+              { functions:
+                (maybe mempty pure currentFunction)
+                  <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
+                    )
+              , selected: currentFunction
+              }
+              handleTreeOutput
+          ]
         }
     Add ->
       mkPanel
         { title: "Add node"
         , actions: []
-        , content:
-          HH.div_
-            [ flip lazy nodeSearchTerm \nodeSearchTerm' ->
-                container "node-search-container"
+        , header:
+          Just
+            $ flip lazy nodeSearchTerm \nodeSearchTerm' ->
+                HH.div [ className "node-search" ]
                   [ HH.input
-                      [ HP.id_ "node-search-input"
-                      , HP.placeholder "Search nodes. Eg: add, greater than..."
+                      [ HP.placeholder "Search nodes. Eg: add, greater than..."
                       , HP.value nodeSearchTerm'
                       , HP.ref searchNodeInputRef
                       , className searchNodeClassName
@@ -458,34 +464,37 @@ component =
                       ]
                   , icon "search"
                   ]
-            , lazy2 AddC.add
-                { project
-                , currentFunction
-                , functionData
-                , typeMap
-                , inputCountMap
-                , nodeSearchTerm
-                }
-                { edit: Just <<< SelectFunction <<< Just
-                , addNode: Just <<< CreateNode
-                , changeInputCount: (Just <<< _) <<< ChangeInputCount
-                , delete: Just <<< DeleteFunction
-                }
-            , container "create-input"
-                [ HH.button
-                    [ className "unselectable"
-                    , onClick $ const $ Just $ CreateNode $ FunctionName "input"
-                    ]
-                    [ HH.text "Create input node"
-                    ]
+        , footer:
+          Just
+            $ HH.button
+                [ className "unselectable node-panel__create-input-button"
+                , onClick $ const $ Just $ CreateNode $ FunctionName "input"
                 ]
-            ]
+                [ HH.text "Create input node"
+                ]
+        , content:
+          [ lazy2 AddC.add
+              { project
+              , currentFunction
+              , functionData
+              , typeMap
+              , inputCountMap
+              , nodeSearchTerm
+              }
+              { edit: Just <<< SelectFunction <<< Just
+              , addNode: Just <<< CreateNode
+              , changeInputCount: (Just <<< _) <<< ChangeInputCount
+              , delete: Just <<< DeleteFunction
+              }
+          ]
         }
     Problems ->
       mkPanel
         { title: "Problems"
         , actions: []
-        , content: HH.div_ [ HH.text "unimplemented" ]
+        , footer: Nothing
+        , header: Nothing
+        , content: [ HH.text "unimplemented" ]
         }
 
   scene :: HH.ComponentHTML Action ChildSlots m

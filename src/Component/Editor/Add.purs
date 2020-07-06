@@ -15,12 +15,11 @@ import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (generateColorMap, prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
-import Lunarbox.Component.Editor.Node (SelectionStatus(..), renderNode)
+import Lunarbox.Component.Editor.Node (SelectionStatus(..))
 import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Utils (className, container, whenElem)
+import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
-import Lunarbox.Data.Editor.Constants (arcWidth, nodeRadius)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location(..))
@@ -30,8 +29,6 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
 import Lunarbox.Data.Editor.State (getMaxInputs)
 import Lunarbox.Data.Ord (sortBySearch)
-import Svg.Attributes as SA
-import Svg.Elements as SE
 
 type Input
   = { project :: Project
@@ -98,43 +95,35 @@ makeNode ::
   Map.Map FunctionName Int -> FunctionData -> HH.ComponentHTML a s m
 makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, canBeDeleted } name maxInputs typeMap inputCountMap functionData =
   HH.div [ className "node" ]
-    [ SE.svg
-        [ SA.width 75.0
-        , SA.height 75.0
-        , let size = arcWidth + nodeRadius in SA.viewBox (-size) (-size) (2.0 * size) (2.0 * size)
+    [ HH.canvas
+        [ HP.width 75
+        , HP.height 75
+        , className "node__preview"
         ]
-        [ renderNode
-            (nodeInput inputCount typeMap name functionData)
-            { select: const Nothing
-            , selectOutput: const Nothing
-            , selectInput: const $ const Nothing
-            , setValue: const Nothing
-            , removeConnection: const $ const $ const Nothing
-            }
-        ]
-    , container "node-data"
-        [ container "node-text"
-            [ container "node-header"
-                [ HH.div [ HP.id_ "node-name", className "no-overflow" ]
+    , HH.div [ className "node__data" ]
+        [ HH.div [ className "node__text" ]
+            [ HH.header [ className "node__data-header" ]
+                [ HH.div [ className "node__name no-overflow" ]
                     [ HH.text $ show name
                     ]
                 , nodeButton isUsable (addNode name) "add"
                 , nodeButton isEditable (edit name) "edit"
                 , nodeButton canBeDeleted (delete name) "delete"
                 ]
-            , container "node-type"
+            , HH.section [ className "node__type" ]
                 $ fromMaybe mempty
                 $ pure
                 <<< highlightTypeToHTML
                 <<< prettify
                 <$> Map.lookup (AtFunction name) typeMap
-            , container "curry-node"
-                [ container "curry-text" [ HH.text "inputs:" ]
+            , HH.section [ className "node__currying" ]
+                [ HH.div [ className "node__curying-text" ] [ HH.text "inputs:" ]
                 , HH.input
                     [ HP.value $ show inputCount
                     , HP.type_ $ HP.InputNumber
                     , HP.min 0.0
                     , HP.max $ toNumber maxInputs
+                    , className "node__currying-input"
                     , onValueInput $ changeInputCount name <=< map (clamp 0 maxInputs) <<< fromString
                     ]
                 ]
@@ -146,7 +135,7 @@ makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, can
 
 add :: forall a s m. Input -> Actions a -> HH.ComponentHTML a s m
 add input@{ project, currentFunction, functionData, typeMap, inputCountMap, nodeSearchTerm } actions =
-  container "nodes"
+  HH.div [ className "nodes" ]
     $ ( \(Tuple name descriptor) ->
           let
             functionData' = fromMaybe def $ Map.lookup name functionData

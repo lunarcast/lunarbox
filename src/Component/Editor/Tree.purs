@@ -17,7 +17,7 @@ import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Tooltip (maybeTooltip)
-import Lunarbox.Component.Utils (StaticHtml, className, container)
+import Lunarbox.Component.Utils (StaticHtml, className)
 import Lunarbox.Config (Config, shouldCancelOnBlur)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)

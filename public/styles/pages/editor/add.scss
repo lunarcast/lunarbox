@@ -1,9 +1,8 @@
 @use "../../utils/utils";
 @import "../../theme.scss";
 
-#add-node-container > #create-input > button {
-  flex-grow: 1;
-
+// Stuff related to the footer for adding the inputs.
+.node-panel__create-input-button {
   background: $primary;
   color: white;
 
@@ -23,16 +22,134 @@
   }
 }
 
-#add-node-container #node-search-container {
+// The actual node data
+.nodes {
+  display: flex;
+  flex-direction: column;
+}
+
+.node {
   display: flex;
   align-items: center;
 
-  margin: 1rem;
-  margin-top: 0;
-  margin-bottom: 0;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+
+  transition: filter $transition-time;
+
+  &:hover {
+    filter: brightness(1.6);
+  }
 }
 
-#add-node-container #node-search-container #node-search-input {
+.node__preview {
+  background: red;
+}
+
+.node__data {
+  display: block;
+
+  flex-grow: 1;
+  height: 100%;
+
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+.node__buttons {
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  margin-left: 1rem;
+  justify-content: space-evenly;
+}
+
+.node__text {
+  display: flex;
+  justify-content: space-evenly;
+
+  flex-grow: 1;
+  flex-direction: column;
+
+  text-overflow: ellipsis;
+
+  & > * {
+    cursor: default;
+    user-select: none;
+  }
+}
+
+.node__type {
+  font-size: 0.85rem;
+}
+
+.node__data-header {
+  display: flex;
+  align-items: center;
+}
+
+.node__data-header .material-icons {
+  margin-left: 0.5rem;
+  font-size: 1.3rem;
+
+  cursor: pointer;
+  filter: none;
+
+  color: rgb(175, 173, 173);
+  transition: filter $transition-time, scale $transition-time;
+
+  &:hover {
+    filter: brightness(1.7);
+    transform: scale(1.2);
+  }
+}
+
+.node__name {
+  font-size: 1.4rem;
+  flex-grow: 1;
+
+  text-transform: capitalize;
+}
+
+// The currying stuff
+.node__currying {
+  display: flex;
+  align-items: center;
+
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+
+  width: 100%;
+}
+
+.node__currying-input {
+  flex-grow: 1;
+  width: 100%;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+  color: $on-primary;
+
+  margin-left: 1rem;
+  border-bottom: 3px solid $on-dark-pale;
+}
+
+// Stuff related to the search input
+.node-search {
+  display: flex;
+  align-items: center;
+
+  padding: 1rem;
+  padding-top: 0;
+  padding-bottom: 0;
+
+  background: $very-dark;
+}
+
+.node-search__input {
   @include utils.base-input;
   flex-grow: 1;
 
@@ -44,130 +161,4 @@
   font-size: 1.3rem;
 
   color: $on-primary;
-}
-
-#add-node-container {
-  display: flex;
-  flex-direction: column;
-
-  height: 100vh;
-
-  #title {
-    border: none;
-  }
-}
-
-#add-node-container > #nodes {
-  $border: 4px solid $primary-bright;
-
-  border-bottom: $border;
-  border-top: $border;
-
-  display: flex;
-  flex-direction: column;
-
-  margin-bottom: 1rem;
-
-  height: 100%;
-  overflow-y: auto;
-
-  .node {
-    display: flex;
-
-    background: $primary-dark;
-
-    padding: 0.5rem;
-    margin-bottom: 1rem;
-
-    transition: filter $transition-time;
-
-    &:hover {
-      filter: brightness(1.6);
-    }
-
-    #node-data {
-      flex-grow: 1;
-      height: 100%;
-      margin: 1rem;
-      margin-top: 0;
-      margin-bottom: 0;
-
-      #node-buttons {
-        display: flex;
-        flex-direction: column;
-
-        height: 100%;
-        margin-left: 1rem;
-        justify-content: space-evenly;
-      }
-
-      #node-text {
-        display: flex;
-        flex-grow: 1;
-        flex-direction: column;
-        text-overflow: ellipsis;
-
-        & > * {
-          cursor: default;
-          user-select: none;
-        }
-
-        #node-type {
-          font-size: 0.85rem;
-        }
-      }
-    }
-  }
-}
-
-#nodes #node-text > #curry-node {
-  display: flex;
-  align-items: center;
-
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-
-  input {
-    flex-grow: 1;
-    width: 100%;
-
-    border: none;
-    outline: none;
-
-    background: transparent;
-    color: $on-primary;
-
-    margin-left: 1rem;
-    border-bottom: 3px solid $on-dark-pale;
-  }
-
-  width: 100%;
-}
-
-#add-node-container #node-header {
-  display: flex;
-  align-items: center;
-
-  #node-name {
-    font-size: 1.4rem;
-    flex-grow: 1;
-
-    text-transform: capitalize;
-  }
-
-  .material-icons {
-    margin-left: 0.5rem;
-    font-size: 1.3rem;
-
-    cursor: pointer;
-    filter: none;
-
-    color: rgb(175, 173, 173);
-    transition: filter $transition-time, scale $transition-time;
-
-    &:hover {
-      filter: brightness(1.7);
-      transform: scale(1.2);
-    }
-  }
 }
