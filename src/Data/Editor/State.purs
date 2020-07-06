@@ -62,6 +62,7 @@ data Tab
   = Settings
   | Add
   | Tree
+  | Problems
 
 derive instance eqTab :: Eq Tab
 
@@ -73,6 +74,7 @@ tabIcon = case _ of
   Settings -> "settings"
   Add -> "add"
   Tree -> "account_tree"
+  Problems -> "error"
 
 -- | The result of compiling and typechecking the program
 type CompilationResult r

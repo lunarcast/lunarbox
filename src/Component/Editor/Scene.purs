@@ -15,6 +15,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
+import Lunarbox.Component.Utils (className)
 import Lunarbox.Config (Config)
 import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, emptyGeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
 import Web.Event.Event (EventType(..))
@@ -129,6 +130,7 @@ component =
     const
       $ HH.canvas
           [ HP.ref canvasRef
+          , className "scene__canvas"
           , onMouseMove $ Just <<< HandleEvent handleMouseMove
           , onMouseUp $ Just <<< HandleEvent handleMouseUp
           , onMouseDown $ Just <<< HandleEvent handleMouseDown

@@ -1,22 +1,22 @@
-.tooltip-container {
+.tooltip {
   position: relative;
-
-  .tooltip-content {
-    visibility: hidden;
-
-    padding: 0.7rem;
-    box-sizing: border-box;
-
-    width: 100%;
-    display: block;
-
-    position: absolute;
-    z-index: 10;
-  }
 }
 
-.tooltip-container.hoverable:hover,
-.tooltip-container.active {
+.tooltip__content {
+  visibility: hidden;
+
+  padding: 0.7rem;
+  box-sizing: border-box;
+
+  width: 100%;
+  display: block;
+
+  position: absolute;
+  z-index: 10;
+}
+
+.tooltip.tooltip--hoverable:hover,
+.tooltip.tooltip-active {
   .tooltip-content {
     visibility: visible;
   }

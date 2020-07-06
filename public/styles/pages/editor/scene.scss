@@ -2,37 +2,37 @@
 @use "../../fonts";
 @import "../../theme.scss";
 
-#editor > #scene {
+.scene {
   background: $primary;
   width: 100%;
 
   overflow: hidden;
 }
 
-#editor > #scene canvas {
+.scene__canvas {
   height: 100%;
   width: 100%;
 }
 
-#editor > #scene #empty {
+.scene__illustration-container {
   @include utils.center;
   height: 100%;
+}
 
-  #illustration {
-    width: 40vw;
+.scene__illustration-container .scene__illustration {
+  width: 40vw;
 
-    img {
-      width: 100%;
-    }
-  }
-
-  #text {
+  img {
     width: 100%;
-    text-align: center;
-    font-size: 1.5rem;
-    padding: 2rem;
-    box-sizing: border-box;
-    font-family: fonts.$oxanium;
-    color: $disabled;
   }
+}
+
+.scene__text {
+  width: 100%;
+  text-align: center;
+  font-size: 1.5rem;
+  padding: 2rem;
+  box-sizing: border-box;
+  font-family: fonts.$oxanium;
+  color: $disabled;
 }

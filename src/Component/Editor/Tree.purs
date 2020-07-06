@@ -157,8 +157,11 @@ component =
   displayFunction selected name =
     HH.div
       [ onClick $ const $ Just $ SelectFunction name
-      , classes $ ClassName <$> ("selected" <$ guard (Just name == selected))
-      , HP.id_ "function"
+      , classes $ ClassName
+          <$> [ "explorer__function" ]
+          <> ( "explorer__function--selected"
+                <$ guard (Just name == selected)
+            )
       ]
       [ icon "code"
       , HH.span
@@ -168,7 +171,9 @@ component =
       ]
 
   render :: forall a. State -> HTML a Action
-  render { functions, creating, selected, validationError } = container "functions" (existingFunctions <> newFunctionTextBox)
+  render { functions, creating, selected, validationError } =
+    HH.div [ className "explorer" ]
+      (existingFunctions <> newFunctionTextBox)
     where
     -- this is the html for the list of existing functions
     existingFunctions = List.toUnfoldable $ (displayFunction selected) <$> functions
@@ -176,11 +181,11 @@ component =
     -- this is a list which may contain the input box for creating new functions
     newFunctionTextBox =
       guard creating
-        $> container "create-function-input-container"
+        $> HH.div [ className "explorer__input-container" ]
             [ icon "code"
             , maybeTooltip (validationErrorToHtml <$> validationError)
                 $ HH.input
-                    [ HP.id_ "create-function-input"
+                    [ className "explorer__input"
                     , onKeyUp \event -> do
                         -- when the user presses enter we create the function
                         guard (KE.key event == "Enter")

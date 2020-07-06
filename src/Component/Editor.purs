@@ -29,7 +29,7 @@ import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, Subscrip
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onKeyUp, onMouseUp, onValueInput)
-import Halogen.HTML.Properties (classes, id_)
+import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
@@ -359,7 +359,7 @@ component =
 
   sidebarIcon activeTab current =
     HH.div
-      [ classes $ ClassName <$> [ "sidebar-icon" ] <> (guard isActive $> "active")
+      [ classes $ ClassName <$> [ "editor__activity" ] <> (guard isActive $> "editor__activity--active")
       , onClick $ const $ Just $ ChangeTab current
       ]
       [ icon $ tabIcon current ]
@@ -370,46 +370,67 @@ component =
     [ icon Settings
     , icon Add
     , icon Tree
+    , icon Problems
     ]
     where
     icon = sidebarIcon currentTab
 
-  panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
+  mkPanel :: _
+  mkPanel { title, actions, content } =
+    [ HH.header [ className "panel__header" ]
+        $ [ HH.h1 [ className "panel__title" ] [ HH.text title ]
+          ]
+        <> ( ( \action ->
+                HH.div [ className "panel__action", onClick $ const action.onClick ]
+                  [ icon action.icon
+                  ]
+            )
+              <$> actions
+          )
+    , HH.main [ className "panel__content" ]
+        [ content
+        ]
+    ]
+
+  panel :: State Action ChildSlots m -> Array (HH.ComponentHTML Action ChildSlots m)
   panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm } = case currentTab of
     Settings ->
-      container "settings"
-        [ container "title" [ HH.text "Project settings" ]
-        , HH.div [ className "project-setting" ]
-            [ HH.div [ className "setting-label" ] [ HH.text "Name:" ]
-            , HH.input
-                [ HP.value name
-                , HP.placeholder "Project name"
-                , className "setting-text-input"
-                , onValueInput $ Just <<< SetName
+      mkPanel
+        { title: "Project settings"
+        , actions: []
+        , content:
+          HH.div_
+            [ HH.div
+                [ className "setting" ]
+                [ HH.div [ className "setting__label" ] [ HH.text "Name:" ]
+                , HH.input
+                    [ HP.value name
+                    , HP.placeholder "Project name"
+                    , className "setting__text-input"
+                    , onValueInput $ Just <<< SetName
+                    ]
                 ]
-            ]
-        , HH.div [ className "project-setting" ]
-            [ HH.div [ className "setting-label" ] [ HH.text "Visibility:" ]
-            , HH.div [ className "setting-switch-input" ]
-                [ switch { checked: isVisible, round: true } (Just <<< SetVisibility)
+            , HH.div [ className "setting" ]
+                [ HH.div [ className "setting__label" ] [ HH.text "Visibility:" ]
+                , HH.div [ className "setting__switch-input" ]
+                    [ switch { checked: isVisible, round: true } (Just <<< SetVisibility)
+                    ]
                 ]
-            ]
-        , whenElem isAdmin \_ ->
-            HH.div [ className "project-setting" ]
-              [ HH.div [ className "setting-label" ] [ HH.text "Example:" ]
-              , HH.div [ className "setting-switch-input" ]
-                  [ switch { checked: isExample, round: true } (Just <<< SetExample)
+            , whenElem isAdmin \_ ->
+                HH.div [ className "project-setting" ]
+                  [ HH.div [ className "setting__label" ] [ HH.text "Example:" ]
+                  , HH.div [ className "setting__switch-input" ]
+                      [ switch { checked: isExample, round: true } (Just <<< SetExample)
+                      ]
                   ]
-              ]
-        ]
-    Tree ->
-      container
-        "tree"
-        [ container "tree-top"
-            [ container "title" [ HH.text "Explorer" ]
-            , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
             ]
-        , HH.slot (SProxy :: _ "tree") unit TreeC.component
+        }
+    Tree ->
+      mkPanel
+        { title: "Explorer"
+        , actions: [ { icon: "note_add", onClick: Just StartFunctionCreation } ]
+        , content:
+          HH.slot (SProxy :: _ "tree") unit TreeC.component
             { functions:
               (maybe mempty pure currentFunction)
                 <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
@@ -417,69 +438,80 @@ component =
             , selected: currentFunction
             }
             handleTreeOutput
-        ]
+        }
     Add ->
-      container "add-node-container"
-        [ container "title" [ HH.text "Add node" ]
-        , flip lazy nodeSearchTerm \nodeSearchTerm' ->
-            container "node-search-container"
-              [ HH.input
-                  [ HP.id_ "node-search-input"
-                  , HP.placeholder "Search nodes. Eg: add, greater than..."
-                  , HP.value nodeSearchTerm'
-                  , HP.ref searchNodeInputRef
-                  , className searchNodeClassName
-                  , onKeyUp $ Just <<< HandleAddPanelKeyPress
-                  , onValueInput $ Just <<< SearchNodes
+      mkPanel
+        { title: "Add node"
+        , actions: []
+        , content:
+          HH.div_
+            [ flip lazy nodeSearchTerm \nodeSearchTerm' ->
+                container "node-search-container"
+                  [ HH.input
+                      [ HP.id_ "node-search-input"
+                      , HP.placeholder "Search nodes. Eg: add, greater than..."
+                      , HP.value nodeSearchTerm'
+                      , HP.ref searchNodeInputRef
+                      , className searchNodeClassName
+                      , onKeyUp $ Just <<< HandleAddPanelKeyPress
+                      , onValueInput $ Just <<< SearchNodes
+                      ]
+                  , icon "search"
                   ]
-              , icon "search"
-              ]
-        , lazy2 AddC.add
-            { project
-            , currentFunction
-            , functionData
-            , typeMap
-            , inputCountMap
-            , nodeSearchTerm
-            }
-            { edit: Just <<< SelectFunction <<< Just
-            , addNode: Just <<< CreateNode
-            , changeInputCount: (Just <<< _) <<< ChangeInputCount
-            , delete: Just <<< DeleteFunction
-            }
-        , container "create-input"
-            [ HH.button
-                [ className "unselectable"
-                , onClick $ const $ Just $ CreateNode $ FunctionName "input"
-                ]
-                [ HH.text "Create input node"
+            , lazy2 AddC.add
+                { project
+                , currentFunction
+                , functionData
+                , typeMap
+                , inputCountMap
+                , nodeSearchTerm
+                }
+                { edit: Just <<< SelectFunction <<< Just
+                , addNode: Just <<< CreateNode
+                , changeInputCount: (Just <<< _) <<< ChangeInputCount
+                , delete: Just <<< DeleteFunction
+                }
+            , container "create-input"
+                [ HH.button
+                    [ className "unselectable"
+                    , onClick $ const $ Just $ CreateNode $ FunctionName "input"
+                    ]
+                    [ HH.text "Create input node"
+                    ]
                 ]
             ]
-        ]
+        }
+    Problems ->
+      mkPanel
+        { title: "Problems"
+        , actions: []
+        , content: HH.div_ [ HH.text "unimplemented" ]
+        }
 
   scene :: HH.ComponentHTML Action ChildSlots m
   scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit handleSceneOutput
 
   logoElement =
-    container "sidebar-logo-container"
-      [ HH.img
-          [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
-          , HP.alt "Lunarbox logo"
-          , HP.id_ "sidebar-logo"
-          , onMouseUp $ const $ Just $ Navigate Home
-          ]
+    HH.img
+      [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
+      , HP.alt "Lunarbox logo"
+      , className "editor__logo"
+      , onMouseUp $ const $ Just $ Navigate Home
       ]
 
   render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
   render state@{ currentTab, panelIsOpen } =
-    container "editor"
-      [ container "sidebar"
+    HH.div [ className "editor" ]
+      [ HH.div [ className "editor__activity-bar" ]
           $ tabs currentTab
           <> pure logoElement
       , HH.div
-          [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
-          [ panel state ]
-      , container "scene"
+          [ classes $ ClassName
+              <$> [ "panel" ]
+              <> (guard panelIsOpen $> "panel--open")
+          ]
+          $ panel state
+      , HH.div [ className "scene" ]
           [ scene
           ]
       , HH.slot (SProxy :: SProxy "pendingConnection") unit Modal.component

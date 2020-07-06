@@ -143,7 +143,6 @@ export const refreshInputArcsImpl = (
   if (node.name) {
     node.name.pos[1] = node.position[1] - offset
     node.name.refresh()
-    console.log(`The size of node ${id} is ${node.name.bg.size}`)
   }
 
   node.valueText.value = value ?? ""

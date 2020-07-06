@@ -16,9 +16,9 @@ rocket = "https://cdn.discordapp.com/attachments/427754177318486016/688733413313
 
 illustrationEditor :: forall a b. String -> String -> HH.HTML a b
 illustrationEditor src text =
-  container "empty"
-    [ container "illustration" [ HH.img [ HP.src src ] ]
-    , container "text" [ HH.text text ]
+  container "scene__illustration-container"
+    [ container "scene__illustration" [ HH.img [ HP.src src ] ]
+    , container "scene__text" [ HH.text text ]
     ]
 
 emptyEditor :: forall a b. HH.HTML a b

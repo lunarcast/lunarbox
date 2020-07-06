@@ -12,10 +12,10 @@ import Lunarbox.Component.Utils (className)
 -- Tooltip visible when passing true as an argument
 tooltip :: forall a b. Boolean -> HTML a b -> HTML a b -> HTML a b
 tooltip active child content =
-  HH.div [ classes $ ClassName <$> "tooltip-container" : ("active" <$ guard active) ]
+  HH.div [ classes $ ClassName <$> "tooltip" : ("tooltip--active" <$ guard active) ]
     [ child
     , HH.div
-        [ className "tooltip-content"
+        [ className "tooltip__content"
         ]
         [ content ]
     ]
@@ -23,10 +23,10 @@ tooltip active child content =
 -- Tooltip visible on hover
 hoverTooltip :: forall a b. HTML a b -> HTML a b -> HTML a b
 hoverTooltip child content =
-  HH.div [ className "tooltip-container hoverable" ]
+  HH.div [ className "tooltip tooltip--hoverable" ]
     [ child
     , HH.div
-        [ className "tooltip-content"
+        [ className "tooltip__content"
         ]
         [ content ]
     ]
