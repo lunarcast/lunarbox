@@ -36,7 +36,7 @@ validationErrorToHtml Empty = HH.text "Function names cannot be empty"
 type State
   = { functions :: List FunctionName
     , creating :: Boolean
-    , selected :: Maybe FunctionName
+    , selected :: FunctionName
     , validationError :: Maybe ValidationError
     }
 
@@ -57,10 +57,11 @@ data Query a
 type ChildSlots
   = ()
 
+-- TODO: make State extend this
 type Input
   -- The initial function list and selected function
   = { functions :: List FunctionName
-    , selected :: Maybe FunctionName
+    , selected :: FunctionName
     }
 
 data Output
@@ -68,7 +69,7 @@ data Output
   = CreatedFunction
     FunctionName
   -- This notifies the parent when the selected function changed
-  | SelectedFunction (Maybe FunctionName)
+  | SelectedFunction FunctionName
 
 component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query Input Output m
 component =
@@ -112,8 +113,8 @@ component =
       shouldCancel <- shouldCancelOnBlur
       when shouldCancel $ modify_ (_ { creating = false })
     SelectFunction name -> do
-      modify_ (_ { selected = Just name })
-      raise $ SelectedFunction $ Just name
+      modify_ (_ { selected = name })
+      raise $ SelectedFunction name
     ValidateFunctionName -> validate
     CreateFunction -> do
       -- validate in case the user pressed enter right away
@@ -135,7 +136,13 @@ component =
                 liftEffect $ traverse_ blur maybeElement
                 -- this saves the new function in the list
                 -- we also automatically select the new function
-                modify_ (_ { creating = false, functions = functions <> (pure functionName), selected = Just functionName })
+                modify_
+                  ( _
+                      { creating = false
+                      , functions = functions <> (pure functionName)
+                      , selected = functionName
+                      }
+                  )
                 -- this notifies the parent element we just created a new function
                 -- the parent ususally has to add the function to the graph
                 raise $ CreatedFunction functionName
@@ -153,14 +160,14 @@ component =
 
   -- renders an element in the list
   -- I'll have to update it when I'll add support for recursive functions
-  displayFunction :: forall a. Maybe FunctionName -> StaticHtml FunctionName a Action
+  displayFunction :: forall a. FunctionName -> StaticHtml FunctionName a Action
   displayFunction selected name =
     HH.div
       [ onClick $ const $ Just $ SelectFunction name
       , classes $ ClassName
           <$> [ "explorer__function" ]
           <> ( "explorer__function--selected"
-                <$ guard (Just name == selected)
+                <$ guard (name == selected)
             )
       ]
       [ icon "code"

@@ -8,7 +8,7 @@ import Prelude
 import Data.Lens (is)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Editor.DataflowFunction (_VisualFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
@@ -21,11 +21,11 @@ type NodeDescriptor
     , canBeDeleted :: Boolean
     }
 
-describe :: Maybe FunctionName -> Project -> Map FunctionName NodeDescriptor
+describe :: FunctionName -> Project -> Map FunctionName NodeDescriptor
 describe currentFunction project@(Project { functions, main }) =
   flip (Map.mapMaybeWithKey) functions \name function ->
     let
-      isCurrent = currentFunction == Just name
+      isCurrent = currentFunction == name
 
       -- TODO: make this actually check the NodeData
       isExternal = false
@@ -37,13 +37,13 @@ describe currentFunction project@(Project { functions, main }) =
           && not isExternal
           && isVisual
 
-      wouldCycle = maybe false (flip (G.wouldCreateCycle name) $ toGraph project) currentFunction
+      wouldCycle = G.wouldCreateCycle name currentFunction $ toGraph project
 
-      isUsable = isJust currentFunction && not wouldCycle
+      isUsable = not wouldCycle
 
       canBeDeleted = isVisual && main /= name
     in
       Just { isUsable, isEditable, canBeDeleted }
 
-onlyEditable :: Maybe FunctionName -> Project -> Map FunctionName NodeDescriptor
-onlyEditable c p = Map.filter (_.isEditable) $ describe c p
+onlyEditable :: FunctionName -> Project -> Map FunctionName NodeDescriptor
+onlyEditable c p = Map.filter _.isEditable $ describe c p

@@ -49,7 +49,7 @@ import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..), ScopedLocation(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGroupNodes, _NodeGroupOutput)
-import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
+import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _ProjectMain, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Foreign.Render (GeometryCache, emptyGeometryCache)
@@ -89,7 +89,7 @@ type StatePermanentData r
     , nextId :: Int
     , geometries :: Map FunctionName GeometryCache
     , runtimeOverwrites :: ValueMap Location
-    , currentFunction :: Maybe FunctionName
+    , currentFunction :: FunctionName
     | r
     )
 
@@ -128,7 +128,7 @@ emptyState :: forall a s m f. MonadEffect f => f (State a s m)
 emptyState =
   initializeFunction (FunctionName "main")
     { currentTab: Settings
-    , currentFunction: Nothing
+    , currentFunction: FunctionName "main"
     , nextId: 0
     , panelIsOpen: false
     , typeMap: mempty
@@ -359,9 +359,10 @@ canConnect from (Tuple toId toIndex) state =
   fromMaybe false do
     let
       typeMap = view _typeMap state
+
+      currentFunction = view _currentFunction state
     nodes <- preview _currentNodes state
     guard $ not $ G.wouldCreateCycle from toId $ toGraph nodes
-    currentFunction <- view _currentFunction state
     fromType <- getOutputType currentFunction from state
     toType <- Map.lookup (InsideFunction currentFunction $ PinLocation toId $ InputPin toIndex) typeMap
     guard $ canUnify toType fromType
@@ -377,7 +378,7 @@ createConnection from toId toIndex =
     (Just from)
 
 -- Set the function the user is editing at the moment
-setCurrentFunction :: forall a s m. Maybe FunctionName -> State a s m -> State a s m
+setCurrentFunction :: forall a s m. FunctionName -> State a s m -> State a s m
 setCurrentFunction = set _currentFunction
 
 -- Creates a function, adds an output node and set it as the current edited function
@@ -389,7 +390,7 @@ initializeFunction name state =
     cache <- liftEffect emptyGeometryCache
     liftEffect $ Native.createNode cache id 1 false Nullable.null
     modify_ $ over _project $ createFunction name id
-    modify_ $ setCurrentFunction (Just name)
+    modify_ $ setCurrentFunction name
     modify_ $ set _currentGeometryCache $ Just cache
     modify_ $ set (_atFunctionData name) $ Just $ internal [] { name: show name <> "-output", description: "The output of a custom functions" }
     modify_ compile
@@ -440,31 +441,33 @@ deleteFunctionReferences toDelete functionName graph state =
 -- Delete a function from the state
 deleteFunction :: forall a s m. FunctionName -> State a s m -> State a s m
 deleteFunction toDelete state =
-  flip execState state do
-    let
-      visualFunctions =
-        filterMap
-          ( \(Tuple name function) ->
-              Tuple name
-                <$> preview _VisualFunction function
-          )
-          $ ( Map.toUnfoldable
-                $ view _functions state ::
-                List _
-            )
-    put
-      $ foldr
-          (\(Tuple functionName nodeGroup) -> deleteFunctionReferences toDelete functionName $ view _NodeGroupNodes nodeGroup)
-          state
-          visualFunctions
-    modify_ $ set (_atFunctionData toDelete) Nothing
-    modify_ $ set (_function toDelete) Nothing
-    -- TODO: make this work with the new foreign system
-    -- modify_ $ over _nodeData $ Map.filterKeys $ (_ /= toDelete) <<< fst
-    modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
-    modify_ $ set (_atInputCount toDelete) Nothing
-    when (view _currentFunction state == Just toDelete) $ modify_ $ set _currentFunction Nothing
-    modify_ compile
+  flip execState state
+    $ unless (main == toDelete) do
+        let
+          visualFunctions =
+            filterMap
+              ( \(Tuple name function) ->
+                  Tuple name
+                    <$> preview _VisualFunction function
+              )
+              $ ( Map.toUnfoldable
+                    $ view _functions state ::
+                    List _
+                )
+        put
+          $ foldr
+              (\(Tuple functionName nodeGroup) -> deleteFunctionReferences toDelete functionName $ view _NodeGroupNodes nodeGroup)
+              state
+              visualFunctions
+        modify_ $ set (_atFunctionData toDelete) Nothing
+        modify_ $ set (_function toDelete) Nothing
+        modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
+        modify_ $ set (_atInputCount toDelete) Nothing
+        modify_ $ set (_atGeometry toDelete) Nothing
+        when (view _currentFunction state == toDelete) $ modify_ $ set _currentFunction main
+        modify_ compile
+  where
+  main = view _ProjectMain state.project
 
 -- Sets the runtime value at a location to any runtime value
 setRuntimeValue :: forall a s m. FunctionName -> NodeId -> RuntimeValue -> State a s m -> State a s m
@@ -503,8 +506,8 @@ preventDefaults :: forall q i o m a s. MonadEffect m => Event -> HalogenM (State
 preventDefaults event = liftEffect $ Event.preventDefault event *> Event.stopPropagation event
 
 -- | Run an action which needs access to the current function
-withCurrentFunction :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f (Maybe r)
-withCurrentFunction f = gets (view _currentFunction) >>= traverse f
+withCurrentFunction :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f r
+withCurrentFunction f = gets (view _currentFunction) >>= f
 
 -- | Run an action which need access to the current function and which returns nothing
 withCurrentFunction_ :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f Unit
@@ -540,15 +543,11 @@ getNodeValue currentFunction (ValueMap vmap) id = case _ of
 -- Update all nodes in the current geometry
 updateAll :: forall a s m n. MonadState (State a s n) m => MonadEffect m => m (Maybe GeometryCache)
 updateAll =
-  gets (view _currentFunction)
-    >>= traverse
-        ( \name -> do
-            cache <- gets $ view $ _atGeometry name
-            (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
-              >>= traverse_ updateNode
-            pure cache
-        )
-    <#> join
+  withCurrentFunction \name -> do
+    cache <- gets $ view $ _atGeometry name
+    (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
+      >>= traverse_ updateNode
+    pure cache
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
@@ -602,7 +601,7 @@ _atNode name id = _project <<< _atProjectNode name id
 _function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
 _function name = _project <<< _atProjectFunction name
 
-_currentFunction :: forall a s m. Lens' (State a s m) (Maybe FunctionName)
+_currentFunction :: forall a s m. Lens' (State a s m) FunctionName
 _currentFunction = prop (SProxy :: _ "currentFunction")
 
 _panelIsOpen :: forall a s m. Lens' (State a s m) Boolean
@@ -614,14 +613,17 @@ _currentTab = prop (SProxy :: _ "currentTab")
 _currentNodeGroup :: forall a s m. Lens' (State a s m) (Maybe NodeGroup)
 _currentNodeGroup =
   ( lens
-      ( \state -> do
-          currentFunction <- view _currentFunction state
-          preview (_nodeGroup currentFunction) state
+      ( \state ->
+          let
+            current = view _currentFunction state
+          in
+            preview (_nodeGroup current) state
       )
       ( \state maybeValue ->
           fromMaybe state do
+            let
+              currentFunction = view _currentFunction state
             value <- maybeValue
-            currentFunction <- view _currentFunction state
             pure $ set (_nodeGroup currentFunction) value state
       )
   )
@@ -629,14 +631,17 @@ _currentNodeGroup =
 _currentGeometryCache :: forall a s m. Lens' (State a s m) (Maybe GeometryCache)
 _currentGeometryCache =
   ( lens
-      ( \state -> do
-          currentFunction <- view _currentFunction state
-          view (_atGeometry currentFunction) state
+      ( \state ->
+          let
+            currentFunction = view _currentFunction state
+          in
+            view (_atGeometry currentFunction) state
       )
       ( \state maybeValue ->
-          fromMaybe state do
-            currentFunction <- view _currentFunction state
-            pure $ set (_atGeometry currentFunction) maybeValue state
+          let
+            currentFunction = view _currentFunction state
+          in
+            set (_atGeometry currentFunction) maybeValue state
       )
   )
 

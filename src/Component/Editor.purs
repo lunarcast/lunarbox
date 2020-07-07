@@ -14,6 +14,7 @@ import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Foldable (for_, traverse_)
+import Data.List ((:))
 import Data.Lens (over, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
@@ -72,7 +73,7 @@ data Action
   | HandleKey SubscriptionId KeyboardEvent
   | ChangeTab Tab
   | CreateFunction FunctionName
-  | SelectFunction (Maybe FunctionName)
+  | SelectFunction FunctionName
   | CreateNode FunctionName
   | StartFunctionCreation
   | RemoveConnection NodeId Int
@@ -200,7 +201,10 @@ component =
         functionGraph <- gets $ toGraph <<< _.project
         let
           bestMatch = sortedFunctions !! 0
-        when (maybe false not $ wouldCreateCycle <$> bestMatch <*> currentFunction <*> pure functionGraph)
+        when
+          ( maybe false not $ wouldCreateCycle <$> bestMatch <*> Just currentFunction
+              <*> Just functionGraph
+          )
           $ for_ bestMatch (handleAction <<< CreateNode)
       | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
         inputElement <- getHTMLElementRef searchNodeInputRef
@@ -215,12 +219,12 @@ component =
             initializeFunction inputFunctionName state >>= put
           else
             if exists then
-              handleAction $ SelectFunction $ Just inputFunctionName
+              handleAction $ SelectFunction inputFunctionName
             else
               pure unit
       | KE.ctrlKey event && KE.key event == " " -> do
         sortedFunctions <- gets searchNode
-        handleAction $ SelectFunction $ sortedFunctions !! 0
+        for_ (sortedFunctions !! 0) $ handleAction <<< SelectFunction
       | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
     CreateNode name -> do
       createNode name
@@ -438,8 +442,8 @@ component =
         , content:
           [ HH.slot (SProxy :: _ "tree") unit TreeC.component
               { functions:
-                (maybe mempty pure currentFunction)
-                  <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
+                currentFunction
+                  : ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
                     )
               , selected: currentFunction
               }
@@ -481,7 +485,7 @@ component =
               , inputCountMap
               , nodeSearchTerm
               }
-              { edit: Just <<< SelectFunction <<< Just
+              { edit: Just <<< SelectFunction
               , addNode: Just <<< CreateNode
               , changeInputCount: (Just <<< _) <<< ChangeInputCount
               , delete: Just <<< DeleteFunction

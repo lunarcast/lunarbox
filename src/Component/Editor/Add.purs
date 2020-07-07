@@ -32,7 +32,7 @@ import Lunarbox.Data.Ord (sortBySearch)
 
 type Input
   = { project :: Project
-    , currentFunction :: Maybe FunctionName
+    , currentFunction :: FunctionName
     , functionData :: Map.Map FunctionName FunctionData
     , typeMap :: Map.Map Location Type
     , inputCountMap :: Map.Map FunctionName Int
