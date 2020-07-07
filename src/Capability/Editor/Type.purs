@@ -2,17 +2,17 @@ module Lunarbox.Capability.Editor.Type
   ( typeToColor
   , generateColorMap
   , prettify
-  , combineColors
   , inputNodeType
   ) where
 
 import Prelude
+import Color (Color, rgb)
+import Color.Blending (BlendMode(..), blend)
 import Control.MonadZero (guard)
 import Data.Array (fold, foldMap, (!!))
 import Data.Array as Array
 import Data.Enum (enumFromTo)
 import Data.Filterable (filterMap)
-import Data.Function (on)
 import Data.Lens (view)
 import Data.List (List)
 import Data.List as List
@@ -29,57 +29,42 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..))
 import Lunarbox.Math.SeededRandom (seededInt)
-import Lunarbox.Svg.Attributes (colorsAreEqual)
-import Svg.Attributes (Color(..))
-
--- Calculates the averege of 2 ints
-averege :: Int -> Int -> Int
-averege a b = (a + b) / 2
-
--- Calculates the averege of 2 colors
-combineColors :: Color -> Color -> Color
-combineColors (RGBA r g b o) (RGBA r' g' b' o') = RGBA (averege r r') (averege g g') (averege b b') $ (o + o') / 2.0
-
-combineColors (RGB r g b) color = combineColors (RGBA r g b 1.0) color
-
-combineColors color (RGB r g b) = combineColors (RGBA r g b 1.0) color
 
 -- Color for types we cannot paint by other means
 unknownColor :: Color
-unknownColor = RGB 52 235 222
+unknownColor = rgb 52 235 222
 
--- | Wrapper around Colors which can be combined and compared
--- TODO: when I get rid of the halogen-svg dependency 
--- I should find a better way to handle those colors
-newtype Color'
-  = Color Color
+newtype CombinableColor
+  = CombinableColor Color
 
-derive instance newtypeColor' :: Newtype Color' _
+derive newtype instance eqCc :: Eq CombinableColor
 
-instance eqColor' :: Eq Color' where
-  eq = on colorsAreEqual unwrap
+derive instance newtypeCc :: Newtype CombinableColor _
 
-instance semigroupColor' :: Semigroup Color' where
-  append a b
-    | a == mempty = b
-  append b a
-    | a == mempty = b
-  append (Color a) (Color b) = Color $ a `combineColors` b
+instance semigroupCc :: Semigroup CombinableColor where
+  append c c'
+    | c == CombinableColor unknownColor = c'
+    | c' == CombinableColor unknownColor = c
+    | otherwise = CombinableColor $ blend Screen color color'
+      where
+      (CombinableColor color) = c
 
-instance monoidColor' :: Monoid Color' where
-  mempty = Color unknownColor
+      (CombinableColor color') = c'
+
+instance monoidCc :: Monoid CombinableColor where
+  mempty = CombinableColor unknownColor
 
 -- Given a color returns a type
 typeToColor :: Type -> Color
 typeToColor t@(TConstant _ [])
-  | t == typeString = RGB 97 196 35
-  | t == typeBool = RGB 193 71 53
-  | t == typeNumber = RGB 35 78 196
+  | t == typeString = rgb 97 196 35
+  | t == typeBool = rgb 193 71 53
+  | t == typeNumber = rgb 35 78 196
   | otherwise = unknownColor
 
-typeToColor (TConstant _ vars) = unwrap $ fold $ Color <$> typeToColor <$> vars
+typeToColor (TConstant _ vars) = unwrap $ fold $ CombinableColor <$> typeToColor <$> vars
 
-typeToColor (TVariable _ name) = RGB shade shade shade
+typeToColor (TVariable _ name) = rgb shade shade shade
   where
   shade = seededInt (show name) 50 220
 

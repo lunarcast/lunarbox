@@ -1,11 +1,10 @@
 module Lunarbox.Component.Editor.HighlightedType
   ( highlightedType
   , highlightTypeToHTML
-  , highlightTypeToSvg
   ) where
 
 import Prelude
-import Data.Maybe (Maybe(..))
+import Color (Color, rgb)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Editor.Type (typeToColor)
 import Lunarbox.Component.HighlightedText (bold)
@@ -14,10 +13,6 @@ import Lunarbox.Data.Char (arrow)
 import Lunarbox.Data.Dataflow.Type (Type(..))
 import Lunarbox.Data.String (spaced)
 import Lunarbox.Math.SeededRandom (seededInt)
-import Lunarbox.Svg.Attributes (fontWeight)
-import Lunarbox.Svg.Element (tspan)
-import Svg.Attributes (Color(..))
-import Svg.Attributes as SA
 
 -- A type which is syntax highlighted
 highlightedType ::
@@ -51,7 +46,7 @@ highlightedType container bold highlight =
           , continue inner
           , bold $ HH.text "]"
           ]
-      TVariable _ name' -> highlight (RGB shade shade shade) $ HH.text $ show name'
+      TVariable _ name' -> highlight (rgb shade shade shade) $ HH.text $ show name'
         where
         shade = seededInt (show name') 100 255
       other -> highlight color $ HH.text $ show other
@@ -60,8 +55,3 @@ highlightedType container bold highlight =
 
 highlightTypeToHTML :: forall h a. Type -> HH.HTML h a
 highlightTypeToHTML = highlightedType HH.span_ bold HT.highlight
-
-highlightTypeToSvg :: forall h a. Type -> HH.HTML h a
-highlightTypeToSvg =
-  highlightedType (tspan []) (tspan [ fontWeight "bold" ] <<< pure) \color ->
-    tspan [ SA.fill $ Just color ] <<< pure

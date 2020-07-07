@@ -9,11 +9,6 @@ let additions =
         , repo = "https://github.com/colehaus/purescript-graphs"
         , version = "v7.0.0"
         }
-      , halogen-svg =
-        { dependencies = [ "strings", "halogen", "dom-indexed" ]
-        , repo = "https://github.com/statebox/purescript-halogen-svg"
-        , version = "master"
-        }
       , data-default =
         { dependencies = [ "maybe", "record", "psci-support", "lists" ]
         , repo = "https://github.com/thought2/purescript-data-default"

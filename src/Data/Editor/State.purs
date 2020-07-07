@@ -1,6 +1,7 @@
 module Lunarbox.Data.Editor.State where
 
 import Prelude
+import Color (cssStringRGBA)
 import Control.Monad.State (class MonadState, execState, execStateT, get, gets, put, runState)
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
@@ -54,7 +55,6 @@ import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Foreign.Render (GeometryCache, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
-import Svg.Attributes as Color
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
 
@@ -203,18 +203,13 @@ updateNode id =
                           (Map.toUnfoldable colorMap :: Array _)
                       }
   where
-  -- TODO: remove this once I get rid of this _trash_ color system from halogen-svg
-  showColor (Color.RGB r g b) = "rgb(" <> show r <> "," <> show g <> "," <> show b <> ")"
-
-  showColor (Color.RGBA r g b a) = "rgba(" <> show r <> "," <> show g <> "," <> show b <> "," <> show a <> ")"
-
-  go OutputPin color map = map { output = Nullable.notNull $ showColor color }
+  go OutputPin color map = map { output = Nullable.notNull $ cssStringRGBA color }
 
   go (InputPin index) color map =
     map
       { inputs =
         fromMaybe map.inputs
-          $ Array.updateAt index (Nullable.notNull $ showColor color) map.inputs
+          $ Array.updateAt index (Nullable.notNull $ cssStringRGBA color) map.inputs
       }
 
 --

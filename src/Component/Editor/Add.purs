@@ -9,21 +9,17 @@ import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..), fst)
-import Data.Unfoldable (replicate)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
-import Lunarbox.Capability.Editor.Type (generateColorMap, prettify)
+import Lunarbox.Capability.Editor.Type (prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
-import Lunarbox.Component.Editor.Node (SelectionStatus(..))
-import Lunarbox.Component.Editor.Node as NodeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
 import Lunarbox.Data.Editor.FunctionData (FunctionData)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Location (Location(..))
-import Lunarbox.Data.Editor.Node (Node(..), hasOutput)
 import Lunarbox.Data.Editor.Node.NodeDescriptor (NodeDescriptor, describe)
 import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
@@ -50,31 +46,6 @@ resolvePin :: Pin -> Type -> Maybe Type
 resolvePin (InputPin index) type' = inputs type' !! index
 
 resolvePin OutputPin type' = Just $ output type'
-
-nodeInput :: forall a s m. Int -> Map.Map Location Type -> FunctionName -> FunctionData -> NodeC.Input a s m
-nodeInput inputCount typeMap name functionData =
-  { nodeData: def
-  , node
-  , functionData
-  , labels: mempty
-  , unconnectablePins: mempty
-  , nodeDataMap: mempty
-  , hasOutput: hasOutput node
-  , selectionStatus: NothingSelected
-  , mousePosition: zero
-  , colorMap:
-    generateColorMap
-      (\pin -> Map.lookup (AtFunction name) typeMap >>= resolvePin pin)
-      node
-  , value: Nothing
-  , ui: Nothing
-  }
-  where
-  node =
-    ComplexNode
-      { inputs: replicate inputCount Nothing
-      , function: name
-      }
 
 -- The little icon buttons next to each node
 nodeButton :: forall a s m. Boolean -> Maybe a -> String -> HH.ComponentHTML a s m
