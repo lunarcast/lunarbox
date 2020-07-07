@@ -14,8 +14,8 @@ import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Foldable (for_, traverse_)
-import Data.List ((:))
 import Data.Lens (over, set, view)
+import Data.List ((:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Newtype (unwrap)
@@ -51,13 +51,13 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, preventDefaults, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
 import Lunarbox.Foreign.Render (setUnconnectableInputs, setUnconnectableOutputs)
 import Lunarbox.Foreign.Render as Native
-import Web.Event.Event (Event, preventDefault, stopPropagation)
+import Web.Event.Event (preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
@@ -87,10 +87,10 @@ data Action
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
   | Autosave Json
-  | PreventDefaults Event
   | Navigate Route
   | LoadScene
   | Rerender
+  | DeleteNode NodeId
   -- Handle foreign actions bubbled by the Scene component
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
@@ -277,7 +277,6 @@ component =
         handleAction $ Autosave newState
       else
         handleAction $ Autosave oldState
-    PreventDefaults event -> preventDefaults event
     Navigate route -> navigate route
     Rerender -> void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
     LoadScene -> do
@@ -347,6 +346,11 @@ component =
             AutofixConnection -> modify_ _ { pendingConnection = Nothing }
             -- WARNING: this should never happen
             _ -> pure unit
+    DeleteNode id -> do
+      current <- gets $ view _currentFunction
+      modify_ $ deleteNode current id
+      void updateAll
+      handleAction Rerender
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

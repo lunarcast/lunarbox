@@ -218,3 +218,34 @@ export const setUnconnectableOutputs = (cache: GeometryCache) => (
     }
   }
 }
+
+/**
+ * Delete a node from a cache.
+ *
+ * @param cache The cache to mutate.
+ * @param id The id of the node to delete.
+ */
+export const deleteNode = (cache: GeometryCache) => (id: NodeId) => () => {
+  const node = cache.nodes.get(id)!
+  cache.nodes.delete(id)
+
+  const cell = cache.zOrder.find(id)
+
+  if (cell) {
+    cache.zOrder.remove(cell)
+  }
+
+  if (cache.selectedInput?.pos === node.position) {
+    cache.selectedInput = null
+  }
+
+  if (cache.selectedNode === node) {
+    cache.selectedNode = null
+  }
+
+  if (cache.selectedOutput === node.output) {
+    cache.selectedOutput = null
+  }
+
+  cache.selectedConnection = null
+}

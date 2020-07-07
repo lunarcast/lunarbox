@@ -411,8 +411,6 @@ deleteNode functionName id state =
           $ map
           $ over _nodeInputs
           $ map \input -> if input == Just id then Nothing else input
-        -- TODO: make this work with the new foreign system
-        -- modify_ $ set (_atNodeData functionName id) Nothing
         modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id /= _)
         modify_ compile
   where

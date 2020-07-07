@@ -43,3 +43,4 @@ exports.createNode = Sync.createNode
 exports.refreshInputArcs = Sync.refreshInputArcs
 exports.setUnconnectableInputs = Sync.setUnconnectableInputs
 exports.setUnconnectableOutputs = Sync.setUnconnectableOutputs
+exports.deleteNode = Sync.deleteNode

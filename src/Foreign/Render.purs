@@ -70,6 +70,8 @@ foreign import setUnconnectableInputs :: GeometryCache -> NativeSet { id :: Node
 
 foreign import setUnconnectableOutputs :: GeometryCache -> NativeSet NodeId -> Effect Unit
 
+foreign import deleteNode :: GeometryCache -> NodeId -> Effect Unit
+
 instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:
   -- The error messages in for this are just the Error.message from js land
