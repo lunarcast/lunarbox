@@ -14,10 +14,10 @@ import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Foldable (for_, traverse_)
-import Data.Lens (over, set, view)
+import Data.Lens (over, preview, set, view)
 import Data.List ((:))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe)
 import Data.Newtype (unwrap)
 import Data.Set (toUnfoldable) as Set
 import Data.String as String
@@ -361,10 +361,14 @@ component =
     UpdatePreview name -> do
       state <- get
       for_ (Map.lookup (AtFunction name) state.typeMap) \ty -> do
+        let
+          inputs =
+            fromMaybe' (\_ -> getMaxInputs name state) $ join
+              $ preview (_atInputCount name) state
         void $ query (SProxy :: SProxy "nodePreview") name
           $ tell
           $ NodePreview.Rerender
-          $ getFunctionColorMap (getMaxInputs name state) ty
+          $ getFunctionColorMap inputs ty
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

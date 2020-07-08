@@ -45,7 +45,7 @@ instance semigroupCc :: Semigroup CombinableColor where
   append c c'
     | c == CombinableColor unknownColor = c'
     | c' == CombinableColor unknownColor = c
-    | otherwise = CombinableColor $ blend Screen color color'
+    | otherwise = CombinableColor $ blend Overlay color color'
       where
       (CombinableColor color) = c
 
