@@ -65,7 +65,7 @@ export const emptyGeometryCache = (): GeometryCache => ({
  *
  * @param position The position of the input
  */
-const dottedInput = (position: Vec2Like) => {
+export const dottedInput = (position: Vec2Like) => {
   const attribs = {
     stroke: constantInputStroke,
     weight: arcStrokeWidth.normal,

@@ -36,6 +36,7 @@ exports.handleMouseDownImpl = Native.onMouseDown
 // because purescript cannot understand it yet
 const Save = require("src/typescript/save.ts")
 const Sync = require("src/typescript/sync.ts")
+const Preview = require("src/typescript/preview.ts")
 
 exports.geometryCacheToJson = Save.geometryCacheToJson
 exports.geometryCacheFromJsonImpl = Save.geometryCacheFromJson
@@ -44,3 +45,4 @@ exports.refreshInputArcs = Sync.refreshInputArcs
 exports.setUnconnectableInputs = Sync.setUnconnectableInputs
 exports.setUnconnectableOutputs = Sync.setUnconnectableOutputs
 exports.deleteNode = Sync.deleteNode
+exports.renderPreview = Preview.renderPreview

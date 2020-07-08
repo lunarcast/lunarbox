@@ -72,6 +72,8 @@ foreign import setUnconnectableOutputs :: GeometryCache -> NativeSet NodeId -> E
 
 foreign import deleteNode :: GeometryCache -> NodeId -> Effect Unit
 
+foreign import renderPreview :: Context2d -> ForeignTypeMap -> Effect Unit
+
 instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:
   -- The error messages in for this are just the Error.message from js land

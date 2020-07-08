@@ -54,7 +54,7 @@ instance semigroupCc :: Semigroup CombinableColor where
 instance monoidCc :: Monoid CombinableColor where
   mempty = CombinableColor unknownColor
 
--- Given a color returns a type
+-- Given a type returns a color
 typeToColor :: Type -> Color
 typeToColor t@(TConstant _ [])
   | t == typeString = rgb 97 196 35
