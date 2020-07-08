@@ -54,7 +54,7 @@ import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -95,6 +95,7 @@ data Action
   | Rerender
   | DeleteNode NodeId
   | UpdatePreview FunctionName
+  | UpdatePreviews
   -- Handle foreign actions bubbled by the Scene component
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
@@ -285,7 +286,10 @@ component =
       else
         handleAction $ Autosave oldState
     Navigate route -> navigate route
-    Rerender -> void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
+    Rerender -> do
+      -- TODO: optimize this to not rerender the previews on each render
+      handleAction UpdatePreviews
+      void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
     LoadScene -> do
       updateAll
         >>= traverse_
@@ -369,6 +373,9 @@ component =
           $ tell
           $ NodePreview.Rerender
           $ getFunctionColorMap inputs ty
+    UpdatePreviews -> do
+      functions <- gets $ view _functions
+      for_ (Map.keys functions) $ handleAction <<< UpdatePreview
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
