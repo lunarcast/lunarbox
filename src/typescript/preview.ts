@@ -11,15 +11,13 @@ import { draw } from "@thi.ng/hiccup-canvas"
  * @param colorMap The colors to use for the node.
  */
 export const renderPreview = (ctx: CanvasRenderingContext2D) => (
-  colorMap: NodeState["colorMap"]
+  colorMap: Required<NodeState["colorMap"]>
 ) => () => {
   const { width, height } = ctx.canvas
 
-  const shapes: Array<unknown | CanvasElement> = []
-
-  if (colorMap.output) {
-    shapes.push(["circle", { fill: colorMap.output }, [0, 0], nodeOutputRadius])
-  }
+  const shapes: Array<unknown | CanvasElement> = [
+    ["circle", { fill: colorMap.output }, [0, 0], nodeOutputRadius.normal]
+  ]
 
   if (colorMap.inputs.length) {
     const inputLength = (2 * Math.PI) / colorMap.inputs.length
@@ -41,8 +39,12 @@ export const renderPreview = (ctx: CanvasRenderingContext2D) => (
     shapes.push(dottedInput([0, 0]).toHiccup())
   }
 
+  const requiredSize = nodeRadius * 2 + 10
+
   ctx.save()
   ctx.translate(width / 2, height / 2)
+
+  ctx.scale(width / requiredSize, height / requiredSize)
 
   draw(ctx, shapes)
 

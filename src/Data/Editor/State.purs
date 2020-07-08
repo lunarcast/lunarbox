@@ -39,7 +39,7 @@ import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
-import Lunarbox.Data.Dataflow.Type (Type, inputs)
+import Lunarbox.Data.Dataflow.Type (Type(..), inputs)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..), _FunctionDataInputs, internal)
@@ -53,7 +53,7 @@ import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGro
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _ProjectMain, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Ord (sortBySearch)
-import Lunarbox.Foreign.Render (GeometryCache, emptyGeometryCache)
+import Lunarbox.Foreign.Render (GeometryCache, ForeignTypeMap, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
@@ -541,6 +541,20 @@ updateAll =
     (map (maybe mempty Map.keys) $ gets $ preview $ _nodes name)
       >>= traverse_ updateNode
     pure cache
+
+getFunctionColorMap :: Int -> Type -> ForeignTypeMap
+getFunctionColorMap 0 ty = { inputs: [], output: Nullable.notNull $ cssStringRGBA $ typeToColor ty }
+
+getFunctionColorMap n (TConstant "Function" [ from, to ]) =
+  next
+    { inputs =
+      [ Nullable.notNull (cssStringRGBA $ typeToColor from) ]
+        <> next.inputs
+    }
+  where
+  next = getFunctionColorMap (n - 1) to
+
+getFunctionColorMap n ty = getFunctionColorMap 0 ty
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)

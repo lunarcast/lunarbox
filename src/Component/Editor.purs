@@ -34,7 +34,9 @@ import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Component.Editor.Add as Add
 import Lunarbox.Component.Editor.Add as AddC
+import Lunarbox.Component.Editor.NodePreview as NodePreview
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
@@ -48,10 +50,11 @@ import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.TypeError (printError)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, initializeFunction, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -91,6 +94,7 @@ data Action
   | LoadScene
   | Rerender
   | DeleteNode NodeId
+  | UpdatePreview FunctionName
   -- Handle foreign actions bubbled by the Scene component
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
@@ -101,10 +105,11 @@ data Output
   = Save Json
 
 type ChildSlots
-  = ( tree :: Slot TreeC.Query TreeC.Output Unit
-    , scene :: Slot Scene.Query Scene.Output Unit
-    , pendingConnection :: Slot Modal.Query (Modal.Output PendingConnectionAction) Unit
-    )
+  = Add.ChildSlots
+      ( tree :: Slot TreeC.Query TreeC.Output Unit
+      , scene :: Slot Scene.Query Scene.Output Unit
+      , pendingConnection :: Slot Modal.Query (Modal.Output PendingConnectionAction) Unit
+      )
 
 -- Shorthand for manually passing the types of the actions and child slots
 type EditorState m
@@ -165,7 +170,7 @@ component =
     Init -> do
       window <- liftEffect Web.window
       document <- liftEffect $ Web.document window
-      -- Stuff which we need to run at the start
+      -- Generate geometries for the current function
       handleAction LoadScene
       -- Register keybindings
       subscribe' \sid ->
@@ -188,7 +193,7 @@ component =
               =<< Event.target (KE.toEvent event)
         when (isNothing targetInput) do
           { currentTab, panelIsOpen } <- get
-          when (currentTab /= Add || not panelIsOpen) do
+          unless (currentTab == Add && panelIsOpen) do
             modify_ $ set _panelIsOpen true <<< set _currentTab Add
             void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
           liftEffect $ preventDefault $ KE.toEvent event
@@ -242,6 +247,7 @@ component =
         void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     CreateFunction name -> do
       get >>= initializeFunction name >>= put
+      handleAction $ UpdatePreview name
       handleAction LoadScene
     SelectFunction name -> do
       modify_ $ setCurrentFunction name
@@ -256,6 +262,7 @@ component =
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
+      handleAction $ UpdatePreview function
     SetName name -> modify_ $ set _name name
     SetVisibility isVisible -> do
       modify_ $ set _isVisible isVisible
@@ -351,6 +358,13 @@ component =
       modify_ $ deleteNode current id
       void updateAll
       handleAction Rerender
+    UpdatePreview name -> do
+      state <- get
+      for_ (Map.lookup (AtFunction name) state.typeMap) \ty -> do
+        void $ query (SProxy :: SProxy "nodePreview") name
+          $ tell
+          $ NodePreview.Rerender
+          $ getFunctionColorMap (getMaxInputs name state) ty
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -493,6 +507,7 @@ component =
               , addNode: Just <<< CreateNode
               , changeInputCount: (Just <<< _) <<< ChangeInputCount
               , delete: Just <<< DeleteFunction
+              , updatePreview: Just <<< UpdatePreview
               }
           ]
         }

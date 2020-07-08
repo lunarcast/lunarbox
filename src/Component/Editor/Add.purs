@@ -1,5 +1,6 @@
 module Lunarbox.Component.Editor.Add
   ( add
+  , ChildSlots
   ) where
 
 import Prelude
@@ -8,12 +9,16 @@ import Data.Int (fromString, toNumber)
 import Data.List ((!!))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst)
+import Effect.Class (class MonadEffect)
+import Halogen (Slot)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Editor.Type (prettify)
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
+import Lunarbox.Component.Editor.NodePreview as NodePreview
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type, inputs, output)
@@ -25,6 +30,9 @@ import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
 import Lunarbox.Data.Editor.Project (Project)
 import Lunarbox.Data.Editor.State (getMaxInputs)
 import Lunarbox.Data.Ord (sortBySearch)
+
+type ChildSlots r
+  = ( nodePreview :: Slot NodePreview.Query NodePreview.Output FunctionName | r )
 
 type Input
   = { project :: Project
@@ -40,6 +48,7 @@ type Actions a
     , delete :: FunctionName -> Maybe a
     , addNode :: FunctionName -> Maybe a
     , changeInputCount :: FunctionName -> Int -> Maybe a
+    , updatePreview :: FunctionName -> Maybe a
     }
 
 resolvePin :: Pin -> Type -> Maybe Type
@@ -57,20 +66,17 @@ nodeButton active handleClick iconName =
       [ icon iconName ]
 
 makeNode ::
-  forall a s m.
+  forall r a m.
+  MonadEffect m =>
   Actions a ->
   NodeDescriptor ->
   FunctionName ->
   Int ->
   Map.Map Location Type ->
-  Map.Map FunctionName Int -> FunctionData -> HH.ComponentHTML a s m
-makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, canBeDeleted } name maxInputs typeMap inputCountMap functionData =
+  Map.Map FunctionName Int -> FunctionData -> HH.ComponentHTML a (ChildSlots r) m
+makeNode { edit, addNode, changeInputCount, delete, updatePreview } { isUsable, isEditable, canBeDeleted } name maxInputs typeMap inputCountMap functionData =
   HH.div [ className "node" ]
-    [ HH.canvas
-        [ HP.width 75
-        , HP.height 75
-        , className "node__preview"
-        ]
+    [ HH.slot (SProxy :: SProxy "nodePreview") name NodePreview.component { name } $ const $ updatePreview name
     , HH.div [ className "node__data" ]
         [ HH.div [ className "node__text" ]
             [ HH.header [ className "node__data-header" ]
@@ -104,7 +110,7 @@ makeNode { edit, addNode, changeInputCount, delete } { isUsable, isEditable, can
   where
   inputCount = fromMaybe maxInputs $ Map.lookup name inputCountMap
 
-add :: forall a s m. Input -> Actions a -> HH.ComponentHTML a s m
+add :: forall r a m. MonadEffect m => Input -> Actions a -> HH.ComponentHTML a (ChildSlots r) m
 add input@{ project, currentFunction, functionData, typeMap, inputCountMap, nodeSearchTerm } actions =
   HH.div [ className "nodes" ]
     $ ( \(Tuple name descriptor) ->
