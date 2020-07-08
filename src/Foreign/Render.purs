@@ -18,20 +18,27 @@ module Lunarbox.Foreign.Render
   , emptyGeometryCache
   , setUnconnectableInputs
   , setUnconnectableOutputs
+  , withContext
+  , renderPreview
   ) where
 
 import Prelude
+import Control.Monad.State (gets, modify_)
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json)
 import Data.Default (class Default, def)
 import Data.Either (Either(..))
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, mkFn2, mkFn3, runFn4)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Maybe (Maybe(..))
 import Data.Nullable (Nullable)
 import Effect (Effect)
+import Effect.Class (class MonadEffect)
+import Halogen (HalogenM, RefLabel, getHTMLElementRef, liftEffect)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Set (NativeSet)
 import Web.HTML (HTMLCanvasElement)
+import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
 import Web.UIEvent.MouseEvent (MouseEvent)
 
 -- Foreign data types
@@ -162,3 +169,26 @@ handleMouseUp = runFn4 handleMouseUpImpl $ def
 -- | Handle a mouse move event
 handleMouseMove :: GeomEventHandler
 handleMouseMove = runFn4 handleMouseMoveImpl $ def
+
+-- Halogen M which keeps track of a canvas
+type CanvasHalogenM r a s o m a'
+  = HalogenM { | ( context :: Maybe Context2d | r ) } a s o m a'
+
+-- | Run a computation (inside a halogen component) which requires access to a canvas rendering context.
+withContext ::
+  forall r a s o m.
+  MonadEffect m =>
+  RefLabel -> (Context2d -> CanvasHalogenM r a s o m Unit) -> CanvasHalogenM r a s o m Unit
+withContext ref continue = do
+  context <- gets _.context
+  case context of
+    Just ctx -> continue ctx
+    Nothing -> do
+      element <- (_ >>= HTMLCanvasElement.fromHTMLElement) <$> getHTMLElementRef ref
+      case element of
+        Nothing -> pure unit
+        Just canvas -> do
+          liftEffect $ resizeCanvas canvas
+          ctx <- liftEffect $ getContext canvas
+          modify_ _ { context = Just ctx }
+          continue ctx

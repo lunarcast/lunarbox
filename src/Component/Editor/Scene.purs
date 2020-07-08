@@ -10,17 +10,16 @@ import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Unsafe (unsafePerformEffect)
-import Halogen (Component, HalogenM, RefLabel(..), defaultEval, getHTMLElementRef, gets, mkComponent, mkEval, modify_, raise, subscribe)
+import Halogen (Component, HalogenM, RefLabel(..), defaultEval, gets, mkComponent, mkEval, modify_, raise, subscribe)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onMouseDown, onMouseMove, onMouseUp)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
 import Lunarbox.Component.Utils (className)
 import Lunarbox.Config (Config)
-import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, emptyGeometryCache, getContext, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeCanvas, resizeContext)
+import Lunarbox.Foreign.Render (Context2d, ForeignAction(..), GeomEventHandler, GeometryCache, emptyGeometryCache, handleMouseDown, handleMouseMove, handleMouseUp, renderScene, resizeContext, withContext)
 import Web.Event.Event (EventType(..))
 import Web.HTML as Web
-import Web.HTML.HTMLCanvasElement as HTMLCanvasElement
 import Web.HTML.Window as Window
 import Web.UIEvent.MouseEvent (MouseEvent)
 
@@ -70,25 +69,12 @@ component =
             }
     }
   where
-  withContext :: (Context2d -> HalogenM State Action ChildSlots Output m Unit) -> HalogenM State Action ChildSlots Output m Unit
-  withContext continue = do
-    context <- gets _.context
-    case context of
-      Just ctx -> continue ctx
-      Nothing -> do
-        element <- (_ >>= HTMLCanvasElement.fromHTMLElement) <$> getHTMLElementRef canvasRef
-        case element of
-          Nothing -> pure unit
-          Just canvas -> do
-            liftEffect $ resizeCanvas canvas
-            ctx <- liftEffect $ getContext canvas
-            modify_ _ { context = Just ctx }
-            continue ctx
+  withContext' = withContext canvasRef
 
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
     Init -> do
-      withContext $ const $ pure unit
+      withContext' $ const $ pure unit
       window <- liftEffect Web.window
       -- Registr resize events
       void $ subscribe
@@ -97,14 +83,14 @@ component =
             (Window.toEventTarget window)
             (const $ Just ResizeCanvas)
     Render ->
-      withContext \ctx -> do
+      withContext' \ctx -> do
         cache <- gets _.geometryCache
         liftEffect $ renderScene ctx cache
     ResizeCanvas -> do
-      withContext $ liftEffect <<< resizeContext
+      withContext' $ liftEffect <<< resizeContext
       handleAction Render
     HandleEvent handler event ->
-      withContext \ctx -> do
+      withContext' \ctx -> do
         cache <- gets _.geometryCache
         action <- liftEffect $ handler ctx event cache
         handleAction $ HandleForeignAction action
