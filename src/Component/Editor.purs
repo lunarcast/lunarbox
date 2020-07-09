@@ -536,7 +536,7 @@ component =
         , actions: []
         , footer: Nothing
         , header: Nothing
-        , content: [ problems errors ]
+        , content: [ problems { typeErrors: errors, navigateTo: MoveTo } ]
         }
 
   scene :: HH.ComponentHTML Action ChildSlots m
