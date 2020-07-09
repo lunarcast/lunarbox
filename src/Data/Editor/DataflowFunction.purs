@@ -2,6 +2,7 @@ module Lunarbox.Data.Editor.DataflowFunction
   ( DataflowFunction(..)
   , compileDataflowFunction
   , _VisualFunction
+  , _NativeFunction
   ) where
 
 import Prelude
@@ -40,8 +41,15 @@ compileDataflowFunction = case _ of
   NativeFunction f -> Native InsideNative f
   VisualFunction g -> compileNodeGroup g
 
+-- Lenses
 _VisualFunction :: Prism' DataflowFunction NodeGroup
 _VisualFunction =
   prism' VisualFunction case _ of
     VisualFunction f -> Just f
+    _ -> Nothing
+
+_NativeFunction :: Prism' DataflowFunction NativeExpression
+_NativeFunction =
+  prism' NativeFunction case _ of
+    NativeFunction f -> Just f
     _ -> Nothing

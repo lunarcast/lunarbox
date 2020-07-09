@@ -42,12 +42,12 @@
 }
 
 .problems__card--error {
-  background: $error-bg;
+  background: rgba($error-bg, 0.5);
   color: $error-text;
 }
 
 .problems__card--warning {
-  background: $warning-bg;
+  background: rgba($warning-bg, 0.5);
   color: $warning-text;
 }
 

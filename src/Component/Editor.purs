@@ -15,7 +15,7 @@ import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Array as Array
 import Data.Foldable (for_, traverse_)
-import Data.Lens (over, preview, set, view)
+import Data.Lens (is, over, preview, set, view)
 import Data.List ((:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe)
@@ -50,10 +50,12 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Editor.DataflowFunction (_NativeFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atInputCount, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
@@ -433,7 +435,20 @@ component =
     ]
 
   panel :: State Action ChildSlots m -> Array (HH.ComponentHTML Action ChildSlots m)
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm, typeErrors, lintingErrors } = case currentTab of
+  panel { currentTab
+  , project: project@(Project.Project { functions })
+  , currentFunction
+  , functionData
+  , typeMap
+  , inputCountMap
+  , name
+  , isExample
+  , isVisible
+  , isAdmin
+  , nodeSearchTerm
+  , typeErrors
+  , lintingErrors
+  } = case currentTab of
     Settings ->
       mkPanel
         { title: "Project settings"
@@ -532,8 +547,17 @@ component =
         , actions: []
         , footer: Nothing
         , header: Nothing
-        , content: [ problems { typeErrors, lintingErrors, navigateTo: MoveTo } ]
+        , content:
+          [ problems
+              { typeErrors
+              , lintingErrors
+              , navigateTo: MoveTo
+              , isInternal
+              }
+          ]
         }
+      where
+      isInternal functionName = maybe true (is _NativeFunction) $ Map.lookup functionName functions
 
   scene :: HH.ComponentHTML Action ChildSlots m
   scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit handleSceneOutput

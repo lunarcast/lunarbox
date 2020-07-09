@@ -44,3 +44,13 @@ hasLowecase = validatorFromRegex $ regex "[a-z]" noFlags
 -- Check if a string contains at least a digit
 containsDigits :: String -> Boolean
 containsDigits = validatorFromRegex $ regex ".*[0-9].*" noFlags
+
+-- | We use this for better error messages
+showIndex :: Int -> String
+showIndex 0 = "first"
+
+showIndex 1 = "second"
+
+showIndex 2 = "third"
+
+showIndex n = show (n - 1) <> "th"

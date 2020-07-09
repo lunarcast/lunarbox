@@ -13,6 +13,7 @@ import Data.Generic.Rep (class Generic)
 import Lunarbox.Data.Dataflow.Expression (Expression, wrap)
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.String (showIndex)
 
 -- A pin can either be an output or an input
 data Pin
@@ -70,16 +71,6 @@ instance showScopedLocation :: Show ScopedLocation where
   show (UnexistingNode id) = "at node " <> show id <> " which doesn't exist"
   show (PinLocation id OutputPin) = "at the output of node " <> show id
   show (PinLocation id (InputPin index)) = "at the " <> showIndex index <> "input of node " <> show id
-
--- | We use this for better error messages
-showIndex :: Int -> String
-showIndex 0 = "first"
-
-showIndex 1 = "second"
-
-showIndex 2 = "third"
-
-showIndex n = show (n - 1) <> "th"
 
 -- This is an internal function used to both mark a node and one of it's pins
 mark :: Pin -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation
