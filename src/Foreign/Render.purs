@@ -1,26 +1,4 @@
-module Lunarbox.Foreign.Render
-  ( Context2d
-  , GeometryCache
-  , GeomEventHandler
-  , NodeState
-  , ForeignTypeMap
-  , InputData
-  , ForeignAction(..)
-  , resizeCanvas
-  , resizeContext
-  , getContext
-  , renderScene
-  , handleMouseMove
-  , handleMouseDown
-  , handleMouseUp
-  , createNode
-  , refreshInputArcs
-  , emptyGeometryCache
-  , setUnconnectableInputs
-  , setUnconnectableOutputs
-  , withContext
-  , renderPreview
-  ) where
+module Lunarbox.Foreign.Render where
 
 import Prelude
 import Control.Monad.State (gets, modify_)
@@ -80,6 +58,10 @@ foreign import setUnconnectableOutputs :: GeometryCache -> NativeSet NodeId -> E
 foreign import deleteNode :: GeometryCache -> NodeId -> Effect Unit
 
 foreign import renderPreview :: Context2d -> ForeignTypeMap -> Effect Unit
+
+foreign import centerNode :: GeometryCache -> NodeId -> Effect Unit
+
+foreign import centerOutput :: GeometryCache -> Effect Unit
 
 instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:

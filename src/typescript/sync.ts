@@ -13,6 +13,7 @@ import * as g from "@thi.ng/geom"
 import { TAU } from "@thi.ng/math"
 import * as color from "@thi.ng/color"
 import type { IHiccupShape } from "@thi.ng/geom-api"
+import { translation23, Mat23Like } from "@thi.ng/matrices"
 
 /**
  * Generate the geometries for a new node.
@@ -248,4 +249,28 @@ export const deleteNode = (cache: GeometryCache) => (id: NodeId) => () => {
   }
 
   cache.selectedConnection = null
+}
+
+/**
+ * Move the camera over a particular node.
+ *
+ * @param cache The cache to mutate.
+ * @param id The id of the node to focus on.
+ */
+export const centerNode = (cache: GeometryCache) => (id: NodeId) => () => {
+  cache.camera = translation23([], cache.nodes.get(id)!.position) as Mat23Like
+}
+
+/**
+ * Same as centerNode but instead of an id it just focuses on the output node.
+ *
+ * @param cache The cache to mutate.
+ */
+export const centerOutput = (cache: GeometryCache) => () => {
+  for (const [id, node] of cache.nodes.entries()) {
+    if (node.output) continue
+
+    centerNode(cache)(id)()
+    return
+  }
 }

@@ -40,9 +40,13 @@ const Preview = require("src/typescript/preview.ts")
 
 exports.geometryCacheToJson = Save.geometryCacheToJson
 exports.geometryCacheFromJsonImpl = Save.geometryCacheFromJson
+
+exports.centerNode = Sync.centerNode
+exports.centerOutput = Sync.centerOutput
 exports.createNode = Sync.createNode
 exports.refreshInputArcs = Sync.refreshInputArcs
 exports.setUnconnectableInputs = Sync.setUnconnectableInputs
 exports.setUnconnectableOutputs = Sync.setUnconnectableOutputs
 exports.deleteNode = Sync.deleteNode
+
 exports.renderPreview = Preview.renderPreview

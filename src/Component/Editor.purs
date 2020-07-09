@@ -13,6 +13,7 @@ import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
+import Data.Array as Array
 import Data.Foldable (for_, traverse_)
 import Data.Lens (over, preview, set, view)
 import Data.List ((:))
@@ -58,7 +59,7 @@ import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atInputCou
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
-import Lunarbox.Foreign.Render (setUnconnectableInputs, setUnconnectableOutputs)
+import Lunarbox.Foreign.Render (centerNode, centerOutput, setUnconnectableInputs, setUnconnectableOutputs)
 import Lunarbox.Foreign.Render as Native
 import Web.Event.Event (preventDefault, stopPropagation)
 import Web.Event.Event as Event
@@ -383,7 +384,10 @@ component =
         steps = moveTo location
       for_ steps case _ of
         MoveToFunction name -> handleAction $ SelectFunction name
-        _ -> pure unit
+        CenterNode id -> void $ withCurrentGeometries \cache -> liftEffect $ centerNode cache id
+        CenterOutput -> void $ withCurrentGeometries \cache -> liftEffect $ centerOutput cache
+      -- TODO: don't do this when we didn't move the camera
+      unless (Array.null steps) $ handleAction Rerender
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
