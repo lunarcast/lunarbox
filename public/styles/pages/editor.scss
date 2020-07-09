@@ -50,14 +50,25 @@ $icon-font-size: 2rem;
     border-left $transition-time;
 }
 
-.editor__activity .material-icons {
-  font-size: $icon-font-size;
+.editor__activity--warning {
+  color: $warning-text;
+}
+
+.editor__activity--error {
+  color: $error-text;
 }
 
 .editor__activity:hover,
 .editor__activity.editor__activity--active {
   filter: none;
-  color: $on-dark;
+
+  &:not(.editor__activity--warning):not(.editor__activity--error) {
+    color: $on-dark;
+  }
+}
+
+.editor__activity .material-icons {
+  font-size: $icon-font-size;
 }
 
 .editor__activity--active {

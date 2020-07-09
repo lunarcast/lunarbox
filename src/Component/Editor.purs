@@ -396,23 +396,32 @@ component =
     Native.DeleteConnection id index -> Just $ RemoveConnection id index
     _ -> Nothing
 
-  sidebarIcon activeTab current =
+  sidebarIcon extraClasses activeTab current =
     HH.div
-      [ classes $ ClassName <$> [ "editor__activity" ] <> (guard isActive $> "editor__activity--active")
+      [ classes $ ClassName <$> [ "editor__activity" ] <> (guard isActive $> "editor__activity--active") <> extraClasses
       , onClick $ const $ Just $ ChangeTab current
       ]
       [ icon $ tabIcon current ]
     where
     isActive = current == activeTab
 
-  tabs currentTab =
+  tabs { typeErrors, lintingErrors } currentTab =
     [ icon Settings
     , icon Add
     , icon Tree
     , icon Problems
     ]
     where
-    icon = sidebarIcon currentTab
+    problemClasses
+      | not $ Array.null typeErrors = [ "editor__activity--error" ]
+      | not $ Array.null lintingErrors = [ "editor__activity--warning" ]
+      | otherwise = []
+
+    classes Problems = problemClasses
+
+    classes _ = []
+
+    icon tab = sidebarIcon (classes tab) currentTab tab
 
   mkPanel :: _
   mkPanel { title, actions, content, footer, header } =
@@ -571,10 +580,10 @@ component =
       ]
 
   render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  render state@{ currentTab, panelIsOpen } =
+  render state@{ currentTab, panelIsOpen, typeErrors, lintingErrors } =
     HH.div [ className "editor" ]
       [ HH.div [ className "editor__activity-bar" ]
-          $ tabs currentTab
+          $ tabs { typeErrors, lintingErrors } currentTab
           <> pure logoElement
       , HH.div
           [ classes $ ClassName
