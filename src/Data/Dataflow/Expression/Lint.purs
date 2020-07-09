@@ -4,7 +4,7 @@ import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName, foldExpression)
-import Lunarbox.Data.String (showIndex)
+import Lunarbox.Data.String (doubleShow, showIndex)
 
 -- | Basically warnings the user gets for imrpoving code clarity
 data LintError l
@@ -17,10 +17,10 @@ type LEFormattingData
 
 -- | We need some extra data for printing so we cannot just declare a Show instance
 printError :: forall l. LEFormattingData -> LintError l -> String
-printError { namedWho } (UnusedDeclaration _ name) = namedWho (show name) <> " is declared and never used"
+printError { namedWho } (UnusedDeclaration _ name) = namedWho (doubleShow name) <> " is declared and never used"
 
 printError { who, nth } (UnsaturatedFunction _ _) =
-  who <> " doesn't have "
+  show who <> " doesn't have "
     <> case nth of
         Nothing -> "all its inputs connected"
         Just index -> " its " <> showIndex index <> " input connected"

@@ -15,11 +15,13 @@ import Data.Lens (Lens', Prism', lens, prism')
 import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
+import Lunarbox.Data.String (doubleShow)
 
 -- Location for stuff in Projects
 data Location
   = AtFunction FunctionName
   | InsideFunction FunctionName ScopedLocation
+  | AtFunctionDeclaration FunctionName
   | UnknownLocation
 
 -- Lenses
@@ -35,6 +37,7 @@ _Function =
     ( case _ of
         AtFunction name -> Just name
         InsideFunction name _ -> Just name
+        AtFunctionDeclaration name -> Just name
         _ -> Nothing
     )
     ( \function maybeName -> case maybeName of
@@ -42,6 +45,7 @@ _Function =
           UnknownLocation -> UnknownLocation
           InsideFunction _ next -> InsideFunction name next
           AtFunction _ -> AtFunction name
+          AtFunctionDeclaration _ -> AtFunctionDeclaration name
         Nothing -> function
     )
 
@@ -76,8 +80,9 @@ instance defaultLocation :: Default Location where
   def = UnknownLocation
 
 instance showLocation :: Show Location where
-  show (AtFunction name) = "inside function" <> show name
-  show (InsideFunction name FunctionDeclaration) = "at the declaration of function " <> show name
-  show (InsideFunction name (NodeDefinition id)) = "at node " <> show id <> " in function " <> show name
-  show (InsideFunction name location) = show location <> " in function " <> show name
+  show (AtFunction name) = "inside function" <> doubleShow name
+  show (InsideFunction name FunctionDeclaration) = "at the declaration of function " <> doubleShow name
+  show (InsideFunction name (NodeDefinition id)) = "at node " <> doubleShow id <> " in function " <> doubleShow name
+  show (InsideFunction name location) = show location <> " in function " <> doubleShow name
   show UnknownLocation = "at an unknown location"
+  show (AtFunctionDeclaration name) = "at the declaration of function " <> doubleShow name

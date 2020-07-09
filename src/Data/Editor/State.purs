@@ -573,6 +573,8 @@ moveTo UnknownLocation = []
 
 moveTo (AtFunction name) = [ MoveToFunction name ]
 
+moveTo (AtFunctionDeclaration name) = [ MoveToFunction name ]
+
 moveTo (InsideFunction name deep) = [ MoveToFunction name ] <> go deep
   where
   go (NodeLocation id) = [ CenterNode id ]

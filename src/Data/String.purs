@@ -54,3 +54,7 @@ showIndex 1 = "second"
 showIndex 2 = "third"
 
 showIndex n = show (n - 1) <> "th"
+
+-- | Shows something and then quotes it
+doubleShow :: forall a. Show a => a -> String
+doubleShow = show <<< show

@@ -76,7 +76,7 @@ compileProject project@(Project { main }) =
         let
           name = VarName $ show key
         in
-          Let UnknownLocation name value body
+          Let (AtFunctionDeclaration key) name value body
     )
     (Variable UnknownLocation $ VarName $ show main)
     $ List.catMaybes

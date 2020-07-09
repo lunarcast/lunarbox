@@ -65,6 +65,7 @@ problems { typeErrors, lintingErrors, navigateTo, isInternal } =
       UnknownLocation -> false
       (AtFunction name) -> not $ isInternal name
       (InsideFunction name _) -> not $ isInternal name
+      (AtFunctionDeclaration name) -> not $ isInternal name
 
 -- | Data about how to color a problem
 data ProblemLevel
@@ -109,6 +110,8 @@ locationLEF UnknownLocation =
   , who: "unknown"
   , namedWho: \n -> "Variable " <> n
   }
+
+locationLEF (AtFunctionDeclaration name) = locationLEF (AtFunction name)
 
 locationLEF (AtFunction name) =
   { nth: Nothing
