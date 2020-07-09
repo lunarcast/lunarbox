@@ -37,6 +37,7 @@ import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Editor.Add as Add
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.NodePreview as NodePreview
+import Lunarbox.Component.Editor.Problems (problems)
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
@@ -48,7 +49,6 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Dataflow.TypeError (printError)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
@@ -279,7 +279,6 @@ component =
       name <- gets $ view _name
       if String.length name >= 2 then do
         { errors, expression, typeMap } <- get
-        for_ errors $ printString <<< printError show
         newState <- gets stateToJson
         raise $ Save newState
         handleAction $ Autosave newState
@@ -429,7 +428,7 @@ component =
     ]
 
   panel :: State Action ChildSlots m -> Array (HH.ComponentHTML Action ChildSlots m)
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm, errors } = case currentTab of
     Settings ->
       mkPanel
         { title: "Project settings"
@@ -528,7 +527,7 @@ component =
         , actions: []
         , footer: Nothing
         , header: Nothing
-        , content: [ HH.text "unimplemented" ]
+        , content: [ problems errors ]
         }
 
   scene :: HH.ComponentHTML Action ChildSlots m

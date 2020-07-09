@@ -7,6 +7,8 @@
 @import "./editor/panel.scss";
 @import "./editor/settings.scss";
 @import "./editor/tree.scss";
+@import "./editor/add.scss";
+@import "./editor/problems.scss";
 
 $icon-font-size: 2rem;
 
@@ -61,8 +63,3 @@ $icon-font-size: 2rem;
 .editor__activity--active {
   border-left: 0.2rem solid $on-dark;
 }
-
-// We import these at the end because some of theme overwrite some styles from this sheet
-@import "./editor/add.scss";
-
-@import "../components/node.scss";

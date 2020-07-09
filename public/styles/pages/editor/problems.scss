@@ -1,0 +1,29 @@
+@import "../../theme.scss";
+
+.problems__empty {
+  text-align: center;
+  color: darken($color: $on-primary, $amount: 4);
+}
+
+.problems__container {
+  display: flex;
+  flex-direction: column;
+}
+
+.problems__card {
+  width: 100%;
+  padding: 1rem;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.problems__card--error {
+  background: $error-bg;
+  color: $error-text;
+}
+
+.problems__card-message {
+  grid-row-start: 2;
+  grid-column: 1 / 3;
+}

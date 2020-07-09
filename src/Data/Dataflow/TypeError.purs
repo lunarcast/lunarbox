@@ -37,10 +37,7 @@ getLocation (UnboundVariable _ l) = l
 
 getLocation (Stacked _ l) = l
 
--- -- | Print an error with a custom function for printing the locations.
--- printError :: forall l. (l -> String) -> TypeError l -> String
--- printError showLocation err = printError' showLocaion err
--- | Internal version of printError which also takes an ar
+-- | Print an error with a custom function for printing the locations.
 printError :: forall l. (l -> String) -> TypeError l -> String
 printError showLocation err =
   joinWith "\n"
