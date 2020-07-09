@@ -262,6 +262,7 @@ component =
     RemoveConnection id index -> do
       modify_ $ removeConnection $ Tuple id index
       void updateAll
+      printString $ "Removed " <> show id <> " w index " <> show index
       handleAction Rerender
     SetRuntimeValue functionName nodeId runtimeValue -> do
       modify_ $ setRuntimeValue functionName nodeId runtimeValue
