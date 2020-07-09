@@ -6,6 +6,7 @@ import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName, foldExpressio
 
 data LintError l
   = UnusedDeclaration VarName l
+  | UnsaturatedFunction l l
 
 -- | Collect linting errors inside an expression
 lint :: forall l. Expression l -> Array (LintError l)
@@ -15,6 +16,10 @@ lint = foldExpression go
     | Array.null (references name body) =
       [ UnusedDeclaration name location
       ]
+
+  go (FunctionCall location _ (TypedHole argLocation)) =
+    [ UnsaturatedFunction location argLocation
+    ]
 
   go a = []
 
