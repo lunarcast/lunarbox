@@ -37,6 +37,7 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression(..))
+import Lunarbox.Data.Dataflow.Expression.Lint (LintError, lint)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type(..), inputs)
@@ -55,6 +56,8 @@ import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Foreign.Render (GeometryCache, ForeignTypeMap, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
+import Record as Record
+import Type.Row (type (+))
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
 
@@ -80,7 +83,8 @@ tabIcon = case _ of
 type CompilationResult r
   = ( expression :: Expression Location
     , typeMap :: Map Location Type
-    , errors :: Array (TypeError Location)
+    , typeErrors :: Array (TypeError Location)
+    , lintingErrors :: Array (LintError Location)
     | r
     )
 
@@ -97,7 +101,8 @@ type StatePermanentData r
 type State a s m
   = { 
     | StatePermanentData
-      ( currentTab :: Tab
+      + CompilationResult
+      + ( currentTab :: Tab
       , functionData :: Map FunctionName FunctionData
       , panelIsOpen :: Boolean
       , valueMap :: ValueMap Location
@@ -105,21 +110,16 @@ type State a s m
       , inputCountMap :: Map FunctionName Int
       , pendingConnection ::
         Maybe
-          { 
-          | CompilationResult
-            ( from :: NodeId
-            , toId :: NodeId
-            , toIndex :: Int
-            )
+          { from :: NodeId
+          , toId :: NodeId
+          , toIndex :: Int
+          , compilationResult :: { | CompilationResult () }
           }
       , name :: String
       , isExample :: Boolean
       , isAdmin :: Boolean
       , nodeSearchTerm :: String
       , isVisible :: Boolean
-      , expression :: Expression Location
-      , errors :: Array (TypeError Location)
-      , typeMap :: Map Location Type
       )
     }
 
@@ -146,7 +146,8 @@ emptyState =
     , isAdmin: false
     , isVisible: false
     , pendingConnection: Nothing
-    , errors: []
+    , typeErrors: []
+    , lintingErrors: []
     }
 
 -- Helpers
@@ -306,30 +307,32 @@ tryCompiling ::
   forall a s m.
   State a s m ->
   { | CompilationResult () }
-tryCompiling state@{ project, expression, typeMap, errors } = { expression: expression', typeMap: typeMap', errors: errors' }
+tryCompiling state@{ project, expression, typeMap, typeErrors, lintingErrors } = result
   where
   expression' = compileProject project
 
-  (Tuple typeMap' errors') =
+  result =
     -- we only run the type inference algorithm if the expression changed
-    if (expression == expression') then
-      Tuple typeMap errors
+    if expression == expression' then
+      { typeMap, typeErrors, lintingErrors, expression }
     else
-      Tuple typeMap' errors'
+      { expression: expression'
+      , typeMap: typeMap'
+      , typeErrors: errors'
+      , lintingErrors: lintingErrors'
+      }
     where
+    lintingErrors' = lint expression'
+
     (Tuple typeMap' (SolveState { errors: errors' })) = solveExpression expression'
 
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m
 compile state =
   evaluate
-    $ state
-        { expression = expression
-        , typeMap = typeMap
-        , errors = errors
-        }
+    $ Record.merge overwrites state
   where
-  { expression, typeMap, errors } = tryCompiling state
+  overwrites = tryCompiling state
 
 -- Evaluate the current expression and write into the value map
 evaluate :: forall a s m. State a s m -> State a s m

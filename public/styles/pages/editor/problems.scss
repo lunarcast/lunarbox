@@ -46,6 +46,11 @@
   color: $error-text;
 }
 
+.problems__card--warning {
+  background: $warning-bg;
+  color: $warning-text;
+}
+
 .problems__card-message {
   grid-row-start: 2;
   grid-column: 1 / 3;

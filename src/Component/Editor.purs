@@ -61,6 +61,7 @@ import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
 import Lunarbox.Foreign.Render (centerNode, centerOutput, setUnconnectableInputs, setUnconnectableOutputs)
 import Lunarbox.Foreign.Render as Native
+import Record as Record
 import Web.Event.Event (preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
@@ -139,12 +140,8 @@ pendingConnectionModal =
   , title: "Confirm connection"
   , content: HH.text "Connecting those nodes would change the type of this function creating a type error."
   , buttons:
-    [ { text: "Autofix"
+    [ { text: "Continue"
       , primary: true
-      , value: AutofixConnection
-      }
-    , { text: "Continue"
-      , primary: false
       , value: ProceedConnecting
       }
     , { text: "Cancel"
@@ -283,7 +280,6 @@ component =
       liftAff $ delay interval
       name <- gets $ view _name
       if String.length name >= 2 then do
-        { errors, expression, typeMap } <- get
         newState <- gets stateToJson
         raise $ Save newState
         handleAction $ Autosave newState
@@ -305,11 +301,10 @@ component =
     CreateConnection from toId toIndex -> do
       state <- createConnection from toId toIndex <$> get
       let
-        { expression, typeMap, errors } = tryCompiling state
-      case errors of
+        compilationResult = tryCompiling state
+      case compilationResult.typeErrors of
         [] -> do
-          put $ evaluate $ state { expression = expression, typeMap = typeMap, errors = errors }
-          printString "Created connection with no errors"
+          put $ evaluate $ Record.merge compilationResult state
           void updateAll
         _ -> do
           modify_
@@ -319,9 +314,7 @@ component =
                   { from
                   , toId
                   , toIndex
-                  , expression
-                  , errors
-                  , typeMap
+                  , compilationResult
                   }
               }
           handleAction (HandleConnectionConfirmation ProceedConnecting)
@@ -345,16 +338,14 @@ component =
     HandleConnectionConfirmation other -> do
       p <- gets _.pendingConnection
       gets _.pendingConnection
-        >>= traverse_ \{ from, toId, toIndex, errors, expression, typeMap } -> case other of
+        >>= traverse_ \{ from, toId, toIndex, compilationResult } -> case other of
             ProceedConnecting -> do
               state <- get
               put
                 $ createConnection from toId toIndex
+                $ Record.merge compilationResult
                 $ state
                     { pendingConnection = Nothing
-                    , errors = errors
-                    , typeMap = typeMap
-                    , expression = expression
                     }
               void updateAll
               handleAction Rerender
@@ -442,7 +433,7 @@ component =
     ]
 
   panel :: State Action ChildSlots m -> Array (HH.ComponentHTML Action ChildSlots m)
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm, errors } = case currentTab of
+  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isVisible, isAdmin, nodeSearchTerm, typeErrors, lintingErrors } = case currentTab of
     Settings ->
       mkPanel
         { title: "Project settings"
@@ -541,7 +532,7 @@ component =
         , actions: []
         , footer: Nothing
         , header: Nothing
-        , content: [ problems { typeErrors: errors, navigateTo: MoveTo } ]
+        , content: [ problems { typeErrors, lintingErrors, navigateTo: MoveTo } ]
         }
 
   scene :: HH.ComponentHTML Action ChildSlots m
