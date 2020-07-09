@@ -161,6 +161,7 @@ export const getMouseTarget = (
       }
     }
   }
+
   return {
     _type: MouseTargetKind.Nothing
   }
