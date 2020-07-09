@@ -6,10 +6,8 @@ module Lunarbox.Data.Dataflow.TypeError
 
 import Prelude
 import Data.List (List)
-import Data.String (joinWith)
 import Lunarbox.Data.Dataflow.Expression (VarName)
 import Lunarbox.Data.Dataflow.Type (TVarName, Type)
-import Lunarbox.Data.String (indent)
 
 -- Type for all type errors
 -- At the moment there are 4 possible type errors:
@@ -38,19 +36,13 @@ getLocation (UnboundVariable _ l) = l
 getLocation (Stacked _ l) = l
 
 -- | Print an error with a custom function for printing the locations.
-printError :: forall l. (l -> String) -> TypeError l -> String
-printError showLocation err =
-  joinWith "\n"
-    [ showLocation (getLocation err) <> ":"
-    , indent 4 $ go err
-    ]
-  where
-  go (TypeMissmatch t1 t2 _) = "Could not match type " <> show t1 <> " with type " <> show t2
+printError :: forall l. TypeError l -> String
+printError (TypeMissmatch t1 t2 _) = "Could not match type " <> show t1 <> " with type " <> show t2
 
-  go (DifferentLength t1 t2 _) = "Could not match types " <> show t1 <> " with types " <> show t2 <> " because the lengths are different"
+printError (DifferentLength t1 t2 _) = "Could not match types " <> show t1 <> " with types " <> show t2 <> " because the lengths are different"
 
-  go (RecursiveType v t _) = "Type " <> show t <> " contains a reference to itself"
+printError (RecursiveType v t _) = "Type " <> show t <> " contains a reference to itself"
 
-  go (UnboundVariable v _) = "Variable " <> show v <> " is not in scope"
+printError (UnboundVariable v _) = "Variable " <> show v <> " is not in scope"
 
-  go (Stacked inner _) = printError showLocation inner
+printError (Stacked inner _) = printError inner

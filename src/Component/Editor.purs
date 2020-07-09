@@ -54,7 +54,7 @@ import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atInputCount, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atInputCount, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -96,6 +96,7 @@ data Action
   | DeleteNode NodeId
   | UpdatePreview FunctionName
   | UpdatePreviews
+  | MoveTo Location
   -- Handle foreign actions bubbled by the Scene component
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
@@ -250,9 +251,11 @@ component =
       get >>= initializeFunction name >>= put
       handleAction $ UpdatePreview name
       handleAction LoadScene
-    SelectFunction name -> do
-      modify_ $ setCurrentFunction name
-      handleAction LoadScene
+    SelectFunction name ->
+      withCurrentFunction_ \currentFunction ->
+        unless (name == currentFunction) do
+          modify_ $ setCurrentFunction name
+          handleAction LoadScene
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     RemoveConnection id index -> do
@@ -375,6 +378,12 @@ component =
     UpdatePreviews -> do
       functions <- gets $ view _functions
       for_ (Map.keys functions) $ handleAction <<< UpdatePreview
+    MoveTo location -> do
+      let
+        steps = moveTo location
+      for_ steps case _ of
+        MoveToFunction name -> handleAction $ SelectFunction name
+        _ -> pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

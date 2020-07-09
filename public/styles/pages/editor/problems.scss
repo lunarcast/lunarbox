@@ -10,6 +10,29 @@
   flex-direction: column;
 }
 
+.problems__card-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.problems__card-location {
+  color: #73c0f3;
+  background: none;
+
+  text-decoration: underline;
+  outline: none;
+  border: none;
+
+  font-size: 0.8rem;
+
+  transition: filter $transition-time;
+
+  &:hover {
+    filter: brightness(1.5);
+    cursor: pointer;
+  }
+}
+
 .problems__card {
   width: 100%;
   padding: 1rem;

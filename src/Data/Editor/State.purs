@@ -556,6 +556,38 @@ getFunctionColorMap n (TConstant "Function" [ from, to ]) =
 
 getFunctionColorMap n ty = getFunctionColorMap 0 ty
 
+-- | Possible steps we need to take to focus on something
+data MovementStep
+  = MoveToFunction FunctionName
+  | CenterNode NodeId
+  | CenterOutput
+
+-- | Get the steps for moving towards a location 
+moveTo :: Location -> Array MovementStep
+moveTo UnknownLocation = []
+
+moveTo (AtFunction name) = [ MoveToFunction name ]
+
+moveTo (InsideFunction name deep) = [ MoveToFunction name ] <> go deep
+  where
+  go (NodeLocation id) = [ CenterNode id ]
+
+  go (NodeDefinition id) = [ CenterNode id ]
+
+  go (PinLocation id _) = [ CenterNode id ]
+
+  go (AtApplication id _) = [ CenterNode id ]
+
+  go FunctionDeclaration = [ CenterOutput ]
+
+  go (UnexistingNode _) = []
+
+  go (FunctionUsage _) = []
+
+  go InsideNative = []
+
+  go PlaceholderPosition = []
+
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
 _inputCountMap = prop (SProxy :: _ "inputCountMap")
