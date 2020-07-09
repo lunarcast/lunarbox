@@ -19,9 +19,11 @@ module Lunarbox.Data.Dataflow.Expression
   , wrappers
   , everywhereOnExpressionM
   , everywhereOnExpression
+  , foldExpression
   ) where
 
 import Prelude
+import Control.Monad.Writer (execWriter, tell)
 import Data.Identity (Identity(..))
 import Data.List (List(..), foldr, (:))
 import Data.Map as Map
@@ -88,6 +90,10 @@ everywhereOnExpressionM f = go'
 -- Map every level of an expression
 everywhereOnExpression :: forall l. (Expression l -> Expression l) -> Expression l -> Expression l
 everywhereOnExpression mapper = unwrap <<< everywhereOnExpressionM (Identity <<< mapper)
+
+-- | Accumulate a value running trough all the layers of an expression
+foldExpression :: forall l m. Monoid m => (Expression l -> m) -> Expression l -> m
+foldExpression f = execWriter <<< everywhereOnExpressionM (\expr -> tell (f expr) $> expr)
 
 -- Takes a list of argument names and a body and creates the body of a function
 functionDeclaration :: forall l. l -> Expression l -> List VarName -> Expression l
