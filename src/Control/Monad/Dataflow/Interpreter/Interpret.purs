@@ -5,9 +5,8 @@ module Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret
   ) where
 
 import Prelude
-import Control.Bind (bindFlipped)
 import Control.Lazy (defer)
-import Control.Monad.Reader (ask, asks, local)
+import Control.Monad.Reader (asks, local)
 import Control.Monad.Writer (tell)
 import Data.Default (class Default, def)
 import Data.Lens (over, set, view)
@@ -15,9 +14,8 @@ import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.Tuple (fst)
 import Debug.Trace (trace)
-import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv, runInterpreter)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), getLocation)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..), TermEnvironment)
@@ -56,15 +54,16 @@ normalizeTerm (Code env expr) = result >>= normalizeTerm
   where
   result = withEnv env $ interpret expr
 
-normalizeTerm (Closure env name body) = do
-  currentEnv <- ask
-  pure
-    $ Function \arg ->
-        fst $ runInterpreter currentEnv $ bindFlipped normalizeTerm $ withEnv env
-          $ withTerm name (Term arg)
-          $ interpret body
-
+-- normalizeTerm (Closure env name body) = do
+-- currentEnv <- ask
+-- pure
+-- $ Function \arg ->
+-- fst $ runInterpreter currentEnv $ bindFlipped normalizeTerm $ withEnv env
+-- $ withTerm name (Term arg)
+-- $ interpret body
 normalizeTerm (LazyTerm t) = normalizeTerm $ t unit
+
+normalizeTerm _ = pure Null
 
 -- Interpret an expression into a runtimeValue
 interpret :: forall l. Ord l => Default l => Expression l -> Interpreter l (Term l)
@@ -90,13 +89,12 @@ interpret expression = do
           Nothing -> pure def
         If _ cond then' else' -> interpret cond >>= go
           where
-          go =
-            normalizeTerm
-              >=> case _ of
-                  Bool true -> interpret then'
-                  Bool false -> interpret else'
-                  RLazy exec -> go (Term $ exec unit)
-                  t -> trace { t } \_ -> pure def
+          go = case _ of
+            Term (Bool true) -> interpret then'
+            Term (Bool false) -> interpret else'
+            Term (RLazy exec) -> go (Term $ exec unit)
+            LazyTerm exec -> go $ exec unit
+            t -> trace { t } \_ -> pure def
         Let _ name value body -> do
           runtimeValue <- interpret value
           withTerm (show name) runtimeValue $ interpret body
@@ -114,12 +112,19 @@ interpret expression = do
               withEnv env $ withTerm name runtimeArgument
                 $ interpret expr
             other -> do
-              arg <- normalizeTerm runtimeArgument
               function' <- normalizeTerm other
-              pure
-                $ defer \_ ->
-                    Term case function' of
-                      Function call -> call arg
-                      _ -> trace { arg, function' } \_ -> Null
+              case function' of
+                Function call -> do
+                  arg <- normalizeTerm runtimeArgument
+                  pure
+                    $ defer \_ ->
+                        trace
+                          { other
+                          , function'
+                          , arg
+                          , call
+                          , r: call arg
+                          } \_ -> Term $ call arg
+                _ -> pure def
   tell $ ValueMap $ Map.singleton location value
   pure value

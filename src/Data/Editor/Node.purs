@@ -118,7 +118,7 @@ compileNode nodes id child =
       where
       name = VarName $ show id
 
-      value = If (NodeDefinition id) condExpr thenExpr elseExpr
+      value = wrap (NodeLocation id) $ If (PinLocation id OutputPin) condExpr thenExpr elseExpr
 
       condExpr = mkExpr 0 cond
 

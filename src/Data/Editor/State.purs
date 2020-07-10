@@ -6,6 +6,7 @@ import Control.Monad.State (class MonadState, execState, execStateT, get, gets, 
 import Control.Monad.State as StateM
 import Control.MonadZero (guard)
 import Data.Array as Array
+import Data.Default (def)
 import Data.Filterable (filter, filterMap)
 import Data.Foldable (foldMap, foldr, length, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
@@ -25,16 +26,16 @@ import Data.Nullable as Nullable
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
 import Debug.Trace (spy, trace)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
-import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), evalInterpreter, runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret, normalizeTerm)
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression(..))
@@ -99,9 +100,6 @@ type StatePermanentData r
     | r
     )
 
-type RuntimeValueMap
-  = Map Location RuntimeValue
-
 -- | The state of the entire editor
 type State a s m
   = { 
@@ -110,7 +108,7 @@ type State a s m
       + ( currentTab :: Tab
       , functionData :: Map FunctionName FunctionData
       , panelIsOpen :: Boolean
-      , valueMap :: RuntimeValueMap
+      , valueMap :: ValueMap Location
       , functionUis :: Map FunctionName (FunctionUi a s m)
       , inputCountMap :: Map FunctionName Int
       , pendingConnection ::
@@ -180,7 +178,11 @@ updateNode id =
                 nodeGroup <- gets $ preview (_nodeGroup currentFunction)
                 let
                   value =
-                    Nullable.toNullable $ show
+                    Nullable.toNullable
+                      $ ( spy "bone" <<< show <<< evalInterpreter def
+                            <<< normalizeTerm
+                            <<< spy "yoohohohohohohoho"
+                        )
                       <$> getNodeValue currentFunction valueMap id node
 
                   inputs = List.toUnfoldable $ view _nodeInputs node
@@ -352,17 +354,11 @@ evaluate state = set _valueMap valueMap state
 
   expression = view _expression state
 
-  result =
-    spy "result"
+  valueMap =
+    snd
       $ runInterpreter
           context
       $ interpret expression
-
-  valueMap =
-    fst $ runInterpreter context
-      $ traverse normalizeTerm
-      $ unwrap
-      $ snd result
 
 -- Check if 2 pins can be connected
 canConnect :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> Boolean
@@ -545,8 +541,8 @@ getMaxInputs name { project: Project { functions }, functionData } = case Map.lo
     _ -> 0
 
 -- | Get the value to be displayed underneath a node
-getNodeValue :: FunctionName -> RuntimeValueMap -> NodeId -> Node -> Maybe RuntimeValue
-getNodeValue currentFunction vmap id = case _ of
+getNodeValue :: FunctionName -> ValueMap Location -> NodeId -> Node -> Maybe (Term Location)
+getNodeValue currentFunction (ValueMap vmap) id = case _ of
   ComplexNode _ -> Map.lookup (InsideFunction currentFunction $ NodeLocation id) vmap
   OutputNode _ -> Map.lookup (InsideFunction currentFunction $ PinLocation id $ InputPin 0) vmap
   _ -> Nothing
@@ -620,7 +616,7 @@ _atInputCount name = _inputCountMap <<< at name
 _runtimeOverwrites :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
-_valueMap :: forall a s m. Lens' (State a s m) RuntimeValueMap
+_valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
 _geometries :: forall a s m. Lens' (State a s m) (Map FunctionName GeometryCache)

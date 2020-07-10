@@ -95,9 +95,11 @@ infer expression =
         tyCond <- infer cond
         tyThen <- infer then'
         tyElse <- infer else'
-        createConstraint tyThen tyElse
+        tv <- fresh true
         createConstraint tyCond typeBool
-        pure tyThen
+        createConstraint tv tyThen
+        createConstraint tv tyElse
+        pure tv
       Let location name value body -> do
         env <- ask
         Tuple valueType (InferOutput { constraints }) <- listen $ infer value
@@ -107,10 +109,10 @@ infer expression =
         generalized <- local (const $ apply subst env) $ generalize $ apply subst valueType
         createClosure name generalized $ infer body
       FixPoint loc name body -> do
-        t <- infer $ Lambda loc name body
         tv <- fresh true
-        createConstraint (typeFunction tv tv) t
-        pure tv
+        ty <- createClosure name (Forall [] tv) $ infer body
+        createConstraint tv ty
+        pure ty
       Chain _ Nil -> fresh true
       Chain _ (expression' : Nil) -> infer expression'
       Chain location (expression' : expressions) -> do
