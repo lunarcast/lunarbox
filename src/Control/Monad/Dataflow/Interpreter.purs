@@ -23,7 +23,7 @@ import Lunarbox.Data.Lens (newtypeIso)
 newtype InterpreterContext l
   = InterpreterContext
   { location :: l
-  , termEnv :: TermEnvironment
+  , termEnv :: TermEnvironment l
   , overwrites :: ValueMap l
   }
 
@@ -33,7 +33,7 @@ derive instance newtypeInterpreterContent :: Newtype (InterpreterContext l) _
 _location :: forall l. Lens' (InterpreterContext l) l
 _location = newtypeIso <<< prop (SProxy :: _ "location")
 
-_termEnv :: forall l. Lens' (InterpreterContext l) TermEnvironment
+_termEnv :: forall l. Lens' (InterpreterContext l) (TermEnvironment l)
 _termEnv = newtypeIso <<< prop (SProxy :: _ "termEnv")
 
 _overwrites :: forall l. Lens' (InterpreterContext l) (ValueMap l)

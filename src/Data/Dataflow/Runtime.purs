@@ -20,7 +20,6 @@ import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
-import Debug.Trace (trace)
 
 -- Representations of all possible runtime values
 data RuntimeValue
@@ -73,7 +72,7 @@ instance showRuntimeValue :: Show RuntimeValue where
     String value -> show value
     NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
     Function _ -> "Function"
-    RLazy exec -> trace { exec } \_ -> "Lazy"
+    RLazy exec -> "Lazy"
 
 -- RLazy exec -> show $ exec unit
 -- RLazy exec -> show $ exec unit

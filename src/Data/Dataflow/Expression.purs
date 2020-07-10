@@ -222,7 +222,7 @@ printRawExpression print expression = case expression of
       , "else"
       , indent 4 (printRawExpression print else')
       ]
-  FixPoint _ name e -> "\\" <> show name <> " -> " <> print e
+  FixPoint _ name e -> "(fixpoint \\" <> show name <> " ---> " <> print e <> ")"
   Native _ (NativeExpression t _) -> "native"
   Chain l (e : Nil) -> printRawExpression print e
   Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
