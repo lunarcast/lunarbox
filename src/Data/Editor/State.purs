@@ -28,14 +28,13 @@ import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
-import Debug.Trace (spy, trace)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), evalInterpreter, runInterpreter)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret, normalizeTerm)
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
-import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (printTypeMap, solveExpression)
+import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression(..))
@@ -179,10 +178,7 @@ updateNode id =
                 let
                   value =
                     Nullable.toNullable
-                      $ ( spy "bone" <<< show <<< evalInterpreter def
-                            <<< normalizeTerm
-                            <<< spy "yoohohohohohohoho"
-                        )
+                      $ (show <<< evalInterpreter def <<< normalizeTerm)
                       <$> getNodeValue currentFunction valueMap id node
 
                   inputs = List.toUnfoldable $ view _nodeInputs node

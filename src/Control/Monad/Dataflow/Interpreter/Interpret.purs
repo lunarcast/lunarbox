@@ -5,7 +5,6 @@ module Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret
   ) where
 
 import Prelude
-import Control.Lazy (defer)
 import Control.Monad.Reader (asks, local)
 import Control.Monad.Writer (tell)
 import Data.Default (class Default, def)
@@ -14,9 +13,8 @@ import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Debug.Trace (trace)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), getLocation)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), everywhereOnExpressionM, getLocation)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..), TermEnvironment)
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
@@ -54,16 +52,18 @@ normalizeTerm (Code env expr) = result >>= normalizeTerm
   where
   result = withEnv env $ interpret expr
 
--- normalizeTerm (Closure env name body) = do
--- currentEnv <- ask
--- pure
--- $ Function \arg ->
--- fst $ runInterpreter currentEnv $ bindFlipped normalizeTerm $ withEnv env
--- $ withTerm name (Term arg)
--- $ interpret body
-normalizeTerm (LazyTerm t) = normalizeTerm $ t unit
-
 normalizeTerm _ = pure Null
+
+-- | Mark all the places inside an expression as null
+markAsNull :: forall l. Ord l => Expression l -> Interpreter l (Term l)
+markAsNull expr =
+  everywhereOnExpressionM (const $ pure true)
+    ( \e -> do
+        tell $ ValueMap $ Map.singleton (getLocation e) $ Term Null
+        pure e
+    )
+    expr
+    $> def
 
 -- Interpret an expression into a runtimeValue
 interpret :: forall l. Ord l => Default l => Expression l -> Interpreter l (Term l)
@@ -81,7 +81,7 @@ interpret expression = do
         Variable _ name -> getVariable $ show name
         Lambda _ argumentName body -> do
           -- This is here to generate data for node uis
-          void $ withTerm (show argumentName) def $ interpret body
+          -- void $ withTerm (show argumentName) def $ interpret body
           env <- getEnv
           pure $ Closure env (show argumentName) body
         Chain _ expressions -> case List.last expressions of
@@ -93,7 +93,9 @@ interpret expression = do
             Term (Bool true) -> interpret then'
             Term (Bool false) -> interpret else'
             Term (RLazy exec) -> go (Term $ exec unit)
-            LazyTerm exec -> go $ exec unit
+            Term Null -> do
+              void $ markAsNull then'
+              markAsNull else'
             t -> pure def
         Let _ name value body -> do
           runtimeValue <- interpret value
@@ -102,8 +104,7 @@ interpret expression = do
           env <- getEnv
           let
             self = Code env expr
-          r <- withTerm (show name) self $ interpret body
-          pure $ trace { msg: "fixinggg", r, self, l, name, body } \_ -> r
+          withTerm (show name) self $ interpret body
         Native _ (NativeExpression _ inner) -> pure $ Term inner
         FunctionCall _ function argument -> do
           runtimeArgument <- interpret argument
@@ -113,7 +114,6 @@ interpret expression = do
               Closure env name expr ->
                 withEnv env $ withTerm name runtimeArgument
                   $ interpret expr
-              LazyTerm exec -> go $ exec unit
               Term (Function call) -> Term <$> call <$> normalizeTerm runtimeArgument
               Code env expr -> call >>= go
                 where

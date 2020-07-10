@@ -6,7 +6,6 @@ module Lunarbox.Data.Dataflow.Runtime.TermEnvironment
   ) where
 
 import Prelude
-import Control.Lazy (class Lazy)
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Default (class Default)
 import Data.Map as Map
@@ -20,21 +19,11 @@ data Term l
   = Closure (TermEnvironment l) String (Expression l)
   | Term RuntimeValue
   | Code (TermEnvironment l) (Expression l)
-  | LazyTerm (Unit -> Term l)
 
-instance eqTerm :: Eq l => Eq (Term l) where
-  eq (Closure env name expr) (Closure env' name' expr') = env == env' || name == name' || expr == expr'
-  eq (Term v) (Term v') = v == v'
-  eq (Code env expr) (Code env' expr') = env == env' || expr == expr'
-  eq (LazyTerm a) b = a unit == b
-  eq b (LazyTerm a) = a unit == b
-  eq _ _ = false
+derive instance eqTerm :: Eq l => Eq (Term l)
 
 instance defTerm :: Default (Term l) where
   def = Term Null
-
-instance lazyTerm :: Lazy (Term l) where
-  defer = LazyTerm
 
 instance encodeJsonTerm :: EncodeJson l => EncodeJson (Term l) where
   encodeJson (Term val) = encodeJson val

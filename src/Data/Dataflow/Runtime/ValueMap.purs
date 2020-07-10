@@ -17,7 +17,8 @@ derive instance eqValueMap :: Eq l => Eq (ValueMap l)
 
 derive instance newtypeValueMap :: Newtype (ValueMap l) _
 
-derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap l)
+instance semigroupValueMap :: Ord l => Semigroup (ValueMap l) where
+  append (ValueMap m) (ValueMap m') = ValueMap $ append m m'
 
 derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap l)
 
