@@ -37,9 +37,9 @@ describe currentFunction project@(Project { functions, main }) =
           && not isExternal
           && isVisual
 
-      wouldCycle = G.wouldCreateCycle name currentFunction $ toGraph project
+      wouldCycle = G.wouldCreateLongCycle name currentFunction $ toGraph project
 
-      isUsable = not wouldCycle
+      isUsable = isCurrent || not wouldCycle
 
       canBeDeleted = isVisual && main /= name
     in

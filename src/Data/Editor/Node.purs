@@ -24,7 +24,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.List (List(..), mapWithIndex, (!!))
+import Data.List (List(..), (:), mapWithIndex, (!!))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as Set
@@ -111,6 +111,22 @@ compileNode nodes id child =
         Nothing -> TypedHole location
       where
       location = PinLocation id $ InputPin 1
+    ComplexNode
+      { inputs: cond : then' : else' : Nil
+    , function: FunctionName "if"
+    } -> Let (NodeDefinition id) name value child
+      where
+      name = VarName $ show id
+
+      value = If (NodeDefinition id) condExpr thenExpr elseExpr
+
+      condExpr = mkExpr 0 cond
+
+      thenExpr = mkExpr 1 then'
+
+      elseExpr = mkExpr 2 else'
+
+      mkExpr = makePinExpression id
     ComplexNode { inputs, function } -> Let (NodeDefinition id) name value child
       where
       name = VarName $ show id
@@ -119,17 +135,18 @@ compileNode nodes id child =
 
       arguments =
         mapWithIndex
-          ( \index id' ->
-              let
-                location = PinLocation id $ InputPin index
-              in
-                case id' of
-                  Just id'' -> Variable location $ VarName $ show id''
-                  Nothing -> TypedHole location
-          )
+          (makePinExpression id)
           inputs
 
       value = wrap (NodeLocation id) $ functionCall (PinLocation id OutputPin) calee id arguments
+
+-- | Helper to create an expression from some data aboout a pin
+makePinExpression :: NodeId -> Int -> (Maybe NodeId) -> Expression ScopedLocation
+makePinExpression node index = case _ of
+  Just id' -> Variable location $ VarName $ show id'
+  Nothing -> TypedHole location
+  where
+  location = PinLocation node $ InputPin index
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData

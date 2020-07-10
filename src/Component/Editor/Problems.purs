@@ -66,6 +66,7 @@ problems { typeErrors, lintingErrors, navigateTo, isInternal } =
       (AtFunction name) -> not $ isInternal name
       (InsideFunction name _) -> not $ isInternal name
       (AtFunctionDeclaration name) -> not $ isInternal name
+      (FixpointOperator name) -> not $ isInternal name
 
 -- | Data about how to color a problem
 data ProblemLevel
@@ -111,13 +112,19 @@ locationLEF UnknownLocation =
   , namedWho: \n -> "Variable " <> n
   }
 
-locationLEF (AtFunctionDeclaration name) = locationLEF (AtFunction name)
+locationLEF (FixpointOperator name) =
+  { nth: Nothing
+  , who: "Recursive function " <> show name
+  , namedWho: \n -> "Recrusive function " <> n
+  }
 
 locationLEF (AtFunction name) =
   { nth: Nothing
   , who: "Function " <> show name
   , namedWho: \n -> "Function " <> n
   }
+
+locationLEF (AtFunctionDeclaration name) = locationLEF (AtFunction name)
 
 locationLEF (InsideFunction name PlaceholderPosition) = locationLEF (AtFunction name)
 

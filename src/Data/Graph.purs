@@ -142,9 +142,24 @@ isInCycle k' g = go mempty k'
     where
     dd = children k g
 
+-- | Same as isInCycle but doesn't return true for nodes referencing themselves
+isInOutsideCycle :: forall k v. Ord k => k -> Graph k v -> Boolean
+isInOutsideCycle k' g = go mempty k'
+  where
+  go seen k = case Tuple (dd == mempty) (k `Set.member` seen) of
+    Tuple true _ -> false
+    Tuple _ true -> k == k'
+    Tuple false false -> Foldable.any (go (Set.insert k seen)) dd
+    where
+    dd = children k g `Set.difference` Set.singleton k
+
 -- Checks if there any cycles in graph.
 isCyclic :: forall k v. Ord k => Graph k v -> Boolean
 isCyclic g = Foldable.any (flip isInCycle g) <<< keys $ g
+
+-- Checks if there are any cycles with at least 2 nodes in it 
+hasBigCycle :: forall k v. Ord k => Graph k v -> Boolean
+hasBigCycle g = Foldable.any (flip isInOutsideCycle g) <<< keys $ g
 
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k
@@ -157,6 +172,10 @@ parents k (Graph graph) = Map.keys <<< Map.filter (Foldable.elem k <<< snd) $ gr
 -- Check if adding an edge would create a cycle
 wouldCreateCycle :: forall k v. Ord k => k -> k -> Graph k v -> Boolean
 wouldCreateCycle from to = isCyclic <<< insertEdge from to
+
+-- Check if adding an edge would create a long cycle
+wouldCreateLongCycle :: forall k v. Ord k => k -> k -> Graph k v -> Boolean
+wouldCreateLongCycle from to = hasBigCycle <<< insertEdge from to
 
 -- Count the number of vertices in a graph
 size :: forall k v. Ord k => Graph k v -> Int

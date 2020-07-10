@@ -6,18 +6,21 @@ module Lunarbox.Data.Dataflow.Runtime
   , toNumber
   , toString
   , toArray
+  , strictEval
   , _Number
   , _String
   , _Function
   ) where
 
 import Prelude
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (~>), (.:))
+import Control.Lazy (class Lazy)
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (.:), (:=), (~>))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
+import Debug.Trace (trace)
 
 -- Representations of all possible runtime values
 data RuntimeValue
@@ -27,14 +30,19 @@ data RuntimeValue
   | NArray (Array RuntimeValue)
   | Null
   | Function (RuntimeValue -> RuntimeValue)
+  | RLazy (Unit -> RuntimeValue)
 
 derive instance genericRuntimeValue :: Generic RuntimeValue _
+
+instance lazyRuntimeValue :: Lazy RuntimeValue where
+  defer = RLazy
 
 instance encodeJsonRuntimeValue :: EncodeJson RuntimeValue where
   encodeJson (Number inner) = "type" := "number" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (String inner) = "type" := "string" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (Bool inner) = "type" := "boolean" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (NArray inner) = "type" := "array" ~> "value" := inner ~> jsonEmptyObject
+  encodeJson (RLazy inner) = encodeJson $ inner unit
   encodeJson _ = "type" := "null" ~> jsonEmptyObject
 
 instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
@@ -64,14 +72,18 @@ instance showRuntimeValue :: Show RuntimeValue where
     Number value -> show value
     String value -> show value
     NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
-    Function value -> "Function"
+    Function _ -> "Function"
+    RLazy exec -> trace { exec } \_ -> "Lazy"
 
+-- RLazy exec -> show $ exec unit
+-- RLazy exec -> show $ exec unit
 instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Number n) (Number n') = n == n'
   eq (String s) (String s') = s == s'
   eq (Bool v) (Bool v') = v == v'
   eq (NArray array) (NArray array') = array == array'
   eq Null Null = true
+  eq (RLazy a) (RLazy b) = a unit == b unit
   eq _ _ = false
 
 instance ordRuntimeValue :: Ord RuntimeValue where
@@ -79,6 +91,7 @@ instance ordRuntimeValue :: Ord RuntimeValue where
   compare (String s) (String s') = compare s s'
   compare (Bool v) (Bool v') = compare v v'
   compare (NArray array) (NArray array') = compare array array'
+  compare (RLazy a) (RLazy b) = compare (a unit) (b unit)
   compare _ _ = EQ
 
 -- helper to ease the creation of binary functions
@@ -112,6 +125,12 @@ toString :: RuntimeValue -> String
 toString (String inner) = inner
 
 toString other = show other
+
+-- Unwrap all the lazies
+strictEval :: RuntimeValue -> RuntimeValue
+strictEval (RLazy exec) = strictEval $ exec unit
+
+strictEval a = a
 
 -- Lenses
 _Number :: Prism' RuntimeValue Number

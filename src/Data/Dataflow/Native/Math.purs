@@ -3,7 +3,6 @@ module Lunarbox.Data.Dataflow.Native.Math
   ) where
 
 import Prelude
-import Math (sqrt)
 import Data.Maybe (Maybe(..))
 import Data.Number (isNaN)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
@@ -13,15 +12,19 @@ import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (typeFunction, typeNumber)
 import Lunarbox.Data.Editor.FunctionData (PinDoc, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Math (pow, (%))
+import Math (pow, sqrt, (%))
 
 -- ALl the math native nodes
 mathNodes :: forall a s m. Array (NativeConfig a s m)
-mathNodes = [ add, subtract, multiply, divide, raiseToPower, modulus, squareRoot ]
+mathNodes = [ add, subtract, multiply, divide, raiseToPower, modulus, squareRoot, pred, succ ]
 
 -- Type for functions of type Number -> Number -> Number
 binaryNumberType :: Scheme
 binaryNumberType = Forall [] $ typeFunction typeNumber $ typeFunction typeNumber typeNumber
+
+-- Same but for Number -> Number
+unaryNumberType :: Scheme
+unaryNumberType = Forall [] $ typeFunction typeNumber typeNumber
 
 -- Internal function used to perform the unwrapping and wrapping necessary for the binaryMathFUnction helper
 binaryMathFunction' :: (Number -> Number -> Number) -> RuntimeValue -> RuntimeValue -> RuntimeValue
@@ -35,6 +38,12 @@ binaryMathFunction' function (Number first) (Number second) =
 
 binaryMathFunction' _ _ _ = Null
 
+-- Internal version of unaryMathFunction
+unaryMathFunction' :: (Number -> Number) -> RuntimeValue -> RuntimeValue
+unaryMathFunction' function (Number first) = Number $ function first
+
+unaryMathFunction' _ _ = Null
+
 -- Documentation for an numeral value
 numberDoc :: String -> PinDoc
 numberDoc = { name: _, description: "Any numeric value" }
@@ -42,6 +51,10 @@ numberDoc = { name: _, description: "Any numeric value" }
 -- Helper for wrapping a purescript binary math operator into a runtime value
 binaryMathFunction :: (Number -> Number -> Number) -> RuntimeValue
 binaryMathFunction = binaryFunction <<< binaryMathFunction'
+
+-- Helper for wrapping a purescript unary math operator into a runtime value
+unaryMathFunction :: (Number -> Number) -> RuntimeValue
+unaryMathFunction = Function <<< unaryMathFunction'
 
 -- The actual math functions
 add :: forall a s m. NativeConfig a s m
@@ -59,8 +72,8 @@ subtract =
     { name: FunctionName "subtract"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (-))
     , functionData:
-        internal [ numberDoc "first number", numberDoc "second number" ]
-          { name: "difference", description: "The result of subtracting the second argument from the first" }
+      internal [ numberDoc "first number", numberDoc "second number" ]
+        { name: "difference", description: "The result of subtracting the second argument from the first" }
     , component: Nothing
     }
 
@@ -70,8 +83,8 @@ multiply =
     { name: FunctionName "multiply"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (*))
     , functionData:
-        internal [ numberDoc "first number", numberDoc "second number" ]
-          { name: "product", description: "The result of multiplying the first number by the second" }
+      internal [ numberDoc "first number", numberDoc "second number" ]
+        { name: "product", description: "The result of multiplying the first number by the second" }
     , component: Nothing
     }
 
@@ -81,13 +94,13 @@ divide =
     { name: FunctionName "divide"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (/))
     , functionData:
-        internal
-          [ { name: "dividend", description: "The number to divide" }
-          , { name: "divisor", description: "The number to divide the dividend by. Cannot be 0" }
-          ]
-          { name: "quotient"
-          , description: "The result of dividng the first argument by the second"
-          }
+      internal
+        [ { name: "dividend", description: "The number to divide" }
+        , { name: "divisor", description: "The number to divide the dividend by. Cannot be 0" }
+        ]
+        { name: "quotient"
+        , description: "The result of dividng the first argument by the second"
+        }
     , component: Nothing
     }
 
@@ -97,8 +110,8 @@ raiseToPower =
     { name: FunctionName "raise to power"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction pow)
     , functionData:
-        internal [ numberDoc "base", numberDoc "exponend" ]
-          { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
+      internal [ numberDoc "base", numberDoc "exponend" ]
+        { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
     , component: Nothing
     }
 
@@ -108,11 +121,11 @@ modulus =
     { name: FunctionName "modulus"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (%))
     , functionData:
-        internal
-          [ { name: "left side", description: "The number to take the modulus from" }
-          , { name: "right side", description: "The number to divide the first input by and find the remainder" }
-          ]
-          { name: "a % b", description: "The remainder of dividing the first number to the second" }
+      internal
+        [ { name: "left side", description: "The number to take the modulus from" }
+        , { name: "right side", description: "The number to divide the first input by and find the remainder" }
+        ]
+        { name: "a % b", description: "The remainder of dividing the first number to the second" }
     , component: Nothing
     }
 
@@ -125,10 +138,34 @@ squareRoot :: forall a s m. NativeConfig a s m
 squareRoot =
   NativeConfig
     { name: FunctionName "square root"
-    , expression: NativeExpression (Forall [] $ typeFunction typeNumber typeNumber) $ Function evalSqrt
+    , expression: NativeExpression unaryNumberType $ Function evalSqrt
     , functionData:
-        internal
-          [ { name: "radicand", description: "The number to take the square root from" } ]
-          { name: "sqrt a", description: "The result of taking the square root of the number" }
+      internal
+        [ { name: "radicand", description: "The number to take the square root from" } ]
+        { name: "sqrt a", description: "The result of taking the square root of the number" }
+    , component: Nothing
+    }
+
+pred :: forall a s m. NativeConfig a s m
+pred =
+  NativeConfig
+    { name: FunctionName "predecessor"
+    , expression: NativeExpression unaryNumberType $ unaryMathFunction (_ - 1.0)
+    , functionData:
+      internal [ { name: "number", description: "A number to get the predecessor of" } ]
+        { name: "a - 1", description: "The predecessor of the input"
+        }
+    , component: Nothing
+    }
+
+succ :: forall a s m. NativeConfig a s m
+succ =
+  NativeConfig
+    { name: FunctionName "successor"
+    , expression: NativeExpression unaryNumberType $ unaryMathFunction ((+) 1.0)
+    , functionData:
+      internal [ { name: "number", description: "A number to get the successor  of" } ]
+        { name: "a + 1", description: "The successor of the input"
+        }
     , component: Nothing
     }

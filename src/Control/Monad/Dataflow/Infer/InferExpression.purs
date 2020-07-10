@@ -20,7 +20,7 @@ import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeFunction)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeFunction)
 import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 import Lunarbox.Data.Dataflow.TypeEnv as TypeEnv
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
@@ -91,6 +91,13 @@ infer expression =
         tv <- fresh true
         createConstraint funcType (typeFunction inputType tv)
         pure tv
+      If _ cond then' else' -> do
+        tyCond <- infer cond
+        tyThen <- infer then'
+        tyElse <- infer else'
+        createConstraint tyThen tyElse
+        createConstraint tyCond typeBool
+        pure tyThen
       Let location name value body -> do
         env <- ask
         Tuple valueType (InferOutput { constraints }) <- listen $ infer value
@@ -99,8 +106,8 @@ infer expression =
         for_ errors $ createError <<< Stacked
         generalized <- local (const $ apply subst env) $ generalize $ apply subst valueType
         createClosure name generalized $ infer body
-      FixPoint _ body -> do
-        t <- infer body
+      FixPoint loc name body -> do
+        t <- infer $ Lambda loc name body
         tv <- fresh true
         createConstraint (typeFunction tv tv) t
         pure tv

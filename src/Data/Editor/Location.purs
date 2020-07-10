@@ -22,6 +22,7 @@ data Location
   = AtFunction FunctionName
   | InsideFunction FunctionName ScopedLocation
   | AtFunctionDeclaration FunctionName
+  | FixpointOperator FunctionName
   | UnknownLocation
 
 -- Lenses
@@ -38,6 +39,7 @@ _Function =
         AtFunction name -> Just name
         InsideFunction name _ -> Just name
         AtFunctionDeclaration name -> Just name
+        FixpointOperator name -> Just name
         _ -> Nothing
     )
     ( \function maybeName -> case maybeName of
@@ -46,6 +48,7 @@ _Function =
           InsideFunction _ next -> InsideFunction name next
           AtFunction _ -> AtFunction name
           AtFunctionDeclaration _ -> AtFunctionDeclaration name
+          FixpointOperator _ -> FixpointOperator name
         Nothing -> function
     )
 
@@ -86,3 +89,4 @@ instance showLocation :: Show Location where
   show (InsideFunction name location) = show location <> " in function " <> doubleShow name
   show UnknownLocation = "at an unknown location"
   show (AtFunctionDeclaration name) = "at the declaration of function " <> doubleShow name
+  show (FixpointOperator name) = "at the recursion handler for " <> doubleShow name

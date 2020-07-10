@@ -28,7 +28,7 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), isReferenced, optimize, wrap)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
@@ -71,14 +71,26 @@ _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 -- | Compile a visual program into a linear expression
 compileProject :: Project -> Expression Location
 compileProject project@(Project { main }) =
-  foldr
-    ( \(Tuple key value) body ->
-        let
-          name = VarName $ show key
-        in
-          Let (AtFunctionDeclaration key) name value body
-    )
-    (Variable UnknownLocation $ VarName $ show main)
+  optimize
+    $ foldr
+        ( \(Tuple key value) body ->
+            let
+              name = VarName $ show key
+
+              isRecursive = isReferenced name value
+
+              location = AtFunctionDeclaration key
+
+              value'
+                | isRecursive =
+                  FixPoint (FixpointOperator key)
+                    name
+                    value
+                | otherwise = value
+            in
+              Let location name value' body
+        )
+        (Variable UnknownLocation $ VarName $ show main)
     $ List.catMaybes
     $ compileFunction
     <$> sorted

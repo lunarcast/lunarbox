@@ -1,9 +1,8 @@
 module Lunarbox.Data.Dataflow.Expression.Lint where
 
 import Prelude
-import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName, foldExpression)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName, foldExpression, isReferenced)
 import Lunarbox.Data.String (doubleShow, showIndex)
 
 -- | Basically warnings the user gets for imrpoving code clarity
@@ -33,10 +32,10 @@ getLocation (UnsaturatedFunction location _) = location
 
 -- | Collect linting errors inside an expression
 lint :: forall l. Expression l -> Array (LintError l)
-lint = foldExpression go
+lint = foldExpression (const true) go
   where
   go (Let location name _ body)
-    | Array.null (references name body) =
+    | not $ isReferenced name body =
       [ UnusedDeclaration location name
       ]
 
@@ -45,12 +44,3 @@ lint = foldExpression go
     ]
 
   go a = []
-
--- | Get all the places a variable is referenced in
-references :: forall l. VarName -> Expression l -> Array l
-references target = foldExpression go
-  where
-  go (Variable location name)
-    | target == name = [ location ]
-
-  go _ = []

@@ -4,6 +4,7 @@ module Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret
   ) where
 
 import Prelude
+import Control.Lazy (defer, fix)
 import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.Writer (tell)
 import Data.Default (class Default, def)
@@ -15,7 +16,7 @@ import Data.Newtype (unwrap)
 import Data.Tuple (fst)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv, runInterpreter)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), getLocation)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), strictEval)
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
@@ -62,18 +63,32 @@ interpret expression = do
         Chain _ expressions -> case List.last expressions of
           Just expression' -> interpret expression'
           Nothing -> pure Null
+        If _ cond then' else' -> interpret cond >>= go
+          where
+          go = case _ of
+            Bool true -> interpret then'
+            Bool false -> interpret else'
+            RLazy exec -> go (exec unit)
+            _ -> pure Null
         Let _ name value body -> do
           runtimeValue <- interpret value
           withTerm (show name) runtimeValue $ interpret body
-        FixPoint _ function -> do
+        FixPoint l name function -> do
           env <- ask
-          interpret $ FunctionCall location function $ FixPoint def function
+          takesItself <- interpret (Lambda l name function)
+          case takesItself of
+            Function call -> pure $ fix call
+            _ -> pure Null
         Native _ (NativeExpression _ inner) -> pure inner
         FunctionCall _ function argument -> do
           runtimeArgument <- interpret argument
           runtimeFunction <- interpret function
           pure case runtimeFunction of
-            Function call -> call runtimeArgument
+            Function call -> call $ strictEval runtimeArgument
+            RLazy f ->
+              defer \_ -> case f unit of
+                Function call -> call $ strictEval runtimeArgument
+                _ -> Null
             _ -> Null
   tell $ ValueMap $ Map.singleton location value
   pure value
