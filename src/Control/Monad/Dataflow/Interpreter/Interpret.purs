@@ -94,7 +94,7 @@ interpret expression = do
             Term (Bool false) -> interpret else'
             Term (RLazy exec) -> go (Term $ exec unit)
             LazyTerm exec -> go $ exec unit
-            t -> trace { t } \_ -> pure def
+            t -> pure def
         Let _ name value body -> do
           runtimeValue <- interpret value
           withTerm (show name) runtimeValue $ interpret body
@@ -102,29 +102,23 @@ interpret expression = do
           env <- getEnv
           let
             self = Code env expr
-          withTerm (show name) self $ interpret body
+          r <- withTerm (show name) self $ interpret body
+          pure $ trace { msg: "fixinggg", r, self, l, name, body } \_ -> r
         Native _ (NativeExpression _ inner) -> pure $ Term inner
         FunctionCall _ function argument -> do
           runtimeArgument <- interpret argument
           runtimeFunction <- interpret function
-          case runtimeFunction of
-            Closure env name expr ->
-              withEnv env $ withTerm name runtimeArgument
-                $ interpret expr
-            other -> do
-              function' <- normalizeTerm other
-              case function' of
-                Function call -> do
-                  arg <- normalizeTerm runtimeArgument
-                  pure
-                    $ defer \_ ->
-                        trace
-                          { other
-                          , function'
-                          , arg
-                          , call
-                          , r: call arg
-                          } \_ -> Term $ call arg
-                _ -> pure def
+          let
+            go = case _ of
+              Closure env name expr ->
+                withEnv env $ withTerm name runtimeArgument
+                  $ interpret expr
+              LazyTerm exec -> go $ exec unit
+              Term (Function call) -> Term <$> call <$> normalizeTerm runtimeArgument
+              Code env expr -> call >>= go
+                where
+                call = withEnv env $ interpret expr
+              Term _ -> pure def
+          go runtimeFunction
   tell $ ValueMap $ Map.singleton location value
   pure value
