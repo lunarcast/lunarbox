@@ -75,6 +75,7 @@ data ForeignAction
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | DeleteConnection NodeId Int
+  | EditNode NodeId
   -- This just does nothing
   | NoAction
 
@@ -90,6 +91,7 @@ newtype ForeignActionConfig
   , selectInput :: Fn2 NodeId Int ForeignAction
   , deleteConnection :: Fn2 NodeId Int ForeignAction
   , selectOutput :: NodeId -> ForeignAction
+  , editNode :: NodeId -> ForeignAction
   , nothing :: ForeignAction
   }
 
@@ -100,6 +102,7 @@ instance defaultForeignActionConfig :: Default ForeignActionConfig where
       , selectInput: mkFn2 SelectInput
       , deleteConnection: mkFn2 DeleteConnection
       , selectOutput: SelectOutput
+      , editNode: EditNode
       , nothing: NoAction
       }
 
