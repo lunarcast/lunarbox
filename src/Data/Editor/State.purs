@@ -28,6 +28,7 @@ import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
+import Debug.Trace (trace)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
@@ -37,8 +38,9 @@ import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression(..))
+import Lunarbox.Data.Dataflow.Expression (Expression(..), printSource)
 import Lunarbox.Data.Dataflow.Expression.Lint (LintError, lint)
+import Lunarbox.Data.Dataflow.Expression.Optimize (dce, inline)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..))
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
@@ -310,24 +312,20 @@ tryCompiling ::
   forall a s m.
   State a s m ->
   { | CompilationResult () }
-tryCompiling state@{ project, expression, typeMap, typeErrors, lintingErrors } = result
+tryCompiling state@{ project } = result
   where
   expression' = compileProject project
 
   result =
-    -- we only run the type inference algorithm if the expression changed
-    if expression == expression' then
-      { typeMap, typeErrors, lintingErrors, expression }
-    else
-      { expression: expression'
-      , typeMap: typeMap'
-      , typeErrors: errors'
-      , lintingErrors: lintingErrors'
-      }
+    { typeErrors: errors
+    , lintingErrors: lintingErrors
+    , typeMap: typeMap
+    , expression: (\a -> trace (printSource a) \_ -> a) $ inline $ dce expression'
+    }
     where
-    lintingErrors' = lint expression'
+    lintingErrors = lint expression'
 
-    (Tuple typeMap' (SolveState { errors: errors' })) = solveExpression expression'
+    (Tuple typeMap (SolveState { errors })) = solveExpression expression'
 
 -- Compile a project
 compile :: forall a s m. State a s m -> State a s m

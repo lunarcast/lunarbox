@@ -13,13 +13,13 @@ module Lunarbox.Data.Dataflow.Expression
   , sumarizeExpression
   , inputs
   , wrap
-  , optimize
   , removeWrappers
   , wrapWith
   , wrappers
   , everywhereOnExpressionM
   , everywhereOnExpression
   , foldExpression
+  , mapExpression
   , references
   , isReferenced
   ) where
@@ -27,14 +27,16 @@ module Lunarbox.Data.Dataflow.Expression
 import Prelude
 import Control.Monad.Writer (execWriter, tell)
 import Data.Array as Array
+import Data.Foldable (foldl)
 import Data.Identity (Identity(..))
 import Data.List (List(..), foldr, (:))
+import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.String (joinWith)
-import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..), fst)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Scheme (Scheme)
 import Lunarbox.Data.String (indent)
@@ -84,7 +86,16 @@ everywhereOnExpressionM filter f = go'
 
   go continue (FixPoint loc name body) = FixPoint loc name <$> continue body
 
-  go continue (Chain loc expressions) = Chain loc <$> traverse continue expressions
+  go continue (Chain loc expressions) =
+    Chain loc
+      <$> foldl
+          ( \acc expr -> do
+              expr' <- continue expr
+              rest <- acc
+              pure $ expr' : rest
+          )
+          (pure Nil)
+          expressions
 
   go continue (If loc cond then' else') =
     If loc <$> continue cond <*> continue then'
@@ -110,6 +121,10 @@ everywhereOnExpression filter mapper =
     <<< everywhereOnExpressionM
         (Identity <<< filter)
         (Identity <<< mapper)
+
+-- | Same as everywhereOnExpression but has no filtering capabilities
+mapExpression :: forall l. (Expression l -> Expression l) -> Expression l -> Expression l
+mapExpression = everywhereOnExpression (const true)
 
 -- | Accumulate a value running trough all the layers of an expression
 foldExpression ::
@@ -146,6 +161,7 @@ toMap expression =
         Let _ _ value body -> toMap value <> toMap body
         Chain _ expressions -> foldr (\expression' -> (<>) $ toMap expression') mempty expressions
         FixPoint _ _ body -> toMap body
+        If _ cond then' else' -> toMap cond <> toMap then' <> toMap else'
         _ -> mempty
 
 -- get all the locations from an expression
@@ -156,18 +172,12 @@ locations = Map.keys <<< toMap
 lookup :: forall l. Ord l => l -> Expression l -> Maybe (Expression l)
 lookup key = Map.lookup key <<< toMap
 
--- internal version of inputs which also takes the accumulated count
-inputs' :: forall l. Int -> Expression l -> Int
-inputs' count = case _ of
-  Lambda _ _ body -> inputs' (count + 1) body
-  _ -> count
-
 -- Takes an Expression and returns the number of inputs that function has
 -- Examples:
 --     for "a -> b -> c" the function returns 2
 --     for "let a = b in c" the function returns 0
 inputs :: forall l. Expression l -> Int
-inputs = inputs' 0
+inputs = List.length <<< fst <<< unfoldLambda
 
 -- Typecalss instances
 instance showExpression :: Show l => Show (Expression l) where
@@ -202,40 +212,65 @@ printLet false print expression@(Let _ _ _ next) = printRawLet print expression 
 
 printLet _ _ _ = ""
 
+-- | Unfold a lambda into its args and its return
+unfoldLambda :: forall l. Expression l -> Tuple (List VarName) (Expression l)
+unfoldLambda (Lambda _ name body) = Tuple (name : rest) return
+  where
+  (Tuple rest return) = unfoldLambda body
+
+unfoldLambda expr = Tuple Nil expr
+
+-- | Same as unfoldLambda but unfolds Fixpoints operators as well 
+unfoldLambda' :: forall l. Expression l -> Tuple (List VarName) (Expression l)
+unfoldLambda' (FixPoint loc name body) = unfoldLambda' (Lambda loc name body)
+
+unfoldLambda' (Lambda _ name body) = Tuple (name : rest) return
+  where
+  (Tuple rest return) = unfoldLambda body
+
+unfoldLambda' expr = Tuple Nil expr
+
 -- Prints an expression without it's location. 
 -- Uses a custom function to print the recursive Expressions.
 -- Only used internally inside the show instance 
 -- to not reepat the location printing code every time
-printRawExpression :: forall l. Show l => (Expression l -> String) -> Expression l -> String
+printRawExpression :: forall l. (Expression l -> String) -> Expression l -> String
 printRawExpression print expression = case expression of
   Variable _ name -> unwrap name
   FunctionCall _ f i
     | isFunctionCall (removeWrappers i) -> print f <> " (" <> print i <> ")"
   FunctionCall _ f i -> print f <> " " <> print i
-  Lambda _ arg value -> "\\" <> show arg <> " -> " <> print value
+  Lambda _ _ _ -> "\\" <> joinWith " " (Array.fromFoldable $ show <$> args) <> " -> " <> print return
+    where
+    (Tuple args return) = unfoldLambda' expression
   TypedHole _ -> "_"
   Let _ _ _ _ -> printLet true (printRawExpression print) expression
   If _ cond then' else' ->
     joinWith "\n"
-      [ "if " <> printRawExpression print cond <> " then"
-      , indent 4 (printRawExpression print then')
+      [ "if " <> print cond <> " then"
+      , indent 4 (print then')
       , "else"
-      , indent 4 (printRawExpression print else')
+      , indent 4 (print else')
       ]
-  FixPoint _ name e -> "(fixpoint \\" <> show name <> " ---> " <> print e <> ")"
+  FixPoint loc name e -> print (Lambda loc name e)
   Native _ (NativeExpression t _) -> "native"
-  Chain l (e : Nil) -> printRawExpression print e
-  Chain l (e : es) -> "{" <> printRawExpression print e <> "," <> (printRawExpression print $ Chain l es) <> "}"
-  Chain _ Nil -> ""
+  Chain l (e : Nil) -> "(" <> print e <> ")"
+  Chain l (e : es) -> "{" <> print e <> "," <> (print $ Chain l es) <> "}"
+  Chain _ Nil -> "()"
 
+-- | Check if an expression is a lambda application
 isFunctionCall :: forall l. Expression l -> Boolean
 isFunctionCall (FunctionCall _ _ _) = true
 
 isFunctionCall _ = false
 
--- Print an expression without the locations
-printSource :: forall l. Show l => Expression l -> String
-printSource = printRawExpression (\e -> printSource e)
+-- | Print an expression without the locations
+printSource :: forall l. Expression l -> String
+printSource = printSource' <<< removeWrappers
+
+-- | Internal version of printSource which doesn't removes wrappers
+printSource' :: forall l. Expression l -> String
+printSource' = printRawExpression (\e -> printSource' e)
 
 -- Wrap an expression in another expression with a custom location
 wrap :: forall l. l -> Expression l -> Expression l
@@ -243,9 +278,11 @@ wrap location = Chain location <<< pure
 
 -- Unwrap an expression as much as possible
 removeWrappers :: forall l. Expression l -> Expression l
-removeWrappers (Chain _ (expression : Nil)) = removeWrappers expression
+removeWrappers = mapExpression go
+  where
+  go (Chain loc list) = maybe (TypedHole loc) go $ List.last list
 
-removeWrappers expression = expression
+  go e = e
 
 -- Collect all the locations something is wrapped in
 wrappers :: forall l. Expression l -> List l
@@ -258,21 +295,6 @@ wrapWith :: forall l. List l -> Expression l -> Expression l
 wrapWith (location : locations') = wrapWith locations' <<< wrap location
 
 wrapWith Nil = identity
-
--- Optimize an expression
-optimize :: forall l. Eq l => Expression l -> Expression l
-optimize = everywhereOnExpression (const true) go
-  where
-  go expr@(Let location name value body) = case references name body of
-    [ ref ] -> wrap location $ everywhereOnExpression (const true) go' body
-      where
-      go' (Variable location' name')
-        | name' == name && location' == ref = wrap location' value
-
-      go' a = a
-    _ -> expr
-
-  go expr = expr
 
 -- | Checks if a variable is referenced in an expression
 isReferenced :: forall l. VarName -> Expression l -> Boolean

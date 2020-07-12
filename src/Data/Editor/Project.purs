@@ -28,7 +28,8 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), isReferenced, optimize, wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), isReferenced, wrap)
+import Lunarbox.Data.Dataflow.Expression.Optimize (inline)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
@@ -71,7 +72,7 @@ _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 -- | Compile a visual program into a linear expression
 compileProject :: Project -> Expression Location
 compileProject project@(Project { main }) =
-  optimize
+  inline
     $ foldr
         ( \(Tuple key value) body ->
             let
