@@ -28,7 +28,6 @@ import Data.Symbol (SProxy(..))
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd, uncurry)
 import Data.Unfoldable (replicate)
-import Debug.Trace (trace)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
@@ -38,7 +37,7 @@ import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Class.GraphRep (toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), printSource)
+import Lunarbox.Data.Dataflow.Expression (Expression(..))
 import Lunarbox.Data.Dataflow.Expression.Lint (LintError, lint)
 import Lunarbox.Data.Dataflow.Expression.Optimize (dce, inline)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
@@ -320,7 +319,7 @@ tryCompiling state@{ project } = result
     { typeErrors: errors
     , lintingErrors: lintingErrors
     , typeMap: typeMap
-    , expression: (\a -> trace (printSource a) \_ -> a) $ inline $ dce expression'
+    , expression: inline $ dce expression'
     }
     where
     lintingErrors = lint expression'
@@ -344,6 +343,7 @@ evaluate state = set _valueMap valueMap state
       { location: UnknownLocation
       , termEnv: mempty
       , overwrites: view _runtimeOverwrites state
+      , toplevel: true
       }
 
   expression = view _expression state

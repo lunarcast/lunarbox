@@ -7,6 +7,7 @@ module Lunarbox.Control.Monad.Dataflow.Interpreter
   , _location
   , _termEnv
   , _overwrites
+  , _toplevel
   ) where
 
 import Prelude
@@ -14,13 +15,13 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, Reader, runReade
 import Control.Monad.Writer (class MonadTell, class MonadWriter, WriterT, runWriterT)
 import Data.Default (class Default, def)
 import Data.Lens (Lens')
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple, fst, snd)
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (TermEnvironment)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Lens (newtypeIso)
 
 -- The Interpreter context is the env all interpreting occurs in.
 newtype InterpreterContext l
@@ -28,6 +29,8 @@ newtype InterpreterContext l
   { location :: l
   , termEnv :: TermEnvironment l
   , overwrites :: ValueMap l
+  -- This is true only when we are executing the main function
+  , toplevel :: Boolean
   }
 
 instance defInterpreterContext :: (Default l, Ord l) => Default (InterpreterContext l) where
@@ -36,19 +39,23 @@ instance defInterpreterContext :: (Default l, Ord l) => Default (InterpreterCont
       { location: def
       , termEnv: mempty
       , overwrites: mempty
+      , toplevel: true
       }
 
 derive instance newtypeInterpreterContent :: Newtype (InterpreterContext l) _
 
 -- Lenses
 _location :: forall l. Lens' (InterpreterContext l) l
-_location = newtypeIso <<< prop (SProxy :: _ "location")
+_location = _Newtype <<< prop (SProxy :: _ "location")
 
 _termEnv :: forall l. Lens' (InterpreterContext l) (TermEnvironment l)
-_termEnv = newtypeIso <<< prop (SProxy :: _ "termEnv")
+_termEnv = _Newtype <<< prop (SProxy :: _ "termEnv")
 
 _overwrites :: forall l. Lens' (InterpreterContext l) (ValueMap l)
-_overwrites = newtypeIso <<< prop (SProxy :: _ "overwrites")
+_overwrites = _Newtype <<< prop (SProxy :: _ "overwrites")
+
+_toplevel :: forall l. Lens' (InterpreterContext l) Boolean
+_toplevel = _Newtype <<< prop (SProxy :: _ "toplevel")
 
 -- Monad used to Interpret expressions
 newtype Interpreter l a

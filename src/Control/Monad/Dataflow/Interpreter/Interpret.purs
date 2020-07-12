@@ -12,7 +12,7 @@ import Data.Lens (over, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv, _toplevel)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), everywhereOnExpressionM, getLocation)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..), TermEnvironment)
@@ -42,6 +42,10 @@ withTerm name value = local $ over _termEnv $ TermEnvironment.insert name value
 -- Wrap a runtime value in an expression
 makeNative :: forall l. Ord l => Default l => RuntimeValue -> Expression l
 makeNative = Native def <<< NativeExpression (Forall [] typeString)
+
+-- | Run a computation inside something like a lambda
+scoped :: forall l a. Ord l => Interpreter l a -> Interpreter l a
+scoped = local $ set _toplevel false
 
 -- | Get the underlying value from a term
 normalizeTerm :: forall l. Ord l => Default l => Term l -> Interpreter l RuntimeValue
@@ -79,8 +83,6 @@ interpret expression = do
         TypedHole _ -> pure $ Term Null
         Variable _ name -> getVariable $ show name
         Lambda _ argumentName body -> do
-          -- This is here to generate data for node uis
-          -- void $ withTerm (show argumentName) def $ interpret body
           env <- getEnv
           pure $ Closure env (show argumentName) body
         Expression _ inner -> interpret inner
@@ -109,13 +111,14 @@ interpret expression = do
           let
             go = case _ of
               Closure env name expr ->
-                withEnv env $ withTerm name runtimeArgument
+                scoped $ withEnv env $ withTerm name runtimeArgument
                   $ interpret expr
               Term (Function call) -> Term <$> call <$> normalizeTerm runtimeArgument
               Code env expr -> call >>= go
                 where
-                call = withEnv env $ interpret expr
+                call = scoped $ withEnv env $ interpret expr
               Term _ -> pure def
           go runtimeFunction
-  tell $ ValueMap $ Map.singleton location value
+  toplevel <- asks $ view _toplevel
+  when toplevel $ tell $ ValueMap $ Map.singleton location value
   pure value
