@@ -26,43 +26,6 @@ foreign import data Context2d :: Type
 -- This is just a map of cached node geometries
 foreign import data GeometryCache :: Type
 
--- Foreign helpers
-foreign import resizeCanvas :: HTMLCanvasElement -> Effect Unit
-
-foreign import resizeContext :: Context2d -> Effect Unit
-
-foreign import getContext :: HTMLCanvasElement -> Effect Context2d
-
-foreign import renderScene :: Context2d -> GeometryCache -> Effect Unit
-
-foreign import emptyGeometryCache :: Effect GeometryCache
-
-foreign import handleMouseMoveImpl :: NativeGeomEventHandler
-
-foreign import handleMouseUpImpl :: NativeGeomEventHandler
-
-foreign import handleMouseDownImpl :: NativeGeomEventHandler
-
-foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeometryCache -> Json -> Either String GeometryCache
-
-foreign import geometryCacheToJson :: GeometryCache -> Json
-
-foreign import createNode :: GeometryCache -> NodeId -> Int -> Boolean -> Nullable String -> Effect Unit
-
-foreign import refreshInputArcs :: GeometryCache -> NodeId -> NodeState -> Effect Unit
-
-foreign import setUnconnectableInputs :: GeometryCache -> NativeSet { id :: NodeId, index :: Int } -> Effect Unit
-
-foreign import setUnconnectableOutputs :: GeometryCache -> NativeSet NodeId -> Effect Unit
-
-foreign import deleteNode :: GeometryCache -> NodeId -> Effect Unit
-
-foreign import renderPreview :: Context2d -> ForeignTypeMap -> Effect Unit
-
-foreign import centerNode :: GeometryCache -> NodeId -> Effect Unit
-
-foreign import centerOutput :: GeometryCache -> Effect Unit
-
 instance decodeJsonGeometryCache :: DecodeJson GeometryCache where
   -- WARNING:
   -- The error messages in for this are just the Error.message from js land
@@ -142,15 +105,19 @@ instance defaultForeignActionConfig :: Default ForeignActionConfig where
 
 -- | Handle a mouse down event
 handleMouseDown :: GeomEventHandler
-handleMouseDown = runFn4 handleMouseDownImpl $ def
+handleMouseDown = runFn4 handleMouseDownImpl def
 
 -- | Handle a mouse up event
 handleMouseUp :: GeomEventHandler
-handleMouseUp = runFn4 handleMouseUpImpl $ def
+handleMouseUp = runFn4 handleMouseUpImpl def
 
 -- | Handle a mouse move event
 handleMouseMove :: GeomEventHandler
-handleMouseMove = runFn4 handleMouseMoveImpl $ def
+handleMouseMove = runFn4 handleMouseMoveImpl def
+
+-- | Handle double clicking a node
+handleDoubleClick :: GeomEventHandler
+handleDoubleClick = runFn4 handleMouseMoveImpl def
 
 -- Halogen M which keeps track of a canvas
 type CanvasHalogenM r a s o m a'
@@ -174,3 +141,42 @@ withContext ref continue = do
           ctx <- liftEffect $ getContext canvas
           modify_ _ { context = Just ctx }
           continue ctx
+
+-- Foreign helpers
+foreign import resizeCanvas :: HTMLCanvasElement -> Effect Unit
+
+foreign import resizeContext :: Context2d -> Effect Unit
+
+foreign import getContext :: HTMLCanvasElement -> Effect Context2d
+
+foreign import renderScene :: Context2d -> GeometryCache -> Effect Unit
+
+foreign import emptyGeometryCache :: Effect GeometryCache
+
+foreign import handleMouseMoveImpl :: NativeGeomEventHandler
+
+foreign import handleMouseUpImpl :: NativeGeomEventHandler
+
+foreign import handleMouseDownImpl :: NativeGeomEventHandler
+
+foreign import handleDoubleClickImpl :: NativeGeomEventHandler
+
+foreign import geometryCacheFromJsonImpl :: ForeignEitherConfig String GeometryCache -> Json -> Either String GeometryCache
+
+foreign import geometryCacheToJson :: GeometryCache -> Json
+
+foreign import createNode :: GeometryCache -> NodeId -> Int -> Boolean -> Nullable String -> Effect Unit
+
+foreign import refreshInputArcs :: GeometryCache -> NodeId -> NodeState -> Effect Unit
+
+foreign import setUnconnectableInputs :: GeometryCache -> NativeSet { id :: NodeId, index :: Int } -> Effect Unit
+
+foreign import setUnconnectableOutputs :: GeometryCache -> NativeSet NodeId -> Effect Unit
+
+foreign import deleteNode :: GeometryCache -> NodeId -> Effect Unit
+
+foreign import renderPreview :: Context2d -> ForeignTypeMap -> Effect Unit
+
+foreign import centerNode :: GeometryCache -> NodeId -> Effect Unit
+
+foreign import centerOutput :: GeometryCache -> Effect Unit

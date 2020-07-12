@@ -30,6 +30,7 @@ exports.resizeContext = (ctx) => exports.resizeCanvas(ctx.canvas)
 exports.handleMouseMoveImpl = Native.onMouseMove
 exports.handleMouseUpImpl = Native.onMouseUp
 exports.handleMouseDownImpl = Native.onMouseDown
+exports.handleDoubleClickImpl = Native.handleDoubleClick
 
 // We cannot do
 // export * from "../typescript/save"

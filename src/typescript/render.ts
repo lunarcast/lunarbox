@@ -38,6 +38,7 @@ import {
 import { CanvasElement } from "./types/Hiccup"
 import { draw } from "@thi.ng/hiccup-canvas"
 import { TextWithBackground } from "./components/TextWithBackground"
+import { ArrayLikeIterable } from "@thi.ng/api"
 
 // Used in the Default purescript implementation of GeomCache
 export const emptyGeometryCache = (): GeometryCache => ({
@@ -548,6 +549,31 @@ const pan = (cache: GeometryCache, offset: Vec) => {
 }
 
 /**
+ * Finds what the mouse is over based on an event.
+ *
+ * @param cache The cache to get the transform from.
+ * @param event The event to process.
+ * @param ctx The context to which the mouse should be relative to.
+ */
+const getEventData = (
+  cache: GeometryCache,
+  event: MouseEvent,
+  ctx: CanvasRenderingContext2D
+): {
+  target: MouseTarget
+  mousePosition: Vec
+  transform: ArrayLikeIterable<number>
+  mouse: Vec
+} => {
+  const mouse = [event.pageX, event.pageY]
+  const transform = getMouseTransform(ctx, cache)
+  const mousePosition = mulV23(null, transform, mouse)
+
+  const target = getMouseTarget(mousePosition, cache)
+  return { target, mousePosition, transform, mouse }
+}
+
+/**
  * Handle a mouseUp event
  *
  * @param config The config for what we want to return
@@ -586,11 +612,7 @@ export const onMouseDown = (
 ) => (): ForeignAction => {
   let action = config.nothing
 
-  const mouse = [event.pageX, event.pageY]
-  const transform = getMouseTransform(ctx, cache)
-  const mousePosition = mulV23(null, transform, mouse)
-
-  const target = getMouseTarget(mousePosition, cache)
+  const { target, mousePosition } = getEventData(cache, event, ctx)
 
   if (target._type === MouseTargetKind.Node) {
     selectNode(cache, target.node, target.id)
@@ -756,6 +778,29 @@ export const onMouseMove = (
 
   updateConnectionPreview(cache, mousePosition)
   renderScene(ctx, cache)
+
+  return config.nothing
+}
+
+/**
+ * Handle a double click event
+ *
+ * @param config The config for what we want to return
+ * @param ctx The context to re-render to.
+ * @param event The event to handle.
+ * @param cache The cache to mutate.
+ */
+export const onDoubleClick = (
+  config: ForeignActionConfig,
+  ctx: CanvasRenderingContext2D,
+  event: MouseEvent,
+  cache: GeometryCache
+) => (): ForeignAction => {
+  const { target } = getEventData(cache, event, ctx)
+
+  if (target._type === MouseTargetKind.Node) {
+    return config.editNode(target.id)
+  }
 
   return config.nothing
 }
