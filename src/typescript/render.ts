@@ -613,8 +613,13 @@ export const onMouseDown = (
   let action = config.nothing
 
   const { target, mousePosition } = getEventData(cache, event, ctx)
+  const pressed = isPressed(event.buttons)
 
   if (target._type === MouseTargetKind.Node) {
+    if (pressed(MouseButtons.RightButton)) {
+      return config.editNode(target.id)
+    }
+
     selectNode(cache, target.node, target.id)
   }
 
