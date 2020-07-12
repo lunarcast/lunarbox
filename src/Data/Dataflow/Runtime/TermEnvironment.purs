@@ -16,9 +16,8 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 
 -- | We use this to be able to store closures
 data Term l
-  = Closure (TermEnvironment l) String (Expression l)
-  | Term RuntimeValue
-  | Code (TermEnvironment l) (Expression l)
+  = Term RuntimeValue
+  | Closure (TermEnvironment l) (Expression l)
 
 derive instance eqTerm :: Eq l => Eq (Term l)
 

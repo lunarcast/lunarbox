@@ -47,15 +47,14 @@ makeNative = Native def <<< NativeExpression (Forall [] typeString)
 scoped :: forall l a. Ord l => Interpreter l a -> Interpreter l a
 scoped = local $ set _toplevel false
 
--- | Get the underlying value from a term
 normalizeTerm :: forall l. Ord l => Default l => Term l -> Interpreter l RuntimeValue
 normalizeTerm (Term a) = pure a
 
-normalizeTerm (Code env expr) = result >>= normalizeTerm
+normalizeTerm (Closure env (Lambda _ _ _)) = pure Null
+
+normalizeTerm (Closure env expr) = result >>= normalizeTerm
   where
   result = withEnv env $ interpret expr
-
-normalizeTerm _ = pure Null
 
 -- | Mark all the places inside an expression as null
 markAsNull :: forall l. Ord l => Expression l -> Interpreter l (Term l)
@@ -82,9 +81,9 @@ interpret expression = do
       local (set _location location) case expression of
         TypedHole _ -> pure $ Term Null
         Variable _ name -> getVariable $ show name
-        Lambda _ argumentName body -> do
+        Lambda _ _ _ -> do
           env <- getEnv
-          pure $ Closure env (show argumentName) body
+          pure $ Closure env expression
         Expression _ inner -> interpret inner
         If _ cond then' else' -> interpret cond >>= go
           where
@@ -102,7 +101,7 @@ interpret expression = do
         expr@(FixPoint l name body) -> do
           env <- getEnv
           let
-            self = Code env expr
+            self = Closure env expr
           withTerm (show name) self $ interpret body
         Native _ (NativeExpression _ inner) -> pure $ Term inner
         FunctionCall _ function argument -> do
@@ -110,13 +109,13 @@ interpret expression = do
           runtimeFunction <- interpret function
           let
             go = case _ of
-              Closure env name expr ->
-                scoped $ withEnv env $ withTerm name runtimeArgument
+              Closure env (Lambda _ name expr) ->
+                scoped $ withEnv env $ withTerm (show name) runtimeArgument
                   $ interpret expr
-              Term (Function call) -> Term <$> call <$> normalizeTerm runtimeArgument
-              Code env expr -> call >>= go
+              Closure env expr -> call >>= go
                 where
                 call = scoped $ withEnv env $ interpret expr
+              Term (Function call) -> Term <$> call <$> normalizeTerm runtimeArgument
               Term _ -> pure def
           go runtimeFunction
   toplevel <- asks $ view _toplevel
