@@ -9,7 +9,7 @@ import Data.Array as Array
 import Data.Default (def)
 import Data.Filterable (filter, filterMap)
 import Data.Foldable (foldMap, foldr, length, traverse_)
-import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, view)
+import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, traversed, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
 import Data.Lens.Iso.Newtype (_Newtype)
@@ -123,6 +123,7 @@ type State a s m
       , isAdmin :: Boolean
       , nodeSearchTerm :: String
       , isVisible :: Boolean
+      , currentlyEditedNode :: Maybe NodeId
       )
     }
 
@@ -151,6 +152,7 @@ emptyState =
     , pendingConnection: Nothing
     , typeErrors: []
     , lintingErrors: []
+    , currentlyEditedNode: Nothing
     }
 
 -- Helpers
@@ -246,7 +248,7 @@ createNode name = do
               , function: name
               }
       withCurrentFunction_ \currentFunction -> do
-        modify_ $ set (_atNode currentFunction id) $ Just node
+        modify_ $ set (_atNode currentFunction id) node
         when isInput do
           modify_
             $ over (_atFunctionData currentFunction <<< _Just <<< _FunctionDataInputs)
@@ -401,7 +403,7 @@ removeConnection :: forall a s m. Tuple NodeId Int -> State a s m -> State a s m
 removeConnection (Tuple toId toIndex) =
   execState
     $ withCurrentFunction_ \currentFunction -> do
-        modify_ $ set (_atNode currentFunction toId <<< _Just <<< _nodeInput toIndex) Nothing
+        modify_ $ set (_atNode currentFunction toId <<< _nodeInput toIndex) Nothing
         modify_ compile
 
 -- Deletes a node form a given function
@@ -409,20 +411,14 @@ deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
 deleteNode functionName id state =
   flip execState state
     $ when (not isOutput) do
-        let
-          nodes = preview (_nodes functionName) state
-
-          -- The function the node runs
-          nodeFunction = fromMaybe (FunctionName "") $ getFunctionName <$> node
         modify_
-          $ over (_nodes functionName)
-          $ map
-          $ over _nodeInputs
-          $ map \input -> if input == Just id then Nothing else input
+          $ over (_nodes functionName <<< traversed <<< _nodeInputs <<< traversed) \input -> if input == Just id then Nothing else input
         modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupInputs) $ filter (id /= _)
+        modify_ $ over (_currentNodeGroup <<< _Just <<< _NodeGroupNodes)
+          $ Map.filterKeys (id /= _)
         modify_ compile
   where
-  node = join $ preview (_atNode functionName id) state
+  node = preview (_atNode functionName id) state
 
   isOutput = maybe false (is _OutputNode) node
 
@@ -514,9 +510,13 @@ withCurrentFunction f = gets (view _currentFunction) >>= f
 withCurrentFunction_ :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f Unit
 withCurrentFunction_ = void <<< withCurrentFunction
 
--- Run an action which needs access to the current geometry cache
+-- | Run an action which needs access to the current geometry cache
 withCurrentGeometries :: forall f a s m r. MonadState (State a s m) f => (GeometryCache -> f r) -> f (Maybe r)
 withCurrentGeometries f = gets (view _currentGeometryCache) >>= traverse f
+
+-- | Run an action which needs access to the id of the node the user is curently editing
+withCurrentNode_ :: forall f a s m r. MonadState (State a s m) f => (NodeId -> f r) -> f Unit
+withCurrentNode_ f = void $ gets (_.currentlyEditedNode) >>= traverse f
 
 -- | Get the maximum number of inputs a node can take
 getMaxInputs ::
@@ -592,13 +592,7 @@ moveTo (InsideFunction name deep) = [ MoveToFunction name ] <> go deep
 
   go FunctionDeclaration = [ CenterOutput ]
 
-  go (UnexistingNode _) = []
-
-  go (FunctionUsage _) = []
-
-  go InsideNative = []
-
-  go PlaceholderPosition = []
+  go _ = []
 
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
@@ -646,8 +640,8 @@ _nodeGroup name = _project <<< _projectNodeGroup name
 _nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (Map NodeId Node)
 _nodes name = _nodeGroup name <<< _NodeGroupNodes
 
-_atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) (Maybe Node)
-_atNode name id = _project <<< _atProjectNode name id
+_atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) Node
+_atNode name id = _project <<< _atProjectNode name id <<< _Just
 
 _function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
 _function name = _project <<< _atProjectFunction name

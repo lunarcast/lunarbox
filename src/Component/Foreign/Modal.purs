@@ -3,13 +3,14 @@ module Lunarbox.Component.Modal
   , Action(..)
   , Output(..)
   , Input
+  , Slot
   , ButtonConfig
   , InputType
   , component
   ) where
 
 import Prelude
-import Control.Monad.State (get, gets)
+import Control.Monad.State (get, gets, put)
 import Control.MonadZero (guard)
 import Control.Promise (Promise, toAff)
 import Data.Lens (Lens')
@@ -26,6 +27,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as AP
 import Lunarbox.Component.Utils (className)
 import Web.HTML (HTMLElement)
+import Halogen.Data.Slot as HSlot
 
 foreign import showModal :: String -> Effect (Promise HTMLElement)
 
@@ -35,10 +37,17 @@ data Action a v
   = CloseModal v
   | Bubble a
 
-data Query a
+-- | Query (parent action) (output type) monad result 
+data Query pa v m a
   = Close a
   | Open a
+  | UpdateInput (InputType v pa m) a
 
+-- | Helper for including the modal as a children
+type Slot pa v m
+  = HSlot.Slot (Query pa v m) (Output pa v)
+
+-- | Config for how a button should act & look
 type ButtonConfig v
   = { text :: String
     -- TODO: make this more generic once I make a separate button component or something
@@ -80,7 +89,7 @@ data Output pa v
 component ::
   forall m v pa.
   MonadEffect m =>
-  MonadAff m => Component HH.HTML Query (InputType v pa m) (Output pa v) m
+  MonadAff m => Component HH.HTML (Query pa v m) (InputType v pa m) (Output pa v) m
 component =
   mkComponent
     { initialState: identity
@@ -108,7 +117,7 @@ component =
 
   handleQuery ::
     forall a.
-    Query a ->
+    Query pa v m a ->
     HalogenM { | State _ _ v pa }
       (Action pa v)
       ChildSlots
@@ -127,6 +136,9 @@ component =
       id <- gets _.id
       liftEffect $ closeModal id
       pure $ Just a
+    UpdateInput input result -> do
+      put input
+      pure $ Just result
 
   render { id, title, content, buttons } =
     HH.div

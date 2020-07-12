@@ -3,6 +3,7 @@ module Lunarbox.Component.Editor
   , Action(..)
   , Output(..)
   , PendingConnectionAction(..)
+  , NodeEditingAction(..)
   , EditorState
   , ChildSlots
   ) where
@@ -19,7 +20,6 @@ import Data.Lens (is, over, preview, set, view)
 import Data.List ((:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe)
-import Data.Newtype (unwrap)
 import Data.Set (toUnfoldable) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
@@ -53,11 +53,12 @@ import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.DataflowFunction (_NativeFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
+import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atInputCount, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atInputCount, _atNode, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -107,21 +108,23 @@ data Action
   | SelectOutput NodeId
   | HandleConnectionConfirmation PendingConnectionAction
   | StartNodeEditing NodeId
+  -- This handles actions triggerd by the node editing modal
+  | HandleNodeEdits NodeEditingAction
 
 data Output
   = Save Json
 
-type ChildSlots
+type ChildSlots m
   = Add.ChildSlots
       ( tree :: Slot TreeC.Query TreeC.Output Unit
       , scene :: Slot Scene.Query Scene.Output Unit
-      , pendingConnection :: Slot Modal.Query (Modal.Output Action PendingConnectionAction) Unit
-      , editNode :: Slot Modal.Query (Modal.Output Action Unit) Unit
+      , pendingConnection :: Modal.Slot Action PendingConnectionAction m Unit
+      , editNode :: Modal.Slot Action NodeEditingAction m Unit
       )
 
 -- Shorthand for manually passing the types of the actions and child slots
 type EditorState m
-  = State Action ChildSlots m
+  = State Action (ChildSlots m) m
 
 -- We use this to automatically focus on the correct element when pressing S
 searchNodeInputRef :: RefLabel
@@ -159,19 +162,28 @@ pendingConnectionModal =
   , onClose: CancelConnecting
   }
 
+-- | Actions the user can perform in the node editing modal
+data NodeEditingAction
+  = NEDeleteNode
+  | NECloseModal
+
 -- | The config of the modal used for editing nodes
-nodeEditingModal :: forall m. Modal.InputType Unit Action m
+nodeEditingModal :: forall m. Modal.InputType NodeEditingAction Action m
 nodeEditingModal =
   { id: "edit-node"
   , title: "[Node name here]"
   , content: \_ -> HH.text "[Content goes here]"
   , buttons:
-    [ { text: "Back"
+    [ { text: "Delete"
+      , primary: false
+      , value: NEDeleteNode
+      }
+    , { text: "Back"
       , primary: true
-      , value: unit
+      , value: NECloseModal
       }
     ]
-  , onClose: unit
+  , onClose: NECloseModal
   }
 
 component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
@@ -187,7 +199,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots Output m Unit
+  handleAction :: Action -> HalogenM (EditorState m) Action (ChildSlots m) Output m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window
@@ -374,11 +386,14 @@ component =
             AutofixConnection -> modify_ _ { pendingConnection = Nothing }
             -- WARNING: this should never happen
             _ -> pure unit
-    DeleteNode id -> do
-      current <- gets $ view _currentFunction
-      modify_ $ deleteNode current id
-      void updateAll
-      handleAction Rerender
+    DeleteNode id ->
+      void
+        $ withCurrentGeometries \cache -> do
+            current <- gets $ view _currentFunction
+            modify_ $ deleteNode current id
+            liftEffect $ Native.deleteNode cache id
+            void updateAll
+            handleAction Rerender
     UpdatePreview name -> do
       state <- get
       for_ (Map.lookup (AtFunction name) state.typeMap) \ty -> do
@@ -402,8 +417,17 @@ component =
         CenterOutput -> void $ withCurrentGeometries \cache -> liftEffect $ centerOutput cache
       -- TODO: don't do this when we didn't move the camera
       unless (Array.null steps) $ handleAction Rerender
-    StartNodeEditing id -> do
-      void $ query (SProxy :: SProxy "editNode") unit $ tell Modal.Open
+    StartNodeEditing id ->
+      withCurrentFunction_ \currentFunction ->
+        gets (preview (_atNode currentFunction id))
+          >>= traverse_ case _ of
+              ComplexNode _ -> do
+                modify_ _ { currentlyEditedNode = Just id }
+                void $ query (SProxy :: SProxy "editNode") unit $ tell Modal.Open
+              _ -> pure unit
+    HandleNodeEdits action -> case action of
+      NEDeleteNode -> withCurrentNode_ (handleAction <<< DeleteNode)
+      NECloseModal -> pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -466,7 +490,7 @@ component =
     , maybeElement footer \inner -> HH.footer [ className "panel__footer" ] [ inner ]
     ]
 
-  panel :: State Action ChildSlots m -> Array (HH.ComponentHTML Action ChildSlots m)
+  panel :: State Action (ChildSlots m) m -> Array (HH.ComponentHTML Action (ChildSlots m) m)
   panel { currentTab
   , project: project@(Project.Project { functions })
   , currentFunction
@@ -591,7 +615,7 @@ component =
       where
       isInternal functionName = maybe true (is _NativeFunction) $ Map.lookup functionName functions
 
-  scene :: HH.ComponentHTML Action ChildSlots m
+  scene :: HH.ComponentHTML Action (ChildSlots m) m
   scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit handleSceneOutput
 
   logoElement =
@@ -602,7 +626,7 @@ component =
       , onMouseUp $ const $ Just $ Navigate Home
       ]
 
-  render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
+  render :: State Action (ChildSlots m) m -> HH.ComponentHTML Action (ChildSlots m) m
   render state@{ currentTab, panelIsOpen, typeErrors, lintingErrors } =
     HH.div [ className "editor" ]
       [ HH.div [ className "editor__activity-bar" ]
@@ -630,4 +654,6 @@ component =
       Modal.ClosedWith value -> Just $ HandleConnectionConfirmation value
       Modal.BubbledAction action -> Just action
 
-    handleNodeSave = const Nothing
+    handleNodeSave = case _ of
+      Modal.ClosedWith value -> Just $ HandleNodeEdits value
+      Modal.BubbledAction action -> Just action
