@@ -28,7 +28,7 @@ import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
 import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), isReferenced, wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), isReferenced)
 import Lunarbox.Data.Dataflow.Expression.Optimize (inline)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -68,7 +68,7 @@ _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
 -- -- Takes a key and a graph and uses that to produce an Expression
 -- compileGraphNode :: forall k v l. Ord k => (v -> Expression l) -> Graph k v -> k -> Maybe (Tuple k (Expression (ExtendedLocation k l)))
--- compileGraphNode toExpression graph key = Tuple key <$> wrap (Location key) <$> map (DeepLocation key) <$> toExpression <$> view (at key) graph
+-- compileGraphNode toExpression graph key = Tuple key <$> Expression (Location key) <$> map (DeepLocation key) <$> toExpression <$> view (at key) graph
 -- | Compile a visual program into a linear expression
 compileProject :: Project -> Expression Location
 compileProject project@(Project { main }) =
@@ -96,7 +96,7 @@ compileProject project@(Project { main }) =
     $ compileFunction
     <$> sorted
   where
-  compileFunction name = Tuple name <$> wrap (AtFunction name) <$> map (InsideFunction name) <$> compileDataflowFunction <$> G.lookup name graph
+  compileFunction name = Tuple name <$> Expression (AtFunction name) <$> map (InsideFunction name) <$> compileDataflowFunction <$> G.lookup name graph
 
   graph = toGraph project
 

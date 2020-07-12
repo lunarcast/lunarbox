@@ -30,7 +30,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
 import Lunarbox.Data.Editor.Class.Depends (class Depends)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
@@ -98,7 +98,7 @@ connectedInputs = List.catMaybes <<< map (uncurry $ (<$>) <<< Tuple) <<< indexed
 
 -- Declare a call on a curried function with any number of arguments
 functionCall :: ScopedLocation -> Expression ScopedLocation -> NodeId -> List (Expression ScopedLocation) -> Expression ScopedLocation
-functionCall location calee id = wrap location <<< foldlWithIndex (FunctionCall <<< AtApplication id) calee
+functionCall location calee id = Expression location <<< foldlWithIndex (FunctionCall <<< AtApplication id) calee
 
 -- Compile a node into an expression
 compileNode :: G.Graph NodeId Node -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation
@@ -118,7 +118,7 @@ compileNode nodes id child =
       where
       name = VarName $ show id
 
-      value = wrap (NodeLocation id) $ If (PinLocation id OutputPin) condExpr thenExpr elseExpr
+      value = Expression (NodeLocation id) $ If (PinLocation id OutputPin) condExpr thenExpr elseExpr
 
       condExpr = mkExpr 0 cond
 
@@ -138,7 +138,7 @@ compileNode nodes id child =
           (makePinExpression id)
           inputs
 
-      value = wrap (NodeLocation id) $ functionCall (PinLocation id OutputPin) calee id arguments
+      value = Expression (NodeLocation id) $ functionCall (PinLocation id OutputPin) calee id arguments
 
 -- | Helper to create an expression from some data aboout a pin
 makePinExpression :: NodeId -> Int -> (Maybe NodeId) -> Expression ScopedLocation

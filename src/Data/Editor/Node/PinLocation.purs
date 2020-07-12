@@ -10,7 +10,7 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
 import Data.Generic.Rep (class Generic)
-import Lunarbox.Data.Dataflow.Expression (Expression, wrap)
+import Lunarbox.Data.Dataflow.Expression (Expression(..))
 import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.String (showIndex)
@@ -74,7 +74,7 @@ instance showScopedLocation :: Show ScopedLocation where
 
 -- This is an internal function used to both mark a node and one of it's pins
 mark :: Pin -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation
-mark pin id = wrap location <<< wrap pinLocation
+mark pin id = Expression location <<< Expression pinLocation
   where
   location = NodeLocation id
 

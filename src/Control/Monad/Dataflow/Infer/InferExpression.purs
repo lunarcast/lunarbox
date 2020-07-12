@@ -8,7 +8,6 @@ import Control.Monad.State (gets, modify_)
 import Control.Monad.Writer (listen)
 import Data.Array (zip)
 import Data.Lens (over, view)
-import Data.List (List(..), (:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
@@ -113,11 +112,7 @@ infer expression =
         ty <- createClosure name (Forall [] tv) $ infer body
         createConstraint tv ty
         pure ty
-      Chain _ Nil -> fresh true
-      Chain _ (expression' : Nil) -> infer expression'
-      Chain location (expression' : expressions) -> do
-        void $ infer expression'
-        infer $ Chain location expressions
+      Expression _ inner -> infer inner
       TypedHole _ -> fresh false
       Native _ (NativeExpression scheme _) -> instantiate scheme
     rememberType type'

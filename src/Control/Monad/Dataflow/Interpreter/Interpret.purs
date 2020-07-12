@@ -9,7 +9,6 @@ import Control.Monad.Reader (asks, local)
 import Control.Monad.Writer (tell)
 import Data.Default (class Default, def)
 import Data.Lens (over, set, view)
-import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
@@ -84,9 +83,7 @@ interpret expression = do
           -- void $ withTerm (show argumentName) def $ interpret body
           env <- getEnv
           pure $ Closure env (show argumentName) body
-        Chain _ expressions -> case List.last expressions of
-          Just expression' -> interpret expression'
-          Nothing -> pure def
+        Expression _ inner -> interpret inner
         If _ cond then' else' -> interpret cond >>= go
           where
           go = case _ of

@@ -12,10 +12,7 @@ module Lunarbox.Data.Dataflow.Expression
   , printSource
   , sumarizeExpression
   , inputs
-  , wrap
   , removeWrappers
-  , wrapWith
-  , wrappers
   , everywhereOnExpressionM
   , everywhereOnExpression
   , foldExpression
@@ -27,12 +24,11 @@ module Lunarbox.Data.Dataflow.Expression
 import Prelude
 import Control.Monad.Writer (execWriter, tell)
 import Data.Array as Array
-import Data.Foldable (foldl)
 import Data.Identity (Identity(..))
 import Data.List (List(..), foldr, (:))
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe, maybe)
+import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.String (joinWith)
@@ -66,7 +62,7 @@ data Expression l
   | Let l VarName (Expression l) (Expression l)
   | If l (Expression l) (Expression l) (Expression l)
   | FixPoint l VarName (Expression l)
-  | Chain l (List (Expression l))
+  | Expression l (Expression l)
   | Native l NativeExpression
   | TypedHole l
 
@@ -86,16 +82,7 @@ everywhereOnExpressionM filter f = go'
 
   go continue (FixPoint loc name body) = FixPoint loc name <$> continue body
 
-  go continue (Chain loc expressions) =
-    Chain loc
-      <$> foldl
-          ( \acc expr -> do
-              expr' <- continue expr
-              rest <- acc
-              pure $ expr' : rest
-          )
-          (pure Nil)
-          expressions
+  go continue (Expression loc expr) = Expression loc <$> continue expr
 
   go continue (If loc cond then' else') =
     If loc <$> continue cond <*> continue then'
@@ -148,7 +135,7 @@ getLocation = case _ of
   Let l _ _ _ -> l
   FixPoint l _ _ -> l
   Native l _ -> l
-  Chain l _ -> l
+  Expression l _ -> l
   If l _ _ _ -> l
 
 -- Takes an Expression and transforms it into a map of location -> expression pairs
@@ -159,7 +146,7 @@ toMap expression =
         FunctionCall _ calee input -> toMap calee <> toMap input
         Lambda _ _ body -> toMap body
         Let _ _ value body -> toMap value <> toMap body
-        Chain _ expressions -> foldr (\expression' -> (<>) $ toMap expression') mempty expressions
+        Expression _ inner -> toMap inner
         FixPoint _ _ body -> toMap body
         If _ cond then' else' -> toMap cond <> toMap then' <> toMap else'
         _ -> mempty
@@ -254,9 +241,7 @@ printRawExpression print expression = case expression of
       ]
   FixPoint loc name e -> print (Lambda loc name e)
   Native _ (NativeExpression t _) -> "native"
-  Chain l (e : Nil) -> "(" <> print e <> ")"
-  Chain l (e : es) -> "{" <> print e <> "," <> (print $ Chain l es) <> "}"
-  Chain _ Nil -> "()"
+  Expression l e -> "(" <> print e <> ")"
 
 -- | Check if an expression is a lambda application
 isFunctionCall :: forall l. Expression l -> Boolean
@@ -268,33 +253,17 @@ isFunctionCall _ = false
 printSource :: forall l. Expression l -> String
 printSource = printSource' <<< removeWrappers
 
--- | Internal version of printSource which doesn't removes wrappers
+-- | Internal version of printSource which doesn't removes Expressionpers
 printSource' :: forall l. Expression l -> String
 printSource' = printRawExpression (\e -> printSource' e)
 
--- Wrap an expression in another expression with a custom location
-wrap :: forall l. l -> Expression l -> Expression l
-wrap location = Chain location <<< pure
-
--- Unwrap an expression as much as possible
+-- UnExpression an expression as much as possible
 removeWrappers :: forall l. Expression l -> Expression l
 removeWrappers = mapExpression go
   where
-  go (Chain loc list) = maybe (TypedHole loc) go $ List.last list
+  go (Expression loc inner) = go inner
 
   go e = e
-
--- Collect all the locations something is wrapped in
-wrappers :: forall l. Expression l -> List l
-wrappers (Chain location (expression : Nil)) = location : wrappers expression
-
-wrappers _ = Nil
-
--- Wrap an expression with a list of locations
-wrapWith :: forall l. List l -> Expression l -> Expression l
-wrapWith (location : locations') = wrapWith locations' <<< wrap location
-
-wrapWith Nil = identity
 
 -- | Checks if a variable is referenced in an expression
 isReferenced :: forall l. VarName -> Expression l -> Boolean
