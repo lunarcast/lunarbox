@@ -56,7 +56,7 @@ component =
     { initialState:
       const
         { context: Nothing
-        -- NOTE: I made sure did is a safe operation to perform
+        -- NOTE: I made sure this is a safe operation to perform
         , geometryCache: unsafePerformEffect emptyGeometryCache
         }
     , render

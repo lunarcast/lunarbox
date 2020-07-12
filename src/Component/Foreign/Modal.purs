@@ -15,7 +15,6 @@ import Control.Promise (Promise, toAff)
 import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
 import Data.Symbol (SProxy(..))
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff, liftAff)
@@ -32,8 +31,9 @@ foreign import showModal :: String -> Effect (Promise HTMLElement)
 
 foreign import closeModal :: String -> Effect Unit
 
-data Action v
+data Action a v
   = CloseModal v
+  | Bubble a
 
 data Query a
   = Close a
@@ -46,17 +46,17 @@ type ButtonConfig v
     , value :: v
     }
 
-type Input h a v r
+type Input h a v pa r
   = ( id :: String
     , title :: String
-    , content :: HH.HTML h a
+    , content :: (pa -> a) -> HH.HTML h a
     , buttons :: Array (ButtonConfig v)
     , onClose :: v
     | r
     )
 
-type State h a v
-  = Input h a v ()
+type State h a v pa
+  = Input h a v pa ()
 
 _open :: forall r. Lens' { open :: Boolean | r } Boolean
 _open = prop (SProxy :: SProxy "open")
@@ -64,23 +64,23 @@ _open = prop (SProxy :: SProxy "open")
 type ChildSlots
   = ()
 
-type InputType v m
+type InputType v pa m
   = { 
-    | Input (ComponentSlot HH.HTML () m (Action v))
-      (Action v)
+    | Input (ComponentSlot HH.HTML () m (Action pa v))
+      (Action pa v)
       v
+      pa
       ()
     }
 
-newtype Output v
+data Output pa v
   = ClosedWith v
-
-derive instance outputNewtype :: Newtype (Output v) _
+  | BubbledAction pa
 
 component ::
-  forall m v.
+  forall m v pa.
   MonadEffect m =>
-  MonadAff m => Component HH.HTML Query (InputType v m) (Output v) m
+  MonadAff m => Component HH.HTML Query (InputType v pa m) (Output pa v) m
 component =
   mkComponent
     { initialState: identity
@@ -93,15 +93,28 @@ component =
             }
     }
   where
-  handleAction :: Action v -> HalogenM { | State _ _ v } (Action v) ChildSlots (Output v) m Unit
-  handleAction action = do
-    id <- gets _.id
-    case action of
-      CloseModal value -> do
-        liftEffect $ closeModal id
-        raise $ ClosedWith value
+  handleAction ::
+    Action pa v ->
+    HalogenM { | State _ _ v pa } (Action pa v) ChildSlots
+      (Output pa v)
+      m
+      Unit
+  handleAction = case _ of
+    CloseModal value -> do
+      id <- gets _.id
+      liftEffect $ closeModal id
+      raise $ ClosedWith value
+    Bubble a -> raise $ BubbledAction a
 
-  handleQuery :: forall a. Query a -> HalogenM { | State _ _ v } (Action v) ChildSlots (Output v) m (Maybe a)
+  handleQuery ::
+    forall a.
+    Query a ->
+    HalogenM { | State _ _ v pa }
+      (Action pa v)
+      ChildSlots
+      (Output pa v)
+      m
+      (Maybe a)
   handleQuery = case _ of
     Open return -> do
       { id, onClose } <- get
@@ -138,7 +151,7 @@ component =
                       ]
                   ]
               , HH.main [ HP.id_ contentId, className "modal__content" ]
-                  [ content
+                  [ content Bubble
                   ]
               , HH.footer [ className "modal__footer" ]
                   $ ( \{ text, primary, value } ->

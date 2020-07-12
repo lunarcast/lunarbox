@@ -106,6 +106,7 @@ data Action
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | HandleConnectionConfirmation PendingConnectionAction
+  | StartNodeEditing NodeId
 
 data Output
   = Save Json
@@ -114,7 +115,8 @@ type ChildSlots
   = Add.ChildSlots
       ( tree :: Slot TreeC.Query TreeC.Output Unit
       , scene :: Slot Scene.Query Scene.Output Unit
-      , pendingConnection :: Slot Modal.Query (Modal.Output PendingConnectionAction) Unit
+      , pendingConnection :: Slot Modal.Query (Modal.Output Action PendingConnectionAction) Unit
+      , editNode :: Slot Modal.Query (Modal.Output Action Unit) Unit
       )
 
 -- Shorthand for manually passing the types of the actions and child slots
@@ -136,11 +138,14 @@ data PendingConnectionAction
   | ProceedConnecting
 
 -- | The actual config for how to display the connection confirmation modal
-pendingConnectionModal :: forall m. Modal.InputType PendingConnectionAction m
+pendingConnectionModal :: forall m. Modal.InputType PendingConnectionAction Action m
 pendingConnectionModal =
   { id: "confirm-connection"
   , title: "Confirm connection"
-  , content: HH.text "Connecting those nodes would change the type of this function creating a type error."
+  , content:
+    const
+      $ HH.text
+          "Connecting those nodes would change the type of this function creating a type error."
   , buttons:
     [ { text: "Continue"
       , primary: true
@@ -152,6 +157,21 @@ pendingConnectionModal =
       }
     ]
   , onClose: CancelConnecting
+  }
+
+-- | The config of the modal used for editing nodes
+nodeEditingModal :: forall m. Modal.InputType Unit Action m
+nodeEditingModal =
+  { id: "edit-node"
+  , title: "[Node name here]"
+  , content: \_ -> HH.text "[Content goes here]"
+  , buttons:
+    [ { text: "Back"
+      , primary: true
+      , value: unit
+      }
+    ]
+  , onClose: unit
   }
 
 component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
@@ -382,6 +402,8 @@ component =
         CenterOutput -> void $ withCurrentGeometries \cache -> liftEffect $ centerOutput cache
       -- TODO: don't do this when we didn't move the camera
       unless (Array.null steps) $ handleAction Rerender
+    StartNodeEditing id -> do
+      void $ query (SProxy :: SProxy "editNode") unit $ tell Modal.Open
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -394,6 +416,7 @@ component =
     Native.SelectOutput id -> Just $ SelectOutput id
     Native.SelectInput id index -> Just $ SelectInput id index
     Native.DeleteConnection id index -> Just $ RemoveConnection id index
+    Native.EditNode id -> Just $ StartNodeEditing id
     _ -> Nothing
 
   sidebarIcon extraClasses activeTab current =
@@ -594,9 +617,17 @@ component =
       , HH.div [ className "scene" ]
           [ scene
           ]
+      -- Modals
       , HH.slot (SProxy :: SProxy "pendingConnection") unit Modal.component
           pendingConnectionModal
           handleConnectionConfirmation
+      , HH.slot (SProxy :: SProxy "editNode") unit Modal.component
+          nodeEditingModal
+          handleNodeSave
       ]
     where
-    handleConnectionConfirmation = Just <<< HandleConnectionConfirmation <<< unwrap
+    handleConnectionConfirmation = case _ of
+      Modal.ClosedWith value -> Just $ HandleConnectionConfirmation value
+      Modal.BubbledAction action -> Just action
+
+    handleNodeSave = const Nothing

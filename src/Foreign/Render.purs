@@ -120,7 +120,7 @@ handleMouseMove = runFn4 handleMouseMoveImpl def
 
 -- | Handle double clicking a node
 handleDoubleClick :: GeomEventHandler
-handleDoubleClick = runFn4 handleMouseMoveImpl def
+handleDoubleClick = runFn4 handleDoubleClickImpl def
 
 -- Halogen M which keeps track of a canvas
 type CanvasHalogenM r a s o m a'
