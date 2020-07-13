@@ -56,6 +56,9 @@ data NativeExpression
 
 derive instance eqNativeExpression :: Eq NativeExpression
 
+instance showNativeExpression :: Show NativeExpression where
+  show (NativeExpression ty val) = show val <> " :: " <> show ty
+
 data Expression l
   = Variable l VarName
   | FunctionCall l (Expression l) (Expression l)
