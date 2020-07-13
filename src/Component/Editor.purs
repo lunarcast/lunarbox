@@ -4,7 +4,6 @@ module Lunarbox.Component.Editor
   , Output(..)
   , PendingConnectionAction(..)
   , NodeEditingAction(..)
-  , EditorState
   , ChildSlots
   ) where
 
@@ -47,7 +46,7 @@ import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
-import Lunarbox.Control.Monad.Effect (print, printString)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -64,7 +63,6 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
-import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -130,9 +128,6 @@ type ChildSlots m
       )
 
 -- Shorthand for manually passing the types of the actions and child slots
-type EditorState m
-  = State Action (ChildSlots m) m
-
 -- We use this to automatically focus on the correct element when pressing S
 searchNodeInputRef :: RefLabel
 searchNodeInputRef = RefLabel "search node"
@@ -199,7 +194,7 @@ nodeEditingModal =
   , onClose: NECloseModal
   }
 
-component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
+component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q State Output m
 component =
   mkComponent
     { initialState: compile <<< loadPrelude <<< identity
@@ -212,7 +207,7 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM (EditorState m) Action (ChildSlots m) Output m Unit
+  handleAction :: Action -> HalogenM State Action (ChildSlots m) Output m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window
@@ -259,12 +254,9 @@ component =
           wouldCycle _ =
             maybe false not $ G.wouldCreateLongCycle <$> bestMatch <*> Just currentFunction
               <*> Just functionGraph
-        print sortedFunctions
         when
           (Just currentFunction == bestMatch || wouldCycle unit)
-          $ for_ bestMatch \a -> do
-              print a
-              handleAction $ CreateNode a
+          $ for_ bestMatch (handleAction <<< CreateNode)
       | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
         inputElement <- getHTMLElementRef searchNodeInputRef
         for_ (inputElement >>= HTMLInputElement.fromHTMLElement) \elem -> do
@@ -563,7 +555,7 @@ component =
 
   isInternal functions functionName = maybe true (is _NativeFunction) $ Map.lookup functionName functions
 
-  panel :: State Action (ChildSlots m) m -> Array (HH.ComponentHTML Action (ChildSlots m) m)
+  panel :: State -> Array (HH.ComponentHTML Action (ChildSlots m) m)
   panel { currentTab
   , project: project@(Project.Project { functions })
   , currentFunction
@@ -697,7 +689,7 @@ component =
       , onMouseUp $ const $ Just $ Navigate Home
       ]
 
-  render :: State Action (ChildSlots m) m -> HH.ComponentHTML Action (ChildSlots m) m
+  render :: State -> HH.ComponentHTML Action (ChildSlots m) m
   render state@{ currentTab
   , panelIsOpen
   , typeErrors

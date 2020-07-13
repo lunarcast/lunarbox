@@ -48,7 +48,6 @@ import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..), _FunctionDataInputs, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.FunctionUi (FunctionUi)
 import Lunarbox.Data.Editor.Location (Location(..), _Function)
 import Lunarbox.Data.Editor.Node (Node(..), _OutputNode, _nodeInput, _nodeInputs, getFunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
@@ -101,7 +100,7 @@ type StatePermanentData r
     )
 
 -- | The state of the entire editor
-type State a s m
+type State
   = { 
     | StatePermanentData
       + CompilationResult
@@ -109,7 +108,6 @@ type State a s m
       , functionData :: Map FunctionName FunctionData
       , panelIsOpen :: Boolean
       , valueMap :: ValueMap Location
-      , functionUis :: Map FunctionName (FunctionUi a s m)
       , inputCountMap :: Map FunctionName Int
       , pendingConnection ::
         Maybe
@@ -128,7 +126,7 @@ type State a s m
     }
 
 -- Starting state which contains nothing
-emptyState :: forall a s m f. MonadEffect f => f (State a s m)
+emptyState :: forall f. MonadEffect f => f State
 emptyState =
   initializeFunction (FunctionName "main")
     { currentTab: Settings
@@ -139,7 +137,6 @@ emptyState =
     , functionData: mempty
     , valueMap: mempty
     , runtimeOverwrites: mempty
-    , functionUis: mempty
     , inputCountMap: mempty
     , geometries: mempty
     , expression: TypedHole UnknownLocation
@@ -157,7 +154,7 @@ emptyState =
 
 -- Helpers
 -- Generate an id and icncrease the inner counter in the state
-createId :: forall a s m. StateM.State (State a s m) NodeId
+createId :: StateM.State State NodeId
 createId = do
   nextId <- gets $ view _nextId
   modify_ $ over _nextId (_ + 1)
@@ -169,7 +166,7 @@ inputNodeName = FunctionName "input"
 
 -- 
 -- Update the way a node looks to fit the latest data
-updateNode :: forall m a s n. MonadState (State a s n) m => MonadEffect m => NodeId -> m Unit
+updateNode :: forall m. MonadState State m => MonadEffect m => NodeId -> m Unit
 updateNode id =
   gets (view _currentGeometryCache)
     >>= traverse_ \cache ->
@@ -216,7 +213,7 @@ updateNode id =
 
 --
 -- Create a new node and save all the data in the different required places
-createNode :: forall m a s n. MonadEffect m => MonadState (State a s n) m => FunctionName -> m Unit
+createNode :: forall m. MonadEffect m => MonadState State m => FunctionName -> m Unit
 createNode name = do
   let
     isInput = name == inputNodeName
@@ -261,7 +258,7 @@ createNode name = do
         updateNode id
 
 -- Get the type of the output a node (Also works for input pins)
-getOutputType :: forall a s m. FunctionName -> NodeId -> State a s m -> Maybe Type
+getOutputType :: FunctionName -> NodeId -> State -> Maybe Type
 getOutputType functionName id state = do
   let
     typeMap = view _typeMap state
@@ -274,7 +271,7 @@ getOutputType functionName id state = do
     Nothing -> Map.lookup (InsideFunction functionName $ PinLocation id OutputPin) typeMap
 
 -- Generate the list of inputs can't be connected 
-generateUnconnectableInputs :: forall a s m. NodeId -> State a s m -> Set.Set { id :: NodeId, index :: Int }
+generateUnconnectableInputs :: NodeId -> State -> Set.Set { id :: NodeId, index :: Int }
 generateUnconnectableInputs output state = Set.map (\(Tuple id index) -> { id, index }) unconnectableInputs
   where
   unconnectableInputs = Set.filter (not <<< flip (canConnect output) state) allInputs
@@ -290,7 +287,7 @@ generateUnconnectableInputs output state = Set.map (\(Tuple id index) -> { id, i
   nodeGroup = maybe mempty Map.toUnfoldable $ preview _currentNodes state
 
 -- Generates a list of outputs which can't be connected
-generateUnconnectableOutputs :: forall a s m. Tuple NodeId Int -> State a s m -> Set.Set NodeId
+generateUnconnectableOutputs :: Tuple NodeId Int -> State -> Set.Set NodeId
 generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canConnect outputId input state') outputs
   where
   state' = removeConnection input state
@@ -305,8 +302,7 @@ generateUnconnectableOutputs input state = Set.filter (\outputId -> not $ canCon
 
 -- Generate the next expression / typeMap of a project
 tryCompiling ::
-  forall a s m.
-  State a s m ->
+  State ->
   { | CompilationResult () }
 tryCompiling state@{ project } = result
   where
@@ -324,7 +320,7 @@ tryCompiling state@{ project } = result
     (Tuple typeMap (SolveState { errors })) = solveExpression expression'
 
 -- Compile a project
-compile :: forall a s m. State a s m -> State a s m
+compile :: State -> State
 compile state =
   evaluate
     $ Record.merge overwrites state
@@ -332,7 +328,7 @@ compile state =
   overwrites = tryCompiling state
 
 -- Evaluate the current expression and write into the value map
-evaluate :: forall a s m. State a s m -> State a s m
+evaluate :: State -> State
 evaluate state = set _valueMap valueMap state
   where
   context =
@@ -352,7 +348,7 @@ evaluate state = set _valueMap valueMap state
       $ interpret expression
 
 -- Check if 2 pins can be connected
-canConnect :: forall a s m. NodeId -> Tuple NodeId Int -> State a s m -> Boolean
+canConnect :: NodeId -> Tuple NodeId Int -> State -> Boolean
 canConnect from (Tuple toId toIndex) state =
   fromMaybe false do
     let
@@ -367,7 +363,7 @@ canConnect from (Tuple toId toIndex) state =
     pure true
 
 -- Creates a connection from a node id to a node id an an input index
-createConnection :: forall a s m. NodeId -> NodeId -> Int -> State a s m -> State a s m
+createConnection :: NodeId -> NodeId -> Int -> State -> State
 createConnection from toId toIndex =
   set
     ( _atCurrentNode toId
@@ -376,11 +372,11 @@ createConnection from toId toIndex =
     (Just from)
 
 -- Set the function the user is editing at the moment
-setCurrentFunction :: forall a s m. FunctionName -> State a s m -> State a s m
+setCurrentFunction :: FunctionName -> State -> State
 setCurrentFunction = set _currentFunction
 
 -- Creates a function, adds an output node and set it as the current edited function
-initializeFunction :: forall a s m monad. MonadEffect monad => FunctionName -> State a s m -> monad (State a s m)
+initializeFunction :: forall m. MonadEffect m => FunctionName -> State -> m State
 initializeFunction name state =
   flip execStateT state do
     let
@@ -394,7 +390,7 @@ initializeFunction name state =
     modify_ compile
 
 -- Remove a conenction from the current function
-removeConnection :: forall a s m. Tuple NodeId Int -> State a s m -> State a s m
+removeConnection :: Tuple NodeId Int -> State -> State
 removeConnection (Tuple toId toIndex) =
   execState
     $ withCurrentFunction_ \currentFunction -> do
@@ -402,7 +398,7 @@ removeConnection (Tuple toId toIndex) =
         modify_ compile
 
 -- Deletes a node form a given function
-deleteNode :: forall a s m. FunctionName -> NodeId -> State a s m -> State a s m
+deleteNode :: FunctionName -> NodeId -> State -> State
 deleteNode functionName id state =
   flip execState state
     $ when (not isOutput) do
@@ -418,7 +414,7 @@ deleteNode functionName id state =
   isOutput = maybe false (is _OutputNode) node
 
 -- Delete all the nodes runnign a certain functions inside another functions
-deleteFunctionReferences :: forall a s m. FunctionName -> FunctionName -> Map NodeId Node -> State a s m -> State a s m
+deleteFunctionReferences :: FunctionName -> FunctionName -> Map NodeId Node -> State -> State
 deleteFunctionReferences toDelete functionName graph state =
   foldr (deleteNode functionName) state
     $ filterMap
@@ -431,7 +427,7 @@ deleteFunctionReferences toDelete functionName graph state =
     $ (Map.toUnfoldable graph :: List _)
 
 -- Delete a function from the state
-deleteFunction :: forall a s m. FunctionName -> State a s m -> State a s m
+deleteFunction :: FunctionName -> State -> State
 deleteFunction toDelete state =
   flip execState state
     $ unless (main == toDelete) do
@@ -462,7 +458,7 @@ deleteFunction toDelete state =
   main = view _ProjectMain state.project
 
 -- Sets the runtime value at a location to any runtime value
-setRuntimeValue :: forall a s m. FunctionName -> NodeId -> RuntimeValue -> State a s m -> State a s m
+setRuntimeValue :: FunctionName -> NodeId -> RuntimeValue -> State -> State
 setRuntimeValue functionName nodeId value =
   evaluate
     <<< set
@@ -470,11 +466,11 @@ setRuntimeValue functionName nodeId value =
         (Just $ Term value)
 
 -- Count the number of visual user-defined functions in a project
-visualFunctionCount :: forall a s m. State a s m -> Int
+visualFunctionCount :: State -> Int
 visualFunctionCount = Map.size <<< filter (is _VisualFunction) <<< view _functions
 
 -- Get the number of nodes in a state
-nodeCount :: forall a s m. State a s m -> Int
+nodeCount :: State -> Int
 nodeCount = unwrap <<< foldMap (Additive <<< go) <<< view _functions
   where
   go (VisualFunction (NodeGroup { nodes })) = length nodes
@@ -482,7 +478,7 @@ nodeCount = unwrap <<< foldMap (Additive <<< go) <<< view _functions
   go _ = 0
 
 -- Search using the current search term in the state
-searchNode :: forall a s m. State a s m -> Array FunctionName
+searchNode :: State -> Array FunctionName
 searchNode state = sortBySearch show searchTerm nodes
   where
   searchTerm = view _nodeSearchTerm state
@@ -490,27 +486,27 @@ searchNode state = sortBySearch show searchTerm nodes
   nodes = Set.toUnfoldable $ Map.keys $ view _functionData state
 
 -- Check if a function exists
-functionExists :: forall a s m. FunctionName -> State a s m -> Boolean
+functionExists :: FunctionName -> State -> Boolean
 functionExists name = Map.member name <<< view _functionData
 
 -- Prevent and stop the propagation for any dom event
-preventDefaults :: forall q i o m a s. MonadEffect m => Event -> HalogenM (State a s m) q i o m Unit
+preventDefaults :: forall q i o m. MonadEffect m => Event -> HalogenM State q i o m Unit
 preventDefaults event = liftEffect $ Event.preventDefault event *> Event.stopPropagation event
 
 -- | Run an action which needs access to the current function
-withCurrentFunction :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f r
+withCurrentFunction :: forall f r. MonadState State f => (FunctionName -> f r) -> f r
 withCurrentFunction f = gets (view _currentFunction) >>= f
 
 -- | Run an action which need access to the current function and which returns nothing
-withCurrentFunction_ :: forall f a s m r. MonadState (State a s m) f => (FunctionName -> f r) -> f Unit
+withCurrentFunction_ :: forall f r. MonadState State f => (FunctionName -> f r) -> f Unit
 withCurrentFunction_ = void <<< withCurrentFunction
 
 -- | Run an action which needs access to the current geometry cache
-withCurrentGeometries :: forall f a s m r. MonadState (State a s m) f => (GeometryCache -> f r) -> f (Maybe r)
+withCurrentGeometries :: forall f r. MonadState State f => (GeometryCache -> f r) -> f (Maybe r)
 withCurrentGeometries f = gets (view _currentGeometryCache) >>= traverse f
 
 -- | Run an action which needs access to the id of the node the user is curently editing
-withCurrentNode_ :: forall f a s m r. MonadState (State a s m) f => (NodeId -> f r) -> f Unit
+withCurrentNode_ :: forall f r. MonadState State f => (NodeId -> f r) -> f Unit
 withCurrentNode_ f = void $ gets (_.currentlyEditedNode) >>= traverse f
 
 -- | Get the maximum number of inputs a node can take
@@ -537,7 +533,7 @@ getNodeValue currentFunction (ValueMap vmap) id = case _ of
   _ -> Nothing
 
 -- Update all nodes in the current geometry
-updateAll :: forall a s m n. MonadState (State a s n) m => MonadEffect m => m (Maybe GeometryCache)
+updateAll :: forall m. MonadState State m => MonadEffect m => m (Maybe GeometryCache)
 updateAll =
   withCurrentFunction \name -> do
     cache <- gets $ view $ _atGeometry name
@@ -590,7 +586,7 @@ moveTo (InsideFunction name deep) = [ MoveToFunction name ] <> go deep
   go _ = []
 
 -- | Get the type to be displayed for a particular complex node
-getNodeType :: forall a s m. NodeId -> FunctionName -> State a s m -> Maybe Type
+getNodeType :: NodeId -> FunctionName -> State -> Maybe Type
 getNodeType id (FunctionName "if") { currentFunction, typeMap } = do
   output <- Map.lookup (InsideFunction currentFunction (NodeLocation id)) typeMap
   pure $ multiArgumentFuncion [ typeBool, output, output ] output
@@ -604,67 +600,67 @@ getNodeType id function { currentFunction, typeMap } =
     typeMap
 
 -- Lenses
-_inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
+_inputCountMap :: Lens' State (Map FunctionName Int)
 _inputCountMap = prop (SProxy :: _ "inputCountMap")
 
-_atInputCount :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe Int)
+_atInputCount :: FunctionName -> Traversal' State (Maybe Int)
 _atInputCount name = _inputCountMap <<< at name
 
-_runtimeOverwrites :: forall a s m. Lens' (State a s m) (ValueMap Location)
+_runtimeOverwrites :: Lens' State (ValueMap Location)
 _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
-_valueMap :: forall a s m. Lens' (State a s m) (ValueMap Location)
+_valueMap :: Lens' State (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
-_geometries :: forall a s m. Lens' (State a s m) (Map FunctionName GeometryCache)
+_geometries :: Lens' State (Map FunctionName GeometryCache)
 _geometries = prop (SProxy :: _ "geometries")
 
-_atGeometry :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe GeometryCache)
+_atGeometry :: FunctionName -> Lens' State (Maybe GeometryCache)
 _atGeometry name = _geometries <<< at name
 
-_functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
+_functionData :: Lens' State (Map FunctionName FunctionData)
 _functionData = prop (SProxy :: _ "functionData")
 
-_atFunctionData :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe FunctionData)
+_atFunctionData :: FunctionName -> Traversal' State (Maybe FunctionData)
 _atFunctionData name = _functionData <<< at name
 
-_project :: forall a s m. Lens' (State a s m) Project
+_project :: Lens' State Project
 _project = prop (SProxy :: _ "project")
 
-_expression :: forall a s m. Lens' (State a s m) (Expression Location)
+_expression :: Lens' State (Expression Location)
 _expression = prop (SProxy :: _ "expression")
 
-_typeMap :: forall a s m. Lens' (State a s m) (Map Location Type)
+_typeMap :: Lens' State (Map Location Type)
 _typeMap = prop (SProxy :: _ "typeMap")
 
-_nextId :: forall a s m. Lens' (State a s m) Int
+_nextId :: Lens' State Int
 _nextId = prop (SProxy :: _ "nextId")
 
-_functions :: forall a s m. Lens' (State a s m) (Map.Map FunctionName DataflowFunction)
+_functions :: Lens' State (Map.Map FunctionName DataflowFunction)
 _functions = _project <<< _ProjectFunctions
 
-_nodeGroup :: forall a s m. FunctionName -> Traversal' (State a s m) NodeGroup
+_nodeGroup :: FunctionName -> Traversal' State NodeGroup
 _nodeGroup name = _project <<< _projectNodeGroup name
 
-_nodes :: forall a s m. FunctionName -> Traversal' (State a s m) (Map NodeId Node)
+_nodes :: FunctionName -> Traversal' State (Map NodeId Node)
 _nodes name = _nodeGroup name <<< _NodeGroupNodes
 
-_atNode :: forall a s m. FunctionName -> NodeId -> Traversal' (State a s m) Node
+_atNode :: FunctionName -> NodeId -> Traversal' State Node
 _atNode name id = _project <<< _atProjectNode name id <<< _Just
 
-_function :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe DataflowFunction)
+_function :: FunctionName -> Traversal' State (Maybe DataflowFunction)
 _function name = _project <<< _atProjectFunction name
 
-_currentFunction :: forall a s m. Lens' (State a s m) FunctionName
+_currentFunction :: Lens' State FunctionName
 _currentFunction = prop (SProxy :: _ "currentFunction")
 
-_panelIsOpen :: forall a s m. Lens' (State a s m) Boolean
+_panelIsOpen :: Lens' State Boolean
 _panelIsOpen = prop (SProxy :: _ "panelIsOpen")
 
-_currentTab :: forall a s m. Lens' (State a s m) Tab
+_currentTab :: Lens' State Tab
 _currentTab = prop (SProxy :: _ "currentTab")
 
-_currentNodeGroup :: forall a s m. Lens' (State a s m) (Maybe NodeGroup)
+_currentNodeGroup :: Lens' State (Maybe NodeGroup)
 _currentNodeGroup =
   ( lens
       ( \state ->
@@ -682,7 +678,7 @@ _currentNodeGroup =
       )
   )
 
-_currentGeometryCache :: forall a s m. Lens' (State a s m) (Maybe GeometryCache)
+_currentGeometryCache :: Lens' State (Maybe GeometryCache)
 _currentGeometryCache =
   ( lens
       ( \state ->
@@ -699,29 +695,23 @@ _currentGeometryCache =
       )
   )
 
-_currentNodes :: forall a s m. Traversal' (State a s m) (Map NodeId Node)
+_currentNodes :: Traversal' State (Map NodeId Node)
 _currentNodes = _currentNodeGroup <<< _Just <<< _NodeGroupNodes
 
-_atCurrentNode :: forall a s m. NodeId -> Traversal' (State a s m) Node
+_atCurrentNode :: NodeId -> Traversal' State Node
 _atCurrentNode id = _currentNodes <<< ix id
 
-_functionUis :: forall a s m. Lens' (State a s m) (Map FunctionName (FunctionUi a s m))
-_functionUis = prop (SProxy :: _ "functionUis")
-
-_ui :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe (FunctionUi a s m))
-_ui functionName = _functionUis <<< at functionName
-
-_name :: forall a s m. Lens' (State a s m) String
+_name :: Lens' State String
 _name = prop (SProxy :: _ "name")
 
-_isExample :: forall a s m. Lens' (State a s m) Boolean
+_isExample :: Lens' State Boolean
 _isExample = prop (SProxy :: _ "isExample")
 
-_isAdmin :: forall a s m. Lens' (State a s m) Boolean
+_isAdmin :: Lens' State Boolean
 _isAdmin = prop (SProxy :: _ "isAdmin")
 
-_isVisible :: forall a s m. Lens' (State a s m) Boolean
+_isVisible :: Lens' State Boolean
 _isVisible = prop (SProxy :: _ "isVisible")
 
-_nodeSearchTerm :: forall a s m. Lens' (State a s m) String
+_nodeSearchTerm :: Lens' State String
 _nodeSearchTerm = prop (SProxy :: _ "nodeSearchTerm")

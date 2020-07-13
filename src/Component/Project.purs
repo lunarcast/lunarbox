@@ -19,6 +19,7 @@ import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
+import Lunarbox.Data.Editor.State (State) as EditorState
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Error (error)
 import Lunarbox.Component.HOC.Connect as Connect
@@ -32,16 +33,16 @@ import Record as Record
 type Input r
   = ( id :: ProjectId | r )
 
-type State m
+type State
   = { 
     | Input
-      ( projectData :: RemoteData String (Editor.EditorState m)
+      ( projectData :: RemoteData String EditorState.State
       , currentUser :: Maybe Profile
       )
     }
 
 -- Lenses
-_projectData :: forall m. Lens' (State m) (RemoteData String (Editor.EditorState m))
+_projectData :: Lens' State (RemoteData String EditorState.State)
 _projectData = prop (SProxy :: _ "projectData")
 
 _id :: forall r. Lens' { | Input r } ProjectId
@@ -78,7 +79,7 @@ component =
                 }
         }
   where
-  handleAction :: Action -> HalogenM (State m) Action ChildSlots o m Unit
+  handleAction :: Action -> HalogenM State Action ChildSlots o m Unit
   handleAction = case _ of
     Init -> do
       id <- gets $ view _id

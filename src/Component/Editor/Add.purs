@@ -56,7 +56,6 @@ resolvePin (InputPin index) type' = inputs type' !! index
 
 resolvePin OutputPin type' = Just $ output type'
 
--- The little icon buttons next to each node
 nodeButton :: forall a s m. Boolean -> Maybe a -> String -> HH.ComponentHTML a s m
 nodeButton active handleClick iconName =
   whenElem active \_ ->

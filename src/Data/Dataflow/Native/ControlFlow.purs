@@ -2,7 +2,6 @@ module Lunarbox.Data.Dataflow.Native.ControlFlow
   ( controlFlowNodes
   ) where
 
-import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
@@ -13,7 +12,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (const, flip, ($))
 
 -- All the native control flow nodes
-controlFlowNodes :: forall a s m. Array (NativeConfig a s m)
+controlFlowNodes :: Array (NativeConfig)
 controlFlowNodes = [ if' ]
 
 typeIf :: Scheme
@@ -30,7 +29,7 @@ evalIf (Bool false) = binaryFunction $ flip const
 
 evalIf _ = Null
 
-if' :: forall a s m. NativeConfig a s m
+if' :: NativeConfig
 if' =
   NativeConfig
     { name: FunctionName "if"
@@ -48,5 +47,4 @@ if' =
         { name: "result"
         , description: "Evaluates to the 'then' argument if the condition is true, else this evaludates to the 'else' argument"
         }
-    , component: Nothing
     }

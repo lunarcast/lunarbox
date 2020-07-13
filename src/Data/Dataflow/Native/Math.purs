@@ -3,7 +3,6 @@ module Lunarbox.Data.Dataflow.Native.Math
   ) where
 
 import Prelude
-import Data.Maybe (Maybe(..))
 import Data.Number (isNaN)
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
@@ -15,7 +14,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Math (pow, sqrt, (%))
 
 -- ALl the math native nodes
-mathNodes :: forall a s m. Array (NativeConfig a s m)
+mathNodes :: Array (NativeConfig)
 mathNodes = [ add, subtract, multiply, divide, raiseToPower, modulus, squareRoot, pred, succ ]
 
 -- Type for functions of type Number -> Number -> Number
@@ -57,16 +56,15 @@ unaryMathFunction :: (Number -> Number) -> RuntimeValue
 unaryMathFunction = Function <<< unaryMathFunction'
 
 -- The actual math functions
-add :: forall a s m. NativeConfig a s m
+add :: NativeConfig
 add =
   NativeConfig
     { name: FunctionName "add"
     , expression: (NativeExpression binaryNumberType $ binaryMathFunction (+))
     , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments" }
-    , component: Nothing
     }
 
-subtract :: forall a s m. NativeConfig a s m
+subtract :: NativeConfig
 subtract =
   NativeConfig
     { name: FunctionName "subtract"
@@ -74,10 +72,9 @@ subtract =
     , functionData:
       internal [ numberDoc "first number", numberDoc "second number" ]
         { name: "difference", description: "The result of subtracting the second argument from the first" }
-    , component: Nothing
     }
 
-multiply :: forall a s m. NativeConfig a s m
+multiply :: NativeConfig
 multiply =
   NativeConfig
     { name: FunctionName "multiply"
@@ -85,10 +82,9 @@ multiply =
     , functionData:
       internal [ numberDoc "first number", numberDoc "second number" ]
         { name: "product", description: "The result of multiplying the first number by the second" }
-    , component: Nothing
     }
 
-divide :: forall a s m. NativeConfig a s m
+divide :: NativeConfig
 divide =
   NativeConfig
     { name: FunctionName "divide"
@@ -101,10 +97,9 @@ divide =
         { name: "quotient"
         , description: "The result of dividng the first argument by the second"
         }
-    , component: Nothing
     }
 
-raiseToPower :: forall a s m. NativeConfig a s m
+raiseToPower :: NativeConfig
 raiseToPower =
   NativeConfig
     { name: FunctionName "raise to power"
@@ -112,10 +107,9 @@ raiseToPower =
     , functionData:
       internal [ numberDoc "base", numberDoc "exponend" ]
         { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
-    , component: Nothing
     }
 
-modulus :: forall a s m. NativeConfig a s m
+modulus :: NativeConfig
 modulus =
   NativeConfig
     { name: FunctionName "modulus"
@@ -126,7 +120,6 @@ modulus =
         , { name: "right side", description: "The number to divide the first input by and find the remainder" }
         ]
         { name: "a % b", description: "The remainder of dividing the first number to the second" }
-    , component: Nothing
     }
 
 evalSqrt :: RuntimeValue -> RuntimeValue
@@ -134,7 +127,7 @@ evalSqrt (Number num) = if num >= 0.0 then Number $ sqrt num else Null
 
 evalSqrt _ = Null
 
-squareRoot :: forall a s m. NativeConfig a s m
+squareRoot :: NativeConfig
 squareRoot =
   NativeConfig
     { name: FunctionName "square root"
@@ -143,10 +136,9 @@ squareRoot =
       internal
         [ { name: "radicand", description: "The number to take the square root from" } ]
         { name: "sqrt a", description: "The result of taking the square root of the number" }
-    , component: Nothing
     }
 
-pred :: forall a s m. NativeConfig a s m
+pred :: NativeConfig
 pred =
   NativeConfig
     { name: FunctionName "predecessor"
@@ -155,10 +147,9 @@ pred =
       internal [ { name: "number", description: "A number to get the predecessor of" } ]
         { name: "a - 1", description: "The predecessor of the input"
         }
-    , component: Nothing
     }
 
-succ :: forall a s m. NativeConfig a s m
+succ :: NativeConfig
 succ =
   NativeConfig
     { name: FunctionName "successor"
@@ -167,5 +158,4 @@ succ =
       internal [ { name: "number", description: "A number to get the successor  of" } ]
         { name: "a + 1", description: "The successor of the input"
         }
-    , component: Nothing
     }

@@ -16,7 +16,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Math as Number
 
 -- List will all the native array nodes
-arrayNodes :: forall a s m. Array (NativeConfig a s m)
+arrayNodes :: Array (NativeConfig)
 arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat, match, concatArrays, lookup ]
 
 -- A constant equal to an array with 0 elements
@@ -25,13 +25,12 @@ typeEmptyArray = Forall [ a ] $ typeArray typeA
   where
   Tuple a typeA = createTypeVariable "t0"
 
-emptyArray :: forall a s m. NativeConfig a s m
+emptyArray :: NativeConfig
 emptyArray =
   NativeConfig
     { name: FunctionName "empty array"
     , expression: (NativeExpression typeEmptyArray $ NArray [])
     , functionData: internal [] { name: "array", description: "An array containing no elements" }
-    , component: Nothing
     }
 
 -- Given a and [a] returns an array having a as the first element and everything else afte that
@@ -45,7 +44,7 @@ evalCons element (NArray array) = NArray $ pure element <> array
 
 evalCons _ _ = Null
 
-cons :: forall a s m. NativeConfig a s m
+cons :: NativeConfig
 cons =
   NativeConfig
     { name: FunctionName "cons"
@@ -56,7 +55,6 @@ cons =
         , { name: "array", description: "An array to add the given element at the start of" }
         ]
         { name: "array", description: "The resulting array which has the first argument as the first element and everything else after that" }
-    , component: Nothing
     }
 
 -- Mapping over arrays
@@ -72,7 +70,7 @@ evalMap (Function mapper) (NArray array) = NArray $ mapper <$> array
 
 evalMap _ _ = Null
 
-map' :: forall a s m. NativeConfig a s m
+map' :: NativeConfig
 map' =
   NativeConfig
     { name: FunctionName "map array"
@@ -84,7 +82,6 @@ map' =
           }
         ]
         { name: "array", description: "The result of running the given function on each element of the given array" }
-    , component: Nothing
     }
 
 -- Filtering arrays
@@ -98,7 +95,7 @@ evalFilter (Function function) (NArray array) = NArray $ filter (toBoolean <<< f
 
 evalFilter _ _ = Null
 
-filter' :: forall a s m. NativeConfig a s m
+filter' :: NativeConfig
 filter' =
   NativeConfig
     { name: FunctionName "filter array"
@@ -110,7 +107,6 @@ filter' =
           }
         ]
         { name: "filtered array", description: "An array which only contains the items the given function returned true for" }
-    , component: Nothing
     }
 
 -- Binding arrays basically
@@ -126,7 +122,7 @@ evalFlatMap (Function function) (NArray array) = NArray $ array >>= (toArray <<<
 
 evalFlatMap _ _ = Null
 
-flatMap :: forall a s m. NativeConfig a s m
+flatMap :: NativeConfig
 flatMap =
   NativeConfig
     { name: FunctionName "flatMap"
@@ -138,7 +134,6 @@ flatMap =
           }
         ]
         { name: "resulting array", description: "An array which contains the concatenated results of passing every element of the original array to the given function" }
-    , component: Nothing
     }
 
 -- Wrap an value in an array with one element
@@ -147,7 +142,7 @@ typeWrap = Forall [ a ] $ typeFunction typeA $ typeArray typeA
   where
   Tuple a typeA = createTypeVariable "t0"
 
-wrap' :: forall a s m. NativeConfig a s m
+wrap' :: NativeConfig
 wrap' =
   NativeConfig
     { name: FunctionName "wrap in array"
@@ -158,7 +153,6 @@ wrap' =
           }
         ]
         { name: "array", description: "An array containing the input" }
-    , component: Nothing
     }
 
 -- Flatten a nested array
@@ -170,7 +164,7 @@ typeFlat = Forall [ a ] $ typeFunction (typeArray $ typeArray typeA) $ typeArray
 evalFlat :: RuntimeValue -> RuntimeValue
 evalFlat = evalFlatMap $ Function identity
 
-flat :: forall a s m. NativeConfig a s m
+flat :: NativeConfig
 flat =
   NativeConfig
     { name: FunctionName "flatten array"
@@ -181,7 +175,6 @@ flat =
           }
         ]
         { name: "array", description: "An array containing all the elements of the nested arrays of the input." }
-    , component: Nothing
     }
 
 -- Basically used to pattern match an array
@@ -212,7 +205,7 @@ evalMatch default (Function function) (NArray array) = case Array.uncons array o
 
 evalMatch _ _ _ = Null
 
-match :: forall a s m. NativeConfig a s m
+match :: NativeConfig
 match =
   NativeConfig
     { name: FunctionName "pattern match array"
@@ -232,7 +225,6 @@ match =
         { name: "array"
         , description: "If the given array was empty this will equal the default value, else this will be the result of passing the head and the tail of the given array to the given function"
         }
-    , component: Nothing
     }
 
 -- Concat 2 arrays into 1
@@ -252,7 +244,7 @@ typeConcat =
   where
   Tuple a typeA = createTypeVariable "t0"
 
-concatArrays :: forall a s m. NativeConfig a s m
+concatArrays :: NativeConfig
 concatArrays =
   NativeConfig
     { name: FunctionName "concat arrays"
@@ -263,7 +255,6 @@ concatArrays =
         , { name: "second array", description: "Any array" }
         ]
         { name: "a ++ b", description: "An arrray containing the elements of both inputs" }
-    , component: Nothing
     }
 
 -- Lookup an index of an array with e falback value
@@ -288,7 +279,7 @@ typeLookup =
   where
   Tuple a typeA = createTypeVariable "t0"
 
-lookup :: forall a s m. NativeConfig a s m
+lookup :: NativeConfig
 lookup =
   NativeConfig
     { name: FunctionName "array lookup"
@@ -301,5 +292,4 @@ lookup =
         , { name: "default value", description: "A value to return in case the index isn't an integer or the index is out of bounds." }
         ]
         { name: "value at index", description: "The value at the fiven index in the array or the default value if the index is not an int or is out of bounds." }
-    , component: Nothing
     }

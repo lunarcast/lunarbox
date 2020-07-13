@@ -1,6 +1,5 @@
 module Lunarbox.Data.Dataflow.Native.Function (functionNodes) where
 
-import Data.Maybe (Maybe(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
@@ -11,7 +10,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Prelude (const, identity, ($), (>>>))
 
 -- All the function related nodes from Prelude
-functionNodes :: forall a s m. Array (NativeConfig a s m)
+functionNodes :: Array (NativeConfig)
 functionNodes = [ pipe, const', identity', compose, flip' ]
 
 typePipe :: Scheme
@@ -30,7 +29,7 @@ evalPipe input (Function function) = function input
 
 evalPipe _ _ = Null
 
-pipe :: forall a s m. NativeConfig a s m
+pipe :: NativeConfig
 pipe =
   NativeConfig
     { name: FunctionName "pipe"
@@ -45,7 +44,6 @@ pipe =
           }
         ]
         { name: "output", description: "Calls the given function with the given argument" }
-    , component: Nothing
     }
 
 typeIdentity :: Scheme
@@ -53,7 +51,7 @@ typeIdentity = Forall [ input ] $ typeFunction (TVariable true input) (TVariable
   where
   input = TVarName "i"
 
-identity' :: forall a s m. NativeConfig a s m
+identity' :: NativeConfig
 identity' =
   NativeConfig
     { name: FunctionName "identity"
@@ -65,7 +63,6 @@ identity' =
           }
         ]
         { name: "x", description: "The given value" }
-    , component: Nothing
     }
 
 typeConst :: Scheme
@@ -75,7 +72,7 @@ typeConst = Forall [ input, ignore ] $ typeFunction (TVariable true input) $ typ
 
   ignore = TVarName "ignore"
 
-const' :: forall a s m. NativeConfig a s m
+const' :: NativeConfig
 const' =
   NativeConfig
     { name: FunctionName "const"
@@ -90,7 +87,6 @@ const' =
           }
         ]
         { name: "constant value", description: "The constant value passed to this function" }
-    , component: Nothing
     }
 
 typeCompose :: Scheme
@@ -113,7 +109,7 @@ evalCompose (Function first) (Function second) = Function $ first >>> second
 
 evalCompose _ _ = Null
 
-compose :: forall a s m. NativeConfig a s m
+compose :: NativeConfig
 compose =
   NativeConfig
     { name: FunctionName "compose"
@@ -126,7 +122,6 @@ compose =
         , { name: "second function", description: "A function from type B and type C" }
         ]
         { name: "second . first", description: "A function which first applies the A -> B transformation and then passes the return of that to the B -> C transformation returning a value of type C" }
-    , component: Nothing
     }
 
 typeFlip :: Scheme
@@ -152,7 +147,7 @@ evalFlip (Function function) =
 
 evalFlip _ = Null
 
-flip' :: forall a s m. NativeConfig a s m
+flip' :: NativeConfig
 flip' =
   NativeConfig
     { name: FunctionName "flip"
@@ -166,5 +161,4 @@ flip' =
         { name: "flipped function"
         , description: "A function which does the same things as the input function but with the arguments flipped around"
         }
-    , component: Nothing
     }

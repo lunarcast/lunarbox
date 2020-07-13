@@ -22,7 +22,7 @@ type Save
     }
 
 -- Encoding and decoding
-stateToJson :: forall a s m. State a s m -> Json
+stateToJson :: State -> Json
 stateToJson state@{ project
 , nextId
 , geometries
@@ -51,7 +51,7 @@ stateToJson state@{ project
       }
     }
 
-jsonToState :: forall a s m. Json -> Either String (State a s m)
+jsonToState :: Json -> Either String State
 jsonToState json = do
   obj <- decodeJson json
   name :: String <- obj .: "name"
@@ -63,6 +63,6 @@ jsonToState json = do
 
     -- TODO: this is pretty low priority but maybe I could get rid of the call to
     -- unsafePerformEffect by making the whole function return an effect
-    baseState :: State a s m
+    baseState :: State
     baseState = Record.merge recivedData $ unsafePerformEffect emptyState
   pure $ compile $ loadPrelude baseState
