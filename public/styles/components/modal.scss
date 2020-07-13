@@ -39,10 +39,14 @@
   margin-right: 1rem;
   margin-top: 0;
   margin-bottom: 0;
+
   font-weight: 600;
   font-size: 1.25rem;
+
   line-height: 1.25;
   color: theme.$on-primary;
+
+  text-transform: capitalize;
 }
 
 .modal__content {

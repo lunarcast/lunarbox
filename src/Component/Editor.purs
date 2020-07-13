@@ -16,7 +16,7 @@ import Data.Argonaut (Json)
 import Data.Array ((!!))
 import Data.Array as Array
 import Data.Foldable (for_, traverse_)
-import Data.Lens (is, over, preview, set, view)
+import Data.Lens (_Just, is, over, preview, set, view)
 import Data.List ((:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe)
@@ -51,6 +51,8 @@ import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Editor.DataflowFunction (_NativeFunction)
+import Lunarbox.Data.Editor.EditNode as EditNode
+import Lunarbox.Data.Editor.FunctionData (_FunctionDataOutput)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -58,7 +60,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atInputCount, _atNode, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -418,12 +420,32 @@ component =
       -- TODO: don't do this when we didn't move the camera
       unless (Array.null steps) $ handleAction Rerender
     StartNodeEditing id ->
-      withCurrentFunction_ \currentFunction ->
+      withCurrentFunction_ \currentFunction -> do
+        state <- get
         gets (preview (_atNode currentFunction id))
           >>= traverse_ case _ of
-              ComplexNode _ -> do
+              ComplexNode { function } -> do
                 modify_ _ { currentlyEditedNode = Just id }
-                void $ query (SProxy :: SProxy "editNode") unit $ tell Modal.Open
+                mkQuery $ tell $ Modal.UpdateInput modal
+                mkQuery $ tell Modal.Open
+                where
+                mkQuery = void <<< query (SProxy :: SProxy "editNode") unit
+
+                -- | TODO: have the function data provide an actual description of the entire node.
+                description =
+                  _.description
+                    <$> preview
+                        ( _atFunctionData function
+                            <<< _Just
+                            <<< _FunctionDataOutput
+                        )
+                        state
+
+                modal =
+                  nodeEditingModal
+                    { title = show function
+                    , content = \_ -> EditNode.component { description }
+                    }
               _ -> pure unit
     HandleNodeEdits action -> case action of
       NEDeleteNode -> withCurrentNode_ (handleAction <<< DeleteNode)

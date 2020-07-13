@@ -616,7 +616,7 @@ _atGeometry name = _geometries <<< at name
 _functionData :: forall a s m. Lens' (State a s m) (Map FunctionName FunctionData)
 _functionData = prop (SProxy :: _ "functionData")
 
-_atFunctionData :: forall a s m. FunctionName -> Lens' (State a s m) (Maybe FunctionData)
+_atFunctionData :: forall a s m. FunctionName -> Traversal' (State a s m) (Maybe FunctionData)
 _atFunctionData name = _functionData <<< at name
 
 _project :: forall a s m. Lens' (State a s m) Project

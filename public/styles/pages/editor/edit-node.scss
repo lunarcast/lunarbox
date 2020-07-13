@@ -1,0 +1,12 @@
+@import "../../theme.scss";
+
+.edit-node {
+}
+
+.edit-node__description {
+  border-left: 2px solid $secondary;
+  width: 100%;
+  padding: 1em;
+
+  background: $primary-dark;
+}

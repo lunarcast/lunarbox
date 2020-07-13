@@ -3,12 +3,14 @@
 
 @import "../theme.scss";
 
+// Sub components and stuff
 @import "./editor/scene.scss";
 @import "./editor/panel.scss";
 @import "./editor/settings.scss";
 @import "./editor/tree.scss";
 @import "./editor/add.scss";
 @import "./editor/problems.scss";
+@import "./editor/edit-node.scss";
 
 $icon-font-size: 2rem;
 
