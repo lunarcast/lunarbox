@@ -193,11 +193,6 @@ updateNode id =
                         ty <- Map.lookup (AtFunction currentFunction) typeMap
                         pure $ typeToColor <$> inputNodeType group id ty
                     _ -> generateColorMap (\pin -> flip Map.lookup typeMap $ InsideFunction currentFunction $ PinLocation id pin) node
-                -- let
-                -- (ValueMap v) = valueMap
-                -- 
-                -- (m :: Array _) = Map.toUnfoldable v
-                -- trace m \_ -> pure unit
                 liftEffect
                   $ Native.refreshInputArcs cache id
                       { inputs: Nullable.toNullable <$> inputs

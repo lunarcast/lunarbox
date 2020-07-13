@@ -47,7 +47,7 @@ import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
-import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Control.Monad.Effect (print, printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -65,6 +65,7 @@ import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
 import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph (wouldCreateCycle)
+import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
 import Lunarbox.Foreign.Render (centerNode, centerOutput, setUnconnectableInputs, setUnconnectableOutputs)
@@ -252,11 +253,18 @@ component =
         functionGraph <- gets $ toGraph <<< _.project
         let
           bestMatch = sortedFunctions !! 0
-        when
-          ( maybe false not $ wouldCreateCycle <$> bestMatch <*> Just currentFunction
+
+          -- We take an argument because we don't need to compute this
+          -- if the first condition is true
+          wouldCycle _ =
+            maybe false not $ G.wouldCreateLongCycle <$> bestMatch <*> Just currentFunction
               <*> Just functionGraph
-          )
-          $ for_ bestMatch (handleAction <<< CreateNode)
+        print sortedFunctions
+        when
+          (Just currentFunction == bestMatch || wouldCycle unit)
+          $ for_ bestMatch \a -> do
+              print a
+              handleAction $ CreateNode a
       | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
         inputElement <- getHTMLElementRef searchNodeInputRef
         for_ (inputElement >>= HTMLInputElement.fromHTMLElement) \elem -> do
