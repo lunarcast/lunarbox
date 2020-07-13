@@ -39,7 +39,7 @@ import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Editor.Add as Add
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.NodePreview as NodePreview
-import Lunarbox.Component.Editor.Problems (problems)
+import Lunarbox.Component.Editor.Problems (problems, shouldRender)
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
@@ -49,9 +49,11 @@ import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
+import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type as Type
+import Lunarbox.Data.Dataflow.TypeError as TypeError
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _NativeFunction)
 import Lunarbox.Data.Editor.EditNode as EditNode
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -137,6 +139,12 @@ searchNodeInputRef = RefLabel "search node"
 -- We need this to only trigger events when in focus
 searchNodeClassName :: String
 searchNodeClassName = "node-search__input"
+
+-- | Describes how we should color the problems icon tab
+data ProblemsIconVariant
+  = NoProblems
+  | Warnings
+  | Errors
 
 -- | Actions which can be triggered from the connection confirmation modal.
 data PendingConnectionAction
@@ -507,17 +515,17 @@ component =
     where
     isActive = current == activeTab
 
-  tabs { typeErrors, lintingErrors } currentTab =
+  tabs variant currentTab =
     [ icon Settings
     , icon Add
     , icon Tree
     , icon Problems
     ]
     where
-    problemClasses
-      | not $ Array.null typeErrors = [ "editor__activity--error" ]
-      | not $ Array.null lintingErrors = [ "editor__activity--warning" ]
-      | otherwise = []
+    problemClasses = case variant of
+      Errors -> [ "editor__activity--error" ]
+      Warnings -> [ "editor__activity--warning" ]
+      NoProblems -> []
 
     classes Problems = problemClasses
 
@@ -544,6 +552,8 @@ component =
         content
     , maybeElement footer \inner -> HH.footer [ className "panel__footer" ] [ inner ]
     ]
+
+  isInternal functions functionName = maybe true (is _NativeFunction) $ Map.lookup functionName functions
 
   panel :: State Action (ChildSlots m) m -> Array (HH.ComponentHTML Action (ChildSlots m) m)
   panel { currentTab
@@ -663,12 +673,10 @@ component =
               { typeErrors
               , lintingErrors
               , navigateTo: MoveTo
-              , isInternal
+              , isInternal: isInternal functions
               }
           ]
         }
-      where
-      isInternal functionName = maybe true (is _NativeFunction) $ Map.lookup functionName functions
 
   scene :: HH.ComponentHTML Action (ChildSlots m) m
   scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit handleSceneOutput
@@ -682,10 +690,15 @@ component =
       ]
 
   render :: State Action (ChildSlots m) m -> HH.ComponentHTML Action (ChildSlots m) m
-  render state@{ currentTab, panelIsOpen, typeErrors, lintingErrors } =
+  render state@{ currentTab
+  , panelIsOpen
+  , typeErrors
+  , lintingErrors
+  , project: Project.Project ({ functions })
+  } =
     HH.div [ className "editor" ]
       [ HH.div [ className "editor__activity-bar" ]
-          $ tabs { typeErrors, lintingErrors } currentTab
+          $ tabs problemsIconVariant currentTab
           <> pure logoElement
       , HH.div
           [ classes $ ClassName
@@ -705,6 +718,13 @@ component =
           handleNodeSave
       ]
     where
+    shouldRender' = shouldRender (isInternal functions)
+
+    problemsIconVariant
+      | Array.any (shouldRender' <<< TypeError.getLocation) typeErrors = Errors
+      | Array.any (shouldRender' <<< LintError.getLocation) lintingErrors = Warnings
+      | otherwise = NoProblems
+
     handleConnectionConfirmation = case _ of
       Modal.ClosedWith value -> Just $ HandleConnectionConfirmation value
       Modal.BubbledAction action -> Just action

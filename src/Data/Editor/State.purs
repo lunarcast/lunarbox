@@ -248,7 +248,7 @@ createNode name = do
               , function: name
               }
       withCurrentFunction_ \currentFunction -> do
-        modify_ $ set (_atNode currentFunction id) node
+        modify_ $ over (_nodes currentFunction) $ Map.insert id node
         when isInput do
           modify_
             $ over (_atFunctionData currentFunction <<< _Just <<< _FunctionDataInputs)

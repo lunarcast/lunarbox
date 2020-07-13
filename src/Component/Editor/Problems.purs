@@ -52,7 +52,7 @@ problems { typeErrors, lintingErrors, navigateTo, isInternal } =
   lintingErrorHtml = makeLintingErrorHtml <$> lintingErrors
 
   makeLintingErrorHtml error =
-    whenElem shouldRender \_ ->
+    whenElem (shouldRender isInternal location) \_ ->
       mkProblem
         { level: Warning
         , message: LintError.printError (locationLEF location) error
@@ -61,12 +61,14 @@ problems { typeErrors, lintingErrors, navigateTo, isInternal } =
     where
     location = LintError.getLocation error
 
-    shouldRender = case location of
-      UnknownLocation -> false
-      (AtFunction name) -> not $ isInternal name
-      (InsideFunction name _) -> not $ isInternal name
-      (AtFunctionDeclaration name) -> not $ isInternal name
-      (FixpointOperator name) -> not $ isInternal name
+-- | Check if a problem should be displayed
+shouldRender :: (FunctionName -> Boolean) -> Location -> Boolean
+shouldRender isInternal = case _ of
+  UnknownLocation -> false
+  (AtFunction name) -> not $ isInternal name
+  (InsideFunction name _) -> not $ isInternal name
+  (AtFunctionDeclaration name) -> not $ isInternal name
+  (FixpointOperator name) -> not $ isInternal name
 
 -- | Data about how to color a problem
 data ProblemLevel
@@ -141,7 +143,7 @@ locationLEF (InsideFunction _ deep) = deepLocationLEF deep
       { nth = Just index
       }
 
-  deepLocationLEF (FunctionUsage name) =
+  deepLocationLEF (FunctionUsage _ name) =
     { nth: Nothing
     , who: "A " <> show name <> " node"
     , namedWho: \n -> "Node " <> n <> " using function " <> show name
