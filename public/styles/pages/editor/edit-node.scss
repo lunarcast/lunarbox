@@ -3,10 +3,21 @@
 .edit-node {
 }
 
+.edit-node__type {
+  margin: 1rem;
+  margin-left: 0;
+  padding: 0.3rem;
+
+  font-size: 1.2rem;
+  background: $primary-dark;
+}
+
 .edit-node__description {
-  border-left: 2px solid $secondary;
   width: 100%;
   padding: 1em;
 
   background: $primary-dark;
+  color: $on-primary;
+
+  border-left: 2px solid $secondary;
 }

@@ -594,6 +594,16 @@ moveTo (InsideFunction name deep) = [ MoveToFunction name ] <> go deep
 
   go _ = []
 
+-- | Get the type to be displayed for a particular complex node
+getNodeType :: forall a s m. NodeId -> FunctionName -> State a s m -> Maybe Type
+getNodeType id function { currentFunction, typeMap } =
+  Map.lookup
+    ( InsideFunction currentFunction
+        ( FunctionUsage id function
+        )
+    )
+    typeMap
+
 -- Lenses
 _inputCountMap :: forall a s m. Lens' (State a s m) (Map FunctionName Int)
 _inputCountMap = prop (SProxy :: _ "inputCountMap")

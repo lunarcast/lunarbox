@@ -43,7 +43,7 @@ data ScopedLocation
   | NodeDefinition NodeId
   | FunctionDeclaration
   | PinLocation NodeId Pin
-  | FunctionUsage FunctionName
+  | FunctionUsage NodeId FunctionName
   | AtApplication NodeId Int
   | InsideNative
   | PlaceholderPosition
@@ -66,11 +66,11 @@ instance showScopedLocation :: Show ScopedLocation where
   show FunctionDeclaration = "at the declaration of a function"
   show (AtApplication id index) = "at the " <> showIndex index <> " input of node " <> show id
   show (NodeDefinition id) = "at definition of node " <> show id
-  show (FunctionUsage name) = "at function reference " <> show name
+  show (FunctionUsage id name) = "at function reference " <> show name <> " in node " <> show name
   show (NodeLocation id) = "at node " <> show id
   show (UnexistingNode id) = "at node " <> show id <> " which doesn't exist"
   show (PinLocation id OutputPin) = "at the output of node " <> show id
-  show (PinLocation id (InputPin index)) = "at the " <> showIndex index <> "input of node " <> show id
+  show (PinLocation id (InputPin index)) = "at the " <> showIndex index <> " input of node " <> show id
 
 -- This is an internal function used to both mark a node and one of it's pins
 mark :: Pin -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation

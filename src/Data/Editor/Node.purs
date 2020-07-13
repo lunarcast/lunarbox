@@ -131,7 +131,7 @@ compileNode nodes id child =
       where
       name = VarName $ show id
 
-      calee = Variable (FunctionUsage function) $ VarName $ show function
+      calee = Variable (FunctionUsage id function) $ VarName $ show function
 
       arguments =
         mapWithIndex
