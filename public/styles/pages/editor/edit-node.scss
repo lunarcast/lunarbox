@@ -12,8 +12,7 @@
   background: $primary-dark;
 }
 
-.edit-node__description,
-.edit-node__input-description {
+.edit-node__description {
   width: 100%;
   padding: 1em;
 
@@ -30,14 +29,19 @@
   background: $primary-dark;
   color: $on-primary;
 
-  border-right: 2px solid $secondary;
+  border-left: 2px solid $secondary;
 }
 
-.edit-node__inputs-header,
-.edit-node__inputs-list {
+.edit-node__inputs-header {
   margin: 0;
 }
 
-.edit-node__inputs-list {
-  list-style: disc;
+.edit-node__input-name {
+  outline: none;
+  cursor: pointer;
+}
+
+.edit-node__input-description {
+  margin-left: 1rem;
+  color: darken($color: $on-primary, $amount: 20);
 }

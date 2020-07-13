@@ -38,15 +38,16 @@ component { description, type', inputs } =
         (not (Array.null inputs)) \_ ->
         HH.section [ className "edit-node__inputs" ]
           [ HH.h3 [ className "edit-node__inputs-header" ] [ HH.text "Inputs:" ]
-          , HH.ul [ className "edit-node__inputs-list" ]
+          , HH.div [ className "edit-node__inputs-list" ]
               $ mkInput
               <$> inputs
           ]
     ]
   where
   mkInput input =
-    HH.li [ className "edit-node__input" ]
-      [ HH.div [ className "edit-node__input-name" ]
+    HH.details [ className "edit-node__input" ]
+      [ HH.summary [ className "edit-node__input-name" ]
           [ HH.text input.name, HH.text " :: ", highlightTypeToHTML input.type'
           ]
+      , HH.div [ className "edit-node__input-description" ] [ HH.text input.description ]
       ]
