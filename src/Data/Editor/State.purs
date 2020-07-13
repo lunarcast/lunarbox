@@ -43,7 +43,7 @@ import Lunarbox.Data.Dataflow.Expression.Optimize (dce, inline)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..))
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
-import Lunarbox.Data.Dataflow.Type (Type(..), inputs)
+import Lunarbox.Data.Dataflow.Type (Type(..), inputs, multiArgumentFuncion, typeBool)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction)
 import Lunarbox.Data.Editor.FunctionData (FunctionData(..), _FunctionDataInputs, internal)
@@ -596,6 +596,10 @@ moveTo (InsideFunction name deep) = [ MoveToFunction name ] <> go deep
 
 -- | Get the type to be displayed for a particular complex node
 getNodeType :: forall a s m. NodeId -> FunctionName -> State a s m -> Maybe Type
+getNodeType id (FunctionName "if") { currentFunction, typeMap } = do
+  output <- Map.lookup (InsideFunction currentFunction (NodeLocation id)) typeMap
+  pure $ multiArgumentFuncion [ typeBool, output, output ] output
+
 getNodeType id function { currentFunction, typeMap } =
   Map.lookup
     ( InsideFunction currentFunction
