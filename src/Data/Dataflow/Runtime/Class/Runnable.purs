@@ -3,6 +3,7 @@ module Lunarbox.Data.Dataflow.Runtime.Class.Runnable where
 import Prelude
 import Data.Int (fromNumber, toNumber)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Number (isNaN)
 import Data.Traversable (traverse)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 
@@ -20,7 +21,9 @@ instance coRunnableInt :: Corunnable Int where
   fromRuntime _ = Nothing
 
 instance runnableNumber :: Runnable Number where
-  toRuntime = Number
+  toRuntime a
+    | isNaN a = Null
+    | otherwise = Number a
 
 instance corunnableNumber :: Corunnable Number where
   fromRuntime (Number inner) = Just inner
