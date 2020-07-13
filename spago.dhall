@@ -28,6 +28,7 @@
   , "numbers"
   , "ordered-collections"
   , "profunctor-lenses"
+  , "proxy"
   , "psci-support"
   , "random"
   , "record"
