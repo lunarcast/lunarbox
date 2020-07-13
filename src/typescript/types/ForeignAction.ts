@@ -9,6 +9,7 @@ export interface ForeignActionConfig {
   selectInput: Fn2<NodeId, number, ForeignAction>
   selectOutput: Fn<NodeId, ForeignAction>
   deleteConnection: Fn2<NodeId, number, ForeignAction>
+  goto: Fn<NodeId, ForeignAction>
   editNode: Fn<NodeId, ForeignAction>
   nothing: ForeignAction
 }

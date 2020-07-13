@@ -616,6 +616,10 @@ export const onMouseDown = (
   const pressed = isPressed(event.buttons)
 
   if (target._type === MouseTargetKind.Node) {
+    if (pressed(MouseButtons.LeftButton) && event.ctrlKey) {
+      return config.goto(target.id)
+    }
+
     if (pressed(MouseButtons.RightButton)) {
       return config.editNode(target.id)
     }

@@ -52,7 +52,7 @@ import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Type as Type
-import Lunarbox.Data.Editor.DataflowFunction (_NativeFunction)
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _NativeFunction)
 import Lunarbox.Data.Editor.EditNode as EditNode
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
@@ -61,7 +61,7 @@ import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph (wouldCreateCycle)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -110,6 +110,7 @@ data Action
   | SelectInput NodeId Int
   | SelectOutput NodeId
   | HandleConnectionConfirmation PendingConnectionAction
+  | GotoId NodeId
   | StartNodeEditing NodeId
   -- This handles actions triggerd by the node editing modal
   | HandleNodeEdits NodeEditingAction
@@ -288,9 +289,13 @@ component =
       handleAction LoadScene
     SelectFunction name ->
       withCurrentFunction_ \currentFunction ->
-        unless (name == currentFunction) do
-          modify_ $ setCurrentFunction name
-          handleAction LoadScene
+        gets (join <<< preview (_function name))
+          >>= traverse_ case _ of
+              VisualFunction _ ->
+                unless (name == currentFunction) do
+                  modify_ $ setCurrentFunction name
+                  handleAction LoadScene
+              _ -> pure unit
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
     RemoveConnection id index -> do
@@ -471,6 +476,12 @@ component =
     HandleNodeEdits action -> case action of
       NEDeleteNode -> withCurrentNode_ (handleAction <<< DeleteNode)
       NECloseModal -> pure unit
+    GotoId id ->
+      withCurrentFunction_ \currentFunction ->
+        gets (preview (_atNode currentFunction id))
+          >>= traverse_ case _ of
+              ComplexNode { function } -> handleAction (SelectFunction function)
+              _ -> pure unit
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
@@ -484,6 +495,7 @@ component =
     Native.SelectInput id index -> Just $ SelectInput id index
     Native.DeleteConnection id index -> Just $ RemoveConnection id index
     Native.EditNode id -> Just $ StartNodeEditing id
+    Native.Goto id -> Just $ GotoId id
     _ -> Nothing
 
   sidebarIcon extraClasses activeTab current =
