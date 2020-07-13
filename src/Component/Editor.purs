@@ -17,13 +17,14 @@ import Data.Array ((!!))
 import Data.Array as Array
 import Data.Foldable (for_, traverse_)
 import Data.Lens (_Just, is, over, preview, set, view)
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.List ((:))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isNothing, maybe)
 import Data.Set (toUnfoldable) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -50,9 +51,9 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Dataflow.Type as Type
 import Lunarbox.Data.Editor.DataflowFunction (_NativeFunction)
 import Lunarbox.Data.Editor.EditNode as EditNode
-import Lunarbox.Data.Editor.FunctionData (_FunctionDataOutput)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..))
@@ -431,17 +432,29 @@ component =
                 where
                 mkQuery = void <<< query (SProxy :: SProxy "editNode") unit
 
+                functionData = preview (_atFunctionData function <<< _Just <<< _Newtype) state
+
                 -- | TODO: have the function data provide an actual description of the entire node.
-                description =
-                  _.description
-                    <$> preview
-                        ( _atFunctionData function
-                            <<< _Just
-                            <<< _FunctionDataOutput
-                        )
-                        state
+                description = _.output.description <$> functionData
 
                 type' = getNodeType id function state
+
+                inputs =
+                  fromMaybe []
+                    $ map (uncurry mkInput)
+                    <$> inputStuff
+                  where
+                  inputTypes = Array.fromFoldable <$> Type.inputs <$> type'
+
+                  inputDocs = _.inputs <$> functionData
+
+                  inputStuff = Array.zip <$> inputTypes <*> inputDocs
+
+                  mkInput type'' docs =
+                    { type': type''
+                    , name: docs.name
+                    , description: docs.description
+                    }
 
                 modal =
                   nodeEditingModal
@@ -451,6 +464,7 @@ component =
                         EditNode.component
                           { description
                           , type'
+                          , inputs
                           }
                     }
               _ -> pure unit

@@ -19,6 +19,7 @@ module Lunarbox.Data.Dataflow.Expression
   , mapExpression
   , references
   , isReferenced
+  , unfoldLambda
   ) where
 
 import Prelude
