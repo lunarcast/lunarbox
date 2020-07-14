@@ -2,14 +2,17 @@ module Lunarbox.Data.Dataflow.Native.ControlFlow
   ( controlFlowNodes
   ) where
 
+import Data.Symbol (SProxy(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
+import Lunarbox.Data.Dataflow.Runtime.Class.Describable (DProxy(..), toNativeExpression)
+import Lunarbox.Data.Dataflow.Runtime.Class.Runnable (class Runnable)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeFunction)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Prelude (const, flip, ($))
+import Prelude (const, flip, identity, ($))
 
 -- All the native control flow nodes
 controlFlowNodes :: Array (NativeConfig)
@@ -22,18 +25,11 @@ typeIf = Forall [ return ] $ typeFunction typeBool $ typeFunction typeReturn $ t
 
   typeReturn = TVariable true return
 
-evalIf :: RuntimeValue -> RuntimeValue
-evalIf (Bool true) = binaryFunction const
-
-evalIf (Bool false) = binaryFunction $ flip const
-
-evalIf _ = Null
-
 if' :: NativeConfig
 if' =
   NativeConfig
     { name: FunctionName "if"
-    , expression: (NativeExpression typeIf $ Function evalIf)
+    , expression: toNativeExpression proxyIf
     , functionData:
       internal
         [ { name: "condition", description: "A boolean which decides what branch to evaluate to" }
@@ -48,3 +44,11 @@ if' =
         , description: "Evaluates to the 'then' argument if the condition is true, else this evaludates to the 'else' argument"
         }
     }
+  where
+  proxyIf :: DProxy (Boolean -> SProxy "a" -> SProxy "a" -> SProxy "a") _
+  proxyIf = DProxy evalIf
+
+  evalIf :: Boolean -> RuntimeValue -> _
+  evalIf true = const
+
+  evalIf false = flip const
