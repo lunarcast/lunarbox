@@ -3,6 +3,7 @@ module Lunarbox.Component.Editor.NodeUi
   , uiToRuntime
   , NodeUiInputs
   , NodeUi
+  , hasUi
   ) where
 
 import Prelude
@@ -17,7 +18,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, maybeElement)
-import Lunarbox.Data.Dataflow.Native.Literal (boolean, string)
+import Lunarbox.Data.Dataflow.Native.Literal (boolean, number, string)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.Class.Runnable (fromRuntime)
@@ -47,6 +48,10 @@ extendNativeConfig (NativeConfig { name }) = Tuple name
 nodeUis :: forall a s m. Map FunctionName (NodeUi a s m)
 nodeUis = Map.fromFoldable [ stringNodeInput, numberNodeInput, booleanNodeInput ]
 
+-- | Check if a function has some ui
+hasUi :: FunctionName -> Boolean
+hasUi = flip Map.member nodeUis
+
 -- Those 3 are the actual uis we have atm
 stringNodeInput :: forall a s m. Tuple FunctionName (NodeUi a s m)
 stringNodeInput =
@@ -65,7 +70,7 @@ stringNodeInput =
 
 numberNodeInput :: forall a s m. Tuple FunctionName (NodeUi a s m)
 numberNodeInput =
-  extendNativeConfig string
+  extendNativeConfig number
     { render
     , finalize: map Number <<< fromString <=< fromRuntime
     }
@@ -73,7 +78,7 @@ numberNodeInput =
   render { value, setValue } =
     HH.input
       [ HP.value $ fromMaybe "0" $ fromRuntime value
-      , HP.type_ HP.InputText
+      , HP.type_ HP.InputNumber
       , className "node-input node-input--number"
       , HE.onValueInput $ setValue <<< String
       ]

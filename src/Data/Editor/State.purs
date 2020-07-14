@@ -12,7 +12,6 @@ import Data.Foldable (foldMap, foldr, length, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, traversed, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
-import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.List (List)
 import Data.List as List
@@ -21,7 +20,6 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
-import Data.Newtype as Newtype
 import Data.Nullable as Nullable
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
@@ -94,7 +92,7 @@ type StatePermanentData r
   = ( project :: Project
     , nextId :: Int
     , geometries :: Map FunctionName GeometryCache
-    , runtimeOverwrites :: ValueMap Location
+    , runtimeOverwrites :: Map Location RuntimeValue
     , currentFunction :: FunctionName
     | r
     )
@@ -329,17 +327,15 @@ compile state =
 
 -- Evaluate the current expression and write into the value map
 evaluate :: State -> State
-evaluate state = set _valueMap valueMap state
+evaluate state@{ runtimeOverwrites, expression } = state { valueMap = valueMap }
   where
   context =
     InterpreterContext
       { location: UnknownLocation
       , termEnv: mempty
-      , overwrites: view _runtimeOverwrites state
+      , overwrites: ValueMap $ Term <$> runtimeOverwrites
       , toplevel: true
       }
-
-  expression = view _expression state
 
   valueMap =
     snd
@@ -449,21 +445,13 @@ deleteFunction toDelete state =
               visualFunctions
         modify_ $ set (_atFunctionData toDelete) Nothing
         modify_ $ set (_function toDelete) Nothing
-        modify_ $ over _runtimeOverwrites $ Newtype.over ValueMap $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
+        modify_ $ over _runtimeOverwrites $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
         modify_ $ set (_atInputCount toDelete) Nothing
         modify_ $ set (_atGeometry toDelete) Nothing
         when (view _currentFunction state == toDelete) $ modify_ $ set _currentFunction main
         modify_ compile
   where
   main = view _ProjectMain state.project
-
--- Sets the runtime value at a location to any runtime value
-setRuntimeValue :: FunctionName -> NodeId -> RuntimeValue -> State -> State
-setRuntimeValue functionName nodeId value =
-  evaluate
-    <<< set
-        (_runtimeOverwrites <<< _Newtype <<< at (InsideFunction functionName $ NodeLocation nodeId))
-        (Just $ Term value)
 
 -- Count the number of visual user-defined functions in a project
 visualFunctionCount :: State -> Int
@@ -606,11 +594,11 @@ _inputCountMap = prop (SProxy :: _ "inputCountMap")
 _atInputCount :: FunctionName -> Traversal' State (Maybe Int)
 _atInputCount name = _inputCountMap <<< at name
 
-_runtimeOverwrites :: Lens' State (ValueMap Location)
-_runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
-
 _valueMap :: Lens' State (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
+
+_runtimeOverwrites :: Lens' State (Map Location RuntimeValue)
+_runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
 _geometries :: Lens' State (Map FunctionName GeometryCache)
 _geometries = prop (SProxy :: _ "geometries")

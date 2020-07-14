@@ -20,6 +20,7 @@ import Data.Lens.Iso.Newtype (_Newtype)
 import Data.List ((:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isNothing, maybe)
+import Data.Newtype (unwrap)
 import Data.Set (toUnfoldable) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
@@ -50,7 +51,7 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Type as Type
 import Lunarbox.Data.Dataflow.TypeError as TypeError
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _NativeFunction)
@@ -60,9 +61,10 @@ import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
 import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -89,7 +91,6 @@ data Action
   | CreateNode FunctionName
   | StartFunctionCreation
   | RemoveConnection NodeId Int
-  | SetRuntimeValue FunctionName NodeId RuntimeValue
   | TogglePanel
   | ChangeInputCount FunctionName Int
   | SetName String
@@ -123,8 +124,8 @@ type ChildSlots m
   = Add.ChildSlots
       ( tree :: Slot TreeC.Query TreeC.Output Unit
       , scene :: Slot Scene.Query Scene.Output Unit
-      , pendingConnection :: Modal.Slot Action PendingConnectionAction m Unit
-      , editNode :: Modal.Slot Action NodeEditingAction m Unit
+      , pendingConnection :: Modal.Slot Action () PendingConnectionAction m Unit
+      , editNode :: Modal.Slot Action (EditNode.ChildSlots ()) NodeEditingAction m Unit
       )
 
 -- Shorthand for manually passing the types of the actions and child slots
@@ -149,7 +150,7 @@ data PendingConnectionAction
   | ProceedConnecting
 
 -- | The actual config for how to display the connection confirmation modal
-pendingConnectionModal :: forall m. Modal.InputType PendingConnectionAction Action m
+pendingConnectionModal :: forall m. Modal.InputType () PendingConnectionAction Action m
 pendingConnectionModal =
   { id: "confirm-connection"
   , title: "Confirm connection"
@@ -176,7 +177,7 @@ data NodeEditingAction
   | NECloseModal
 
 -- | The config of the modal used for editing nodes
-nodeEditingModal :: forall m. Modal.InputType NodeEditingAction Action m
+nodeEditingModal :: forall m. Modal.InputType (EditNode.ChildSlots ()) NodeEditingAction Action m
 nodeEditingModal =
   { id: "edit-node"
   , title: "[Node name here]"
@@ -311,8 +312,6 @@ component =
       void updateAll
       printString $ "Removed " <> show id <> " w index " <> show index
       handleAction Rerender
-    SetRuntimeValue functionName nodeId runtimeValue -> do
-      modify_ $ setRuntimeValue functionName nodeId runtimeValue
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
       handleAction $ UpdatePreview function
@@ -478,6 +477,12 @@ component =
                           { description
                           , type'
                           , inputs
+                          , id
+                          , function
+                          , value:
+                            fromMaybe Null
+                              $ Map.lookup (InsideFunction function $ NodeLocation id)
+                              $ state.runtimeOverwrites
                           }
                     }
               _ -> pure unit
