@@ -16,6 +16,7 @@ import Data.Array ((!!))
 import Data.Array as Array
 import Data.Foldable (for_, traverse_)
 import Data.Lens (_Just, is, over, preview, set, view)
+import Data.Lens.At (at)
 import Data.Lens.Iso.Newtype (_Newtype)
 import Data.List ((:))
 import Data.Map as Map
@@ -39,6 +40,7 @@ import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Component.Editor.Add as Add
 import Lunarbox.Component.Editor.Add as AddC
 import Lunarbox.Component.Editor.NodePreview as NodePreview
+import Lunarbox.Component.Editor.NodeUi (uiToRuntime)
 import Lunarbox.Component.Editor.Problems (problems, shouldRender)
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
@@ -52,6 +54,7 @@ import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
+import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..))
 import Lunarbox.Data.Dataflow.Type as Type
 import Lunarbox.Data.Dataflow.TypeError as TypeError
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _NativeFunction)
@@ -64,7 +67,7 @@ import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
 import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, Tab(..), _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, _runtimeOverwrites, compile, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, tabIcon, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Set (toNative) as Set
@@ -107,6 +110,7 @@ data Action
   | UpdatePreview FunctionName
   | UpdatePreviews
   | MoveTo Location
+  | UpdateOverwrite NodeId FunctionName RuntimeValue
   -- Handle foreign actions bubbled by the Scene component
   | CreateConnection NodeId NodeId Int
   | SelectInput NodeId Int
@@ -472,29 +476,44 @@ component =
                   nodeEditingModal
                     { title = show function
                     , content =
-                      \_ ->
+                      \bubble ->
                         EditNode.component
                           { description
                           , type'
                           , inputs
                           , id
                           , function
+                          , setValue: map (bubble <<< UpdateOverwrite id currentFunction) <<< uiToRuntime function
                           , value:
-                            fromMaybe Null
-                              $ Map.lookup (InsideFunction function $ NodeLocation id)
-                              $ state.runtimeOverwrites
+                            case Map.lookup (InsideFunction currentFunction $ NodeLocation id)
+                                $ unwrap
+                                $ state.runtimeOverwrites of
+                              Just (Term v) -> v
+                              _ -> Null
                           }
                     }
               _ -> pure unit
     HandleNodeEdits action -> case action of
       NEDeleteNode -> withCurrentNode_ (handleAction <<< DeleteNode)
-      NECloseModal -> pure unit
+      NECloseModal -> do
+        modify_ evaluate
+        void updateAll
+        handleAction Rerender
     GotoId id ->
       withCurrentFunction_ \currentFunction ->
         gets (preview (_atNode currentFunction id))
           >>= traverse_ case _ of
               ComplexNode { function } -> handleAction (SelectFunction function)
               _ -> pure unit
+    UpdateOverwrite id function value -> do
+      modify_
+        $ set
+            ( _runtimeOverwrites
+                <<< _Newtype
+                <<< (at $ InsideFunction function $ NodeLocation id)
+            )
+        $ Just
+        $ Term value
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

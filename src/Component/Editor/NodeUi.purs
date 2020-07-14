@@ -77,7 +77,9 @@ numberNodeInput =
   where
   render { value, setValue } =
     HH.input
-      [ HP.value $ fromMaybe "0" $ fromRuntime value
+      [ HP.value case value of
+          Number n -> show n
+          other -> fromMaybe "" $ fromRuntime other
       , HP.type_ HP.InputNumber
       , className "node-input node-input--number"
       , HE.onValueInput $ setValue <<< String

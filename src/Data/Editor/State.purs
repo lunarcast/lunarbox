@@ -12,6 +12,7 @@ import Data.Foldable (foldMap, foldr, length, traverse_)
 import Data.Lens (Lens', Traversal', _Just, is, lens, over, preview, set, traversed, view)
 import Data.Lens.At (at)
 import Data.Lens.Index (ix)
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Lens.Record (prop)
 import Data.List (List)
 import Data.List as List
@@ -29,8 +30,8 @@ import Data.Unfoldable (replicate)
 import Effect.Class (class MonadEffect)
 import Halogen (HalogenM, liftEffect, modify_)
 import Lunarbox.Capability.Editor.Type (generateColorMap, inputNodeType, typeToColor)
-import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), evalInterpreter, runInterpreter)
-import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret, normalizeTerm)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext(..), runInterpreter)
+import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (interpret, termToRuntime)
 import Lunarbox.Control.Monad.Dataflow.Solve (SolveState(..))
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveExpression (solveExpression)
 import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
@@ -38,8 +39,7 @@ import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression (Expression(..))
 import Lunarbox.Data.Dataflow.Expression.Lint (LintError, lint)
 import Lunarbox.Data.Dataflow.Expression.Optimize (dce, inline)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..))
+import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term)
 import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap(..))
 import Lunarbox.Data.Dataflow.Type (Type(..), inputs, multiArgumentFuncion, typeBool)
 import Lunarbox.Data.Dataflow.TypeError (TypeError)
@@ -92,7 +92,7 @@ type StatePermanentData r
   = ( project :: Project
     , nextId :: Int
     , geometries :: Map FunctionName GeometryCache
-    , runtimeOverwrites :: Map Location RuntimeValue
+    , runtimeOverwrites :: ValueMap Location
     , currentFunction :: FunctionName
     | r
     )
@@ -171,12 +171,17 @@ updateNode id =
         withCurrentFunction \currentFunction ->
           gets (preview $ _atCurrentNode id)
             >>= traverse_ \node -> do
-                { typeMap, valueMap } <- get
+                { typeMap, valueMap, runtimeOverwrites } <- get
                 nodeGroup <- gets $ preview (_nodeGroup currentFunction)
                 let
+                  ctx =
+                    over _Newtype
+                      _ { overwrites = runtimeOverwrites }
+                      (def :: InterpreterContext Location)
+
                   value =
                     Nullable.toNullable
-                      $ (show <<< evalInterpreter def <<< normalizeTerm)
+                      $ (show <<< termToRuntime ctx)
                       <$> getNodeValue currentFunction valueMap id node
 
                   inputs = List.toUnfoldable $ view _nodeInputs node
@@ -333,7 +338,7 @@ evaluate state@{ runtimeOverwrites, expression } = state { valueMap = valueMap }
     InterpreterContext
       { location: UnknownLocation
       , termEnv: mempty
-      , overwrites: ValueMap $ Term <$> runtimeOverwrites
+      , overwrites: runtimeOverwrites
       , toplevel: true
       }
 
@@ -445,7 +450,7 @@ deleteFunction toDelete state =
               visualFunctions
         modify_ $ set (_atFunctionData toDelete) Nothing
         modify_ $ set (_function toDelete) Nothing
-        modify_ $ over _runtimeOverwrites $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
+        modify_ $ over (_runtimeOverwrites <<< _Newtype) $ Map.filterKeys $ (_ /= Just toDelete) <<< view _Function
         modify_ $ set (_atInputCount toDelete) Nothing
         modify_ $ set (_atGeometry toDelete) Nothing
         when (view _currentFunction state == toDelete) $ modify_ $ set _currentFunction main
@@ -597,7 +602,7 @@ _atInputCount name = _inputCountMap <<< at name
 _valueMap :: Lens' State (ValueMap Location)
 _valueMap = prop (SProxy :: _ "valueMap")
 
-_runtimeOverwrites :: Lens' State (Map Location RuntimeValue)
+_runtimeOverwrites :: Lens' State (ValueMap Location)
 _runtimeOverwrites = prop (SProxy :: _ "runtimeOverwrites")
 
 _geometries :: Lens' State (Map FunctionName GeometryCache)

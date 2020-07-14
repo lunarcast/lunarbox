@@ -8,6 +8,7 @@ import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe)
 import Data.Symbol (SProxy(..))
+import Debug.Trace (spy)
 import Halogen (Slot, ComponentHTML)
 import Halogen.HTML as HH
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
@@ -20,11 +21,11 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 
 type ChildSlots r
-  = ( nodeUi :: Slot NodeUiManager.Query Void NodeId
+  = ( nodeUi :: Slot NodeUiManager.Query NodeUiManager.Output NodeId
     | r
     )
 
-type Input
+type Input a
   = { description :: Maybe String
     , type' :: Maybe Type
     , inputs ::
@@ -36,11 +37,12 @@ type Input
     , function :: FunctionName
     , id :: NodeId
     , value :: RuntimeValue
+    , setValue :: RuntimeValue -> Maybe a
     }
 
 -- | The content of the node editing modal
-component :: forall a m r. Input -> ComponentHTML a (ChildSlots r) m
-component { description, type', inputs, id, function, value } =
+component :: forall a m r. Input a -> ComponentHTML a (ChildSlots r) m
+component { description, type', inputs, id, function, value, setValue } =
   HH.div [ className "edit-node" ]
     [ maybeElement type' \type'' ->
         HH.section [ className "edit-node__type" ]
@@ -65,10 +67,13 @@ component { description, type', inputs, id, function, value } =
           , HH.slot (SProxy :: SProxy "nodeUi") id
               NodeUiManager.component
               { name: function, value }
-              absurd
+              handleNewValues
           ]
     ]
   where
+  handleNewValues = case _ of
+    NodeUiManager.NewValue val -> setValue $ spy "OOOOO" val
+
   mkInput input =
     HH.details [ className "edit-node__input" ]
       [ HH.summary [ className "edit-node__input-name" ]

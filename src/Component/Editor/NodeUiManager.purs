@@ -1,11 +1,12 @@
 module Lunarbox.Component.Editor.NodeUiManager
   ( Query(..)
+  , Output(..)
   , component
   ) where
 
 import Prelude
 import Data.Maybe (Maybe(..))
-import Halogen (Component, HalogenM, defaultEval, get, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, defaultEval, get, mkComponent, mkEval, modify_, raise)
 import Halogen.HTML as HH
 import Lunarbox.Component.Editor.NodeUi (runNodeUi, uiToRuntime)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
@@ -26,7 +27,10 @@ type Input r
 data Query a
   = GetValue (RuntimeValue -> a)
 
-component :: forall m o. Component HH.HTML Query { | Input () } o m
+newtype Output
+  = NewValue RuntimeValue
+
+component :: forall m. Component HH.HTML Query { | Input () } Output m
 component =
   mkComponent
     { initialState: identity
@@ -39,11 +43,13 @@ component =
             }
     }
   where
-  handleAction :: Action -> HalogenM State Action ChildSlots o m Unit
+  handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
-    SetValue val -> modify_ _ { value = val }
+    SetValue val -> do
+      modify_ _ { value = val }
+      raise $ NewValue val
 
-  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots o m (Maybe a)
+  handleQuery :: forall a. Query a -> HalogenM State Action ChildSlots Output m (Maybe a)
   handleQuery = case _ of
     GetValue return -> get <#> \{ name, value } -> return <$> uiToRuntime name value
 

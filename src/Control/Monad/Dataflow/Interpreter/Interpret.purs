@@ -1,19 +1,19 @@
 module Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret
   ( interpret
   , withTerm
-  , normalizeTerm
+  , termToRuntime
   ) where
 
 import Prelude
-import Control.Monad.Reader (asks, local)
+import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.Writer (tell)
 import Data.Default (class Default, def)
 import Data.Lens (over, set, view)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, _location, _overwrites, _termEnv, _toplevel)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), everywhereOnExpressionM, getLocation)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (Interpreter, InterpreterContext, _overwrites, _termEnv, _toplevel, evalInterpreter)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), getLocation)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..), TermEnvironment)
 import Lunarbox.Data.Dataflow.Runtime.TermEnvironment as TermEnvironment
@@ -47,25 +47,15 @@ makeNative = Native def <<< NativeExpression (Forall [] typeString)
 scoped :: forall l a. Ord l => Interpreter l a -> Interpreter l a
 scoped = local $ set _toplevel false
 
-normalizeTerm :: forall l. Ord l => Default l => Term l -> Interpreter l RuntimeValue
-normalizeTerm (Term a) = pure a
+-- | Transform a term into a runtime value
+termToRuntime :: forall l. Ord l => Default l => InterpreterContext l -> Term l -> RuntimeValue
+termToRuntime _ (Term a) = a
 
-normalizeTerm (Closure env (Lambda _ _ _)) = pure Null
+termToRuntime _ (Closure env (Lambda _ _ _)) = Null
 
-normalizeTerm (Closure env expr) = result >>= normalizeTerm
+termToRuntime ctx (Closure env expr) = termToRuntime ctx result
   where
-  result = withEnv env $ interpret expr
-
--- | Mark all the places inside an expression as null
-markAsNull :: forall l. Ord l => Expression l -> Interpreter l (Term l)
-markAsNull expr =
-  everywhereOnExpressionM (const $ pure true)
-    ( \e -> do
-        tell $ ValueMap $ Map.singleton (getLocation e) $ Term Null
-        pure e
-    )
-    expr
-    $> def
+  result = evalInterpreter ctx $ withEnv env $ interpret expr
 
 -- Interpret an expression into a runtimeValue
 interpret :: forall l. Ord l => Default l => Expression l -> Interpreter l (Term l)
@@ -77,47 +67,46 @@ interpret expression = do
     maybeOverwrite = Map.lookup location $ unwrap overwrites
   value <- case maybeOverwrite of
     Just overwrite -> pure overwrite
-    Nothing ->
-      local (set _location location) case expression of
-        TypedHole _ -> pure $ Term Null
-        Variable _ name -> getVariable $ show name
-        Lambda _ _ _ -> do
-          env <- getEnv
-          pure $ Closure env expression
-        Expression _ inner -> interpret inner
-        If _ cond then' else' -> interpret cond >>= go
-          where
+    Nothing -> case expression of
+      TypedHole _ -> pure $ Term Null
+      Variable _ name -> do
+        getVariable $ show name
+      Lambda _ _ _ -> do
+        env <- getEnv
+        pure $ Closure env expression
+      Expression _ inner -> interpret inner
+      If _ cond then' else' -> interpret cond >>= go
+        where
+        go = case _ of
+          Term (Bool true) -> interpret then'
+          Term (Bool false) -> interpret else'
+          Term (RLazy exec) -> go (Term $ exec unit)
+          t -> pure def
+      Let _ name value body -> do
+        runtimeValue <- interpret value
+        withTerm (show name) runtimeValue $ interpret body
+      expr@(FixPoint l name body) -> do
+        env <- getEnv
+        let
+          self = Closure env expr
+        withTerm (show name) self $ interpret body
+      Native _ (NativeExpression _ inner) -> pure $ Term inner
+      FunctionCall _ function argument -> do
+        runtimeArgument <- interpret argument
+        runtimeFunction <- interpret function
+        let
           go = case _ of
-            Term (Bool true) -> interpret then'
-            Term (Bool false) -> interpret else'
-            Term (RLazy exec) -> go (Term $ exec unit)
-            Term Null -> do
-              void $ markAsNull then'
-              markAsNull else'
-            t -> pure def
-        Let _ name value body -> do
-          runtimeValue <- interpret value
-          withTerm (show name) runtimeValue $ interpret body
-        expr@(FixPoint l name body) -> do
-          env <- getEnv
-          let
-            self = Closure env expr
-          withTerm (show name) self $ interpret body
-        Native _ (NativeExpression _ inner) -> pure $ Term inner
-        FunctionCall _ function argument -> do
-          runtimeArgument <- interpret argument
-          runtimeFunction <- interpret function
-          let
-            go = case _ of
-              Closure env (Lambda _ name expr) ->
-                scoped $ withEnv env $ withTerm (show name) runtimeArgument
-                  $ interpret expr
-              Closure env expr -> call >>= go
-                where
-                call = scoped $ withEnv env $ interpret expr
-              Term (Function call) -> Term <$> call <$> normalizeTerm runtimeArgument
-              Term _ -> pure def
-          go runtimeFunction
+            Closure env (Lambda _ name expr) ->
+              scoped $ withEnv env $ withTerm (show name) runtimeArgument
+                $ interpret expr
+            Closure env expr -> call >>= go
+              where
+              call = scoped $ withEnv env $ interpret expr
+            Term (Function call) -> do
+              ctx <- ask
+              pure $ Term $ call $ termToRuntime ctx runtimeArgument
+            Term _ -> pure def
+        go runtimeFunction
   toplevel <- asks $ view _toplevel
   when toplevel $ tell $ ValueMap $ Map.singleton location value
   pure value
