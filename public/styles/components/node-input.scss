@@ -21,12 +21,12 @@
   &:focus {
     filter: brightness(1.5);
   }
+}
 
-  &.number {
-    border-bottom-color: rgb(35, 78, 196);
-  }
+.node-input.node-input--number {
+  border-bottom-color: rgb(35, 78, 196);
+}
 
-  &.string {
-    border-bottom-color: rgb(97, 196, 35);
-  }
+.node-input.node-input--string {
+  border-bottom-color: rgb(97, 196, 35);
 }

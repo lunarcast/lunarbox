@@ -8,7 +8,6 @@ import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe)
 import Data.Symbol (SProxy(..))
-import Debug.Trace (spy)
 import Halogen (Slot, ComponentHTML)
 import Halogen.HTML as HH
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
@@ -72,7 +71,7 @@ component { description, type', inputs, id, function, value, setValue } =
     ]
   where
   handleNewValues = case _ of
-    NodeUiManager.NewValue val -> setValue $ spy "OOOOO" val
+    NodeUiManager.NewValue val -> setValue val
 
   mkInput input =
     HH.details [ className "edit-node__input" ]

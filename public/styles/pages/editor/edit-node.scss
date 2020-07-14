@@ -42,3 +42,9 @@
   margin-left: 1rem;
   color: darken($color: $on-primary, $amount: 20);
 }
+
+.edit-node__value {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: auto auto;
+}
