@@ -2,17 +2,15 @@ module Lunarbox.Data.Dataflow.Native.ControlFlow
   ( controlFlowNodes
   ) where
 
-import Data.Symbol (SProxy(..))
-import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
+import Data.Symbol (SProxy)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Dataflow.Runtime.Class.Describable (DProxy(..), toNativeExpression)
-import Lunarbox.Data.Dataflow.Runtime.Class.Runnable (class Runnable)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeFunction)
 import Lunarbox.Data.Editor.FunctionData (internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Prelude (const, flip, identity, ($))
+import Prelude (const, flip, ($))
 
 -- All the native control flow nodes
 controlFlowNodes :: Array (NativeConfig)

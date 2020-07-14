@@ -21,13 +21,13 @@ import Effect (Effect)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (AttrName(..), ClassName(..), Component, ComponentSlot, HalogenM, defaultEval, fork, mkComponent, mkEval, raise)
+import Halogen.Data.Slot as HSlot
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as AP
 import Lunarbox.Component.Utils (className)
 import Web.HTML (HTMLElement)
-import Halogen.Data.Slot as HSlot
 
 foreign import showModal :: String -> Effect (Promise HTMLElement)
 
@@ -38,14 +38,14 @@ data Action a v
   | Bubble a
 
 -- | Query (parent action) (output type) monad result 
-data Query pa v m a
+data Query cs pa v m a
   = Close a
   | Open a
-  | UpdateInput (InputType v pa m) a
+  | UpdateInput (InputType cs v pa m) a
 
 -- | Helper for including the modal as a children
-type Slot pa v m
-  = HSlot.Slot (Query pa v m) (Output pa v)
+type Slot pa cs v m
+  = HSlot.Slot (Query cs pa v m) (Output pa v)
 
 -- | Config for how a button should act & look
 type ButtonConfig v
@@ -70,12 +70,9 @@ type State h a v pa
 _open :: forall r. Lens' { open :: Boolean | r } Boolean
 _open = prop (SProxy :: SProxy "open")
 
-type ChildSlots
-  = ()
-
-type InputType v pa m
+type InputType cs v pa m
   = { 
-    | Input (ComponentSlot HH.HTML () m (Action pa v))
+    | Input (ComponentSlot HH.HTML cs m (Action pa v))
       (Action pa v)
       v
       pa
@@ -87,9 +84,9 @@ data Output pa v
   | BubbledAction pa
 
 component ::
-  forall m v pa.
+  forall m v pa (cs :: #Type).
   MonadEffect m =>
-  MonadAff m => Component HH.HTML (Query pa v m) (InputType v pa m) (Output pa v) m
+  MonadAff m => Component HH.HTML (Query cs pa v m) (InputType cs v pa m) (Output pa v) m
 component =
   mkComponent
     { initialState: identity
@@ -104,7 +101,7 @@ component =
   where
   handleAction ::
     Action pa v ->
-    HalogenM { | State _ _ v pa } (Action pa v) ChildSlots
+    HalogenM { | State _ _ v pa } (Action pa v) cs
       (Output pa v)
       m
       Unit
@@ -117,10 +114,10 @@ component =
 
   handleQuery ::
     forall a.
-    Query pa v m a ->
+    Query cs pa v m a ->
     HalogenM { | State _ _ v pa }
       (Action pa v)
-      ChildSlots
+      cs
       (Output pa v)
       m
       (Maybe a)

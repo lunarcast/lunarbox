@@ -9,6 +9,11 @@ import Halogen.HTML as HH
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
 import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Data.Dataflow.Type (Type)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
+
+type ChildSlots
+  = ( 
+    )
 
 type Input
   = { description :: Maybe String
@@ -19,6 +24,7 @@ type Input
         , type' :: Type
         , description :: String
         }
+    , function :: FunctionName
     }
 
 -- | The content of the node editing modal
