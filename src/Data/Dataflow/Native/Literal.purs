@@ -1,5 +1,8 @@
 module Lunarbox.Data.Dataflow.Native.Literal
   ( literalNodes
+  , boolean
+  , number
+  , string
   ) where
 
 import Prelude

@@ -69,3 +69,7 @@ instance corunnableArray :: Corunnable a => Corunnable (Array a) where
 
 instance runnableMaybe :: Runnable a => Runnable (Maybe a) where
   toRuntime = maybe Null toRuntime
+
+-- | Run a non runtime function over a runtime value
+overRuntimeValue :: forall a b. Runnable b => Corunnable a => (a -> b) -> RuntimeValue -> RuntimeValue
+overRuntimeValue func = toRuntime <<< map func <<< fromRuntime
