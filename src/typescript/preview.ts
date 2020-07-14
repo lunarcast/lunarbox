@@ -41,6 +41,8 @@ export const renderPreview = (ctx: CanvasRenderingContext2D) => (
 
   const requiredSize = nodeRadius * 2 + 10
 
+  ctx.clearRect(0, 0, width, height)
+
   ctx.save()
   ctx.translate(width / 2, height / 2)
 
