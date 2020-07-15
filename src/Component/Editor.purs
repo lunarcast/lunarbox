@@ -49,7 +49,6 @@ import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
-import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -314,7 +313,6 @@ component =
     RemoveConnection id index -> do
       modify_ $ removeConnection $ Tuple id index
       void updateAll
-      printString $ "Removed " <> show id <> " w index " <> show index
       handleAction Rerender
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount

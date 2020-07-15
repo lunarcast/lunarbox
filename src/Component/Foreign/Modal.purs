@@ -109,7 +109,6 @@ component =
     CloseModal value -> do
       id <- gets _.id
       liftEffect $ closeModal id
-      raise $ ClosedWith value
     Bubble a -> raise $ BubbledAction a
 
   handleQuery ::
@@ -126,7 +125,8 @@ component =
       { id, onClose } <- get
       void
         $ fork do
-            void $ liftAff $ map toAff $ liftEffect $ showModal id
+            promise <- liftEffect $ showModal id
+            void $ liftAff $ toAff promise
             raise $ ClosedWith onClose
       pure $ Just return
     Close a -> do
