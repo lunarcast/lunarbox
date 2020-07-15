@@ -49,6 +49,7 @@ import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
+import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
@@ -202,7 +203,7 @@ nodeEditingModal =
 component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q State Output m
 component =
   mkComponent
-    { initialState: compile <<< loadPrelude <<< identity
+    { initialState: identity
     , render
     , eval:
       mkEval
