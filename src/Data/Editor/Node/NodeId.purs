@@ -20,6 +20,8 @@ derive newtype instance encodeJsonNodeId :: EncodeJson NodeId
 
 derive newtype instance decodeJsonNodeId :: DecodeJson NodeId
 
+derive newtype instance semigroupNodeId :: Semigroup NodeId
+
 instance defaultNodeId :: Default NodeId where
   def = NodeId ""
 

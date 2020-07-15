@@ -1,0 +1,66 @@
+module Lunarbox.Data.Tutorial where
+
+import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
+import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
+import Data.Generic.Rep (class Generic)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Tab (Tab)
+
+-- | Elements we can hide in the editor
+-- | I'll add more soon
+data EditorElement
+  = Tab Tab
+
+derive instance genericEditorElement :: Generic EditorElement _
+
+instance encodeJsonEditorElement :: EncodeJson EditorElement where
+  encodeJson = genericEncodeJson
+
+instance decodeJsonEditorElement :: DecodeJson EditorElement where
+  decodeJson = genericDecodeJson
+
+-- | Different ways of informing users about stuff 
+-- | (will add more of them in the future)
+newtype TutorialStep
+  = TextBlock String
+
+derive newtype instance encodeJsonTutorialStep :: EncodeJson TutorialStep
+
+derive newtype instance decodeJsonTutorialStep :: DecodeJson TutorialStep
+
+-- | A test case for an user defined function 
+newtype TutorialTest
+  = Test
+  { inputs :: Array RuntimeValue
+  , output :: RuntimeValue
+  }
+
+derive newtype instance encodeJsonTutorialTest :: EncodeJson TutorialTest
+
+derive newtype instance decodeJsonTutorialTest :: DecodeJson TutorialTest
+
+-- | Id used to identify tutorials
+newtype TutorialId
+  = TutorialId String
+
+derive newtype instance encodeJsonTutorialId :: EncodeJson TutorialId
+
+derive newtype instance decodeJsonTutorialId :: DecodeJson TutorialId
+
+-- | The actual data structure for the tutorials
+newtype Tutorial
+  = Tutorial
+  { id :: TutorialId
+  , name :: String
+  , base :: NodeId
+  , requires :: Array TutorialId
+  , steps :: Array TutorialStep
+  , hiddenElements :: Array EditorElement
+  , tests :: Array TutorialStep
+  }
+
+derive newtype instance encodeJsonTutorial :: EncodeJson Tutorial
+
+derive newtype instance decodeJsonTutorial :: DecodeJson Tutorial

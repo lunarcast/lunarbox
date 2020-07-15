@@ -54,30 +54,13 @@ import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupInputs, _NodeGro
 import Lunarbox.Data.Editor.Project (Project(..), _ProjectFunctions, _ProjectMain, _atProjectFunction, _atProjectNode, _projectNodeGroup, compileProject, createFunction)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Ord (sortBySearch)
+import Lunarbox.Data.Tab (Tab(..))
 import Lunarbox.Foreign.Render (GeometryCache, ForeignTypeMap, emptyGeometryCache)
 import Lunarbox.Foreign.Render as Native
 import Record as Record
 import Type.Row (type (+))
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
-
-data Tab
-  = Settings
-  | Add
-  | Tree
-  | Problems
-
-derive instance eqTab :: Eq Tab
-
--- Return the icon for a Tab
--- I could use a show instance
--- but this is more explicit I think
-tabIcon :: Tab -> String
-tabIcon = case _ of
-  Settings -> "settings"
-  Add -> "add"
-  Tree -> "account_tree"
-  Problems -> "error"
 
 -- | The result of compiling and typechecking the program
 type CompilationResult r
@@ -223,7 +206,7 @@ createNode name = do
 
     create = do
       state <- get
-      id <- createId
+      id <- (NodeId (show name <> "-") <> _) <$> createId
       desiredInputCount <- gets $ preview $ _atInputCount name
       let
         maxInputs =
