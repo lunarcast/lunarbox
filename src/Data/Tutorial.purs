@@ -1,10 +1,14 @@
 module Lunarbox.Data.Tutorial where
 
+import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
+import Data.Foldable (fold)
 import Data.Generic.Rep (class Generic)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Data.List.Types (List(..), NonEmptyList, (:))
+import Data.Validation.Semigroup (V, invalid)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Tab (Tab)
 
@@ -33,7 +37,7 @@ derive newtype instance decodeJsonTutorialStep :: DecodeJson TutorialStep
 -- | A test case for an user defined function 
 newtype TutorialTest
   = Test
-  { inputs :: Array RuntimeValue
+  { inputs :: List RuntimeValue
   , output :: RuntimeValue
   }
 
@@ -58,9 +62,31 @@ newtype Tutorial
   , requires :: Array TutorialId
   , steps :: Array TutorialStep
   , hiddenElements :: Array EditorElement
-  , tests :: Array TutorialStep
+  , tests :: Array TutorialTest
   }
 
 derive newtype instance encodeJsonTutorial :: EncodeJson Tutorial
 
 derive newtype instance decodeJsonTutorial :: DecodeJson Tutorial
+
+-- | Possible errors we can get by validating a tutorial
+data TutorialValidationError
+  = NonEqual RuntimeValue RuntimeValue
+  | ExpectedFunction RuntimeValue RuntimeValue
+
+-- | Validate a test
+validateTest :: RuntimeValue -> TutorialTest -> V (NonEmptyList TutorialValidationError) Unit
+validateTest result (Test { inputs: Nil, output })
+  | result == output = pure unit
+  | otherwise = invalid $ pure $ NonEqual result output
+
+validateTest (Function call) (Test { inputs: head : inputs, output }) =
+  validateTest
+    (call head)
+    (Test { inputs, output })
+
+validateTest nonFunction (Test { output }) = invalid $ pure $ ExpectedFunction nonFunction output
+
+-- | Validate a tutorial
+validateTutorial :: RuntimeValue -> Tutorial -> V (NonEmptyList TutorialValidationError) Unit
+validateTutorial main (Tutorial { tests }) = fold $ validateTest main <$> tests
