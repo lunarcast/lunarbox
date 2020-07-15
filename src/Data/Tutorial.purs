@@ -54,20 +54,19 @@ derive newtype instance encodeJsonTutorialId :: EncodeJson TutorialId
 derive newtype instance decodeJsonTutorialId :: DecodeJson TutorialId
 
 -- | The actual data structure for the tutorials
-newtype Tutorial
-  = Tutorial
-  { id :: TutorialId
-  , name :: String
-  , base :: NodeId
-  , requires :: Array TutorialId
-  , steps :: Array TutorialStep
-  , hiddenElements :: Array EditorElement
-  , tests :: Array TutorialTest
-  }
+type Tutorial r
+  = { name :: String
+    , id :: TutorialId
+    , base :: NodeId
+    , requires :: Array TutorialId
+    , steps :: Array TutorialStep
+    , hiddenElements :: Array EditorElement
+    , tests :: Array TutorialTest
+    | r
+    }
 
-derive newtype instance encodeJsonTutorial :: EncodeJson Tutorial
-
-derive newtype instance decodeJsonTutorial :: DecodeJson Tutorial
+type TutorialWithMetadata
+  = Tutorial ( id :: TutorialId, completed :: Boolean )
 
 -- | Possible errors we can get by validating a tutorial
 data TutorialValidationError
@@ -88,5 +87,5 @@ validateTest (Function call) (Test { inputs: head : inputs, output }) =
 validateTest nonFunction (Test { output }) = invalid $ pure $ ExpectedFunction nonFunction output
 
 -- | Validate a tutorial
-validateTutorial :: RuntimeValue -> Tutorial -> V (NonEmptyList TutorialValidationError) Unit
-validateTutorial main (Tutorial { tests }) = fold $ validateTest main <$> tests
+validateTutorial :: forall r. RuntimeValue -> Tutorial r -> V (NonEmptyList TutorialValidationError) Unit
+validateTutorial main { tests } = fold $ validateTest main <$> tests
