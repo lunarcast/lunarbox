@@ -164,11 +164,13 @@ component =
       ]
 
   renderProjectList :: Boolean -> Array { | ProjectOverview } -> Array (HH.HTML _ _) -> HH.HTML _ _
-  renderProjectList areExamples projects buttons =
+  renderProjectList areExamples projects extraRows =
     HH.div
       [ className "projects__list" ]
-      $ renderProject areExamples
-      <$> projects
+      $ extraRows
+      <> list
+    where
+    list = renderProject areExamples <$> projects
 
   listButton :: String -> Action -> HH.HTML _ _
   listButton name handleClick =
@@ -184,12 +186,19 @@ component =
     Failure err -> HH.text $ "error " <> err
     Success result -> f result
 
-  projectsHtml { projectList, search } =
-    withRemoteData projectList \{ userProjects } ->
-      let
-        projects = sortBySearch _.name search userProjects
-      in
-        renderProjectList false projects [ listButton "add" CreateProject ]
+  projectsHtml { projectList, search } = withRemoteData projectList go
+    where
+    go { userProjects } = renderProjectList false projects [ createProject ]
+      where
+      projects = sortBySearch _.name search userProjects
+
+      createProject =
+        HH.div
+          [ className "project project--new"
+          , onClick $ const
+              $ Just CreateProject
+          ]
+          [ icon "add" ]
 
   goBack =
     HH.div

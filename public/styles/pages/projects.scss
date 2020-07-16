@@ -23,6 +23,7 @@
   display: flex;
   flex-direction: column;
 
+  height: calc(100vh - 8rem);
   overflow: auto;
 }
 
@@ -73,12 +74,12 @@
   box-sizing: border-box;
 
   color: $on-primary;
-  background: $primary;
+  box-shadow: 3px 3px 5px 3px $very-dark;
 
-  transition: filter $transition-time;
+  transition: transform $transition-time;
 
   &:hover {
-    filter: brightness(1.2);
+    transform: scale(0.98);
   }
 }
 
@@ -102,4 +103,19 @@
     margin-right: 0.2rem;
     font-size: 1rem;
   }
+}
+
+.project--new {
+  @include utils.center;
+  background: $primary;
+
+  transition: filter $transition-time;
+}
+
+.project--new:hover {
+  filter: brightness(1.2);
+}
+
+.project--new .material-icons {
+  font-size: 2.3rem;
 }
