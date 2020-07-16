@@ -109,6 +109,7 @@ component =
     CloseModal value -> do
       id <- gets _.id
       liftEffect $ closeModal id
+      raise $ ClosedWith value
     Bubble a -> raise $ BubbledAction a
 
   handleQuery ::

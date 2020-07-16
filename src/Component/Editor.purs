@@ -491,12 +491,16 @@ component =
                           }
                     }
               _ -> pure unit
-    HandleNodeEdits action -> case action of
-      NEDeleteNode -> withCurrentNode_ (handleAction <<< DeleteNode)
-      NECloseModal -> do
-        modify_ evaluate
-        void updateAll
-        handleAction Rerender
+    HandleNodeEdits action ->
+      withCurrentNode_ \id -> do
+        case action of
+          NEDeleteNode -> do
+            handleAction $ DeleteNode id
+          NECloseModal -> do
+            modify_ evaluate
+            void updateAll
+            handleAction Rerender
+        modify_ _ { currentlyEditedNode = Nothing }
     GotoId id ->
       withCurrentFunction_ \currentFunction ->
         gets (preview (_atNode currentFunction id))

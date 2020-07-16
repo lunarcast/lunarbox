@@ -47,10 +47,13 @@ derive newtype instance decodeJsonTutorialTest :: DecodeJson TutorialTest
 
 -- | Id used to identify tutorials
 newtype TutorialId
-  = TutorialId String
+  = TutorialId Int
 
-instance showTutorialId :: Show TutorialId where
-  show (TutorialId a) = a
+derive instance eqTutorialId :: Eq TutorialId
+
+derive instance ordTutorialId :: Ord TutorialId
+
+derive newtype instance showTutorialId :: Show TutorialId
 
 derive newtype instance encodeJsonTutorialId :: EncodeJson TutorialId
 

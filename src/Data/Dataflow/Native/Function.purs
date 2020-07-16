@@ -43,7 +43,7 @@ pipe =
           , description: "A function to call with the given argument"
           }
         ]
-        { name: "output", description: "Calls the given function with the given argument" }
+        { name: "output", description: "Calls the first argument with the second." }
     }
 
 typeIdentity :: Scheme
@@ -62,7 +62,7 @@ identity' =
           , description: "Any value"
           }
         ]
-        { name: "x", description: "The given value" }
+        { name: "x", description: "Returns it's input" }
     }
 
 typeConst :: Scheme
@@ -86,7 +86,7 @@ const' =
           , description: "Any value"
           }
         ]
-        { name: "constant value", description: "The constant value passed to this function" }
+        { name: "constant value", description: "Returns the first argument." }
     }
 
 typeCompose :: Scheme
@@ -159,6 +159,6 @@ flip' =
           }
         ]
         { name: "flipped function"
-        , description: "A function which does the same things as the input function but with the arguments flipped around"
+        , description: "Returns a function which does the same things as the input function but with the arguments flipped around"
         }
     }

@@ -20,6 +20,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject, createProject, deleteProject, getProjects)
+import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, createTutorial, deleteTutorial)
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Tabs as Tabs
@@ -31,6 +32,7 @@ import Lunarbox.Data.Ord (sortBySearch)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectList, ProjectOverview)
 import Lunarbox.Data.Route (Route(..))
+import Lunarbox.Data.Tutorial (TutorialId)
 import Network.RemoteData (RemoteData(..), _Success, fromEither)
 import Web.Event.Event (stopPropagation)
 import Web.UIEvent.MouseEvent (MouseEvent)
@@ -65,7 +67,9 @@ data Action
   = Initialize
   | OpenProject ProjectId
   | DeleteProject ProjectId MouseEvent
+  | DeleteTutorial TutorialId MouseEvent
   | CreateProject
+  | CreateTutorial
   | CloneProject ProjectId
   | Search String
   | Navigate Route
@@ -84,6 +88,7 @@ component ::
   forall m q.
   MonadEffect m =>
   ManageProjects m =>
+  ManageTutorials m =>
   MonadAsk
     Config
     m =>
@@ -135,6 +140,24 @@ component =
                         { userProjects = filter ((_ /= id) <<< _.id) value.userProjects }
                 Nothing -> Failure "Cannot find projec list"
         Left err -> modify_ $ set _projectList $ Failure err
+    DeleteTutorial id event -> do
+      liftEffect $ stopPropagation $ MouseEvent.toEvent event
+      oldProjects <- gets $ preview $ _projectList <<< _Success
+      modify_ $ set _projectList Loading
+      deleteTutorial id
+        >>= case _ of
+            Right _ -> modify_ $ set _projectList newProjectList
+              where
+              newProjectList = case oldProjects of
+                Just value ->
+                  Success
+                    $ value
+                        { tutorials =
+                          filter ((_ /= id) <<< _.id)
+                            value.tutorials
+                        }
+                Nothing -> Failure "Cannot find old project list"
+            Left err -> modify_ $ set _projectList $ Failure err
     CreateProject -> do
       -- Display a loading message
       modify_ $ set _projectList Loading
@@ -142,6 +165,12 @@ component =
       response <- createProject state
       case response of
         Right id -> navigate $ Project id
+        Left err -> modify_ $ set _projectList $ Failure err
+    CreateTutorial -> do
+      modify_ $ set _projectList Loading
+      response <- createTutorial
+      case response of
+        Right id -> navigate $ EditTutorial id
         Left err -> modify_ $ set _projectList $ Failure err
 
   renderProject isExample { name, id, metadata: { functionCount, nodeCount } } =
@@ -214,19 +243,18 @@ component =
         $ [ newProject CreateProject ]
         <> (mkItem <$> tutorials)
       where
-      mkItem { name, completed } =
-        HH.div [ className "project", onClick $ const Nothing ]
+      mkItem { name, completed, id } =
+        HH.div [ className "project", onClick $ const $ Just CreateProject ]
           [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
           , HH.div [ className "project__data" ]
               [ whenElem completed \_ ->
                   HH.div
                     [ className "project__data-icon"
-                    , onClick $ const Nothing
                     ]
                     [ icon "verified" ]
               , HH.div
                   [ className "project__data-icon"
-                  , onClick $ const Nothing
+                  , onClick $ Just <<< DeleteTutorial id
                   ]
                   [ icon "delete"
                   ]

@@ -18,11 +18,10 @@ import Lunarbox.Api.Request as Request
 import Lunarbox.Api.Utils (authenticate, mkRawRequest, mkRequest, withBaseUrl)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
-import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, createTutorial)
+import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
 import Lunarbox.Control.Monad.Effect (printString)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
@@ -109,33 +108,22 @@ instance manageProjectsAppM :: ManageProjects AppM where
     where
     mockTutorials :: Array TutorialOverview
     mockTutorials =
-      [ { id: TutorialId "0"
+      [ { id: TutorialId 0
         , name: "A sample tutorial"
         , completed: false
         }
-      , { id: TutorialId "1"
+      , { id: TutorialId 1
         , name: "Another tutorial"
         , completed: false
         }
-      , { id: TutorialId "2"
+      , { id: TutorialId 2
         , name: "Actually completed this"
         , completed: true
         }
       ]
 
 instance manageTutorialsAppM :: ManageTutorials AppM where
-  createTutorial =
-    pure
-      $ Right
-          { base: NodeId "76"
-          , name: "First tutorial"
-          , id: TutorialId "0"
-          , requires: []
-          , steps: []
-          , hiddenElements: []
-          , tests: []
-          }
+  createTutorial = pure $ Right $ TutorialId 0
   deleteTutorial id = Right <$> printString ("Deleted id " <> show id)
   saveTutorial _ = pure $ Right unit
-  getTutorials = pure $ Right []
-  getTutorial id = map (Record.merge { completed: false, id }) <$> createTutorial
+  getTutorial id = pure $ Left $ "Cannot find tutorial " <> show id

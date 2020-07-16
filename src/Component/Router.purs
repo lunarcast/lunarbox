@@ -13,6 +13,7 @@ import Halogen (Component, HalogenM, defaultEval, get, liftEffect, mkComponent, 
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, logout, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
+import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Component.Clone as CloneC
 import Lunarbox.Component.HOC.Connect (WithCurrentUser)
@@ -67,6 +68,7 @@ component ::
   MonadEffect m =>
   Navigate m =>
   MonadReader Config m =>
+  ManageTutorials m =>
   ManageProjects m =>
   ManageUser m => Component HH.HTML Query {} Void m
 component =
@@ -135,6 +137,8 @@ component =
           Projects -> requireAuthorization $ HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
           Clone targetId -> requireAuthorization $ HH.slot (SProxy :: _ "clone") targetId CloneC.component { targetId } absurd
           Project id -> requireAuthorization $ HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
+          Tutorial id -> HH.text $ "You are trying the " <> show id <> " tutorial"
+          EditTutorial id -> HH.text $ "You are editing the " <> show id <> " tutorial"
       # fromMaybe notFound
     where
     requireAuthorization = authorize currentUser
