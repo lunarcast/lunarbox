@@ -4,6 +4,8 @@ module Lunarbox.Component.Projects
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
+import Control.MonadZero (guard)
+import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Filterable (filter)
 import Data.Lens (Lens', preview, set)
@@ -172,19 +174,22 @@ component =
     where
     list = renderProject areExamples <$> projects
 
-  listButton :: String -> Action -> HH.HTML _ _
-  listButton name handleClick =
-    HH.div
-      [ className "projects__list-button"
-      , onClick $ const $ Just handleClick
-      ]
-      [ icon name ]
-
   withRemoteData remoteData f = case remoteData of
     NotAsked -> loading
     Loading -> loading
     Failure err -> HH.text $ "error " <> err
     Success result -> f result
+
+  -- | Check if at least one example exists
+  examplesExist = case _ of
+    Success { exampleProjects } -> not $ Array.null exampleProjects
+    _ -> true
+
+  examplesHtml { projectList, search } = withRemoteData projectList go
+    where
+    go { exampleProjects } = renderProjectList true projects []
+      where
+      projects = sortBySearch _.name search exampleProjects
 
   projectsHtml { projectList, search } = withRemoteData projectList go
     where
@@ -217,7 +222,7 @@ component =
       , className "projects__search-bar"
       ]
 
-  render state@{ search, currentTab } =
+  render state@{ search, currentTab, projectList } =
     HH.div [ className "projects" ]
       [ withLogo
           $ HH.div [ className "projects__container" ]
@@ -230,13 +235,19 @@ component =
                     [ { name: PersonalProjects
                       , content: projectsHtml state
                       }
-                    , { name: Examples
-                      , content: HH.text "Examples go here"
-                      }
-                    , { name: Tutorials
-                      , content: HH.text "Tutorials go here"
-                      }
                     ]
+                      <> examplesTab
+                      <> [ { name: Tutorials
+                          , content: HH.text "Tutorials go here"
+                          }
+                        ]
                   }
               ]
+      ]
+    where
+    examplesTab = do
+      guard (examplesExist projectList)
+      [ { name: Examples
+        , content: examplesHtml state
+        }
       ]
