@@ -2,6 +2,7 @@ module Lunarbox.Data.ProjectList
   ( ProjectData
   , ProjectList
   , ProjectOverview
+  , TutorialOverview
   , _userProjects
   , _exampleProjects
   ) where
@@ -10,6 +11,7 @@ import Data.Lens (Lens')
 import Data.Lens.Record (prop)
 import Data.Symbol (SProxy(..))
 import Lunarbox.Data.ProjectId (ProjectId)
+import Lunarbox.Data.Tutorial (TutorialId)
 
 type ProjectData r
   = ( name :: String
@@ -20,12 +22,22 @@ type ProjectData r
     | r
     )
 
+-- | Data needed to render the projects in the list
 type ProjectOverview
   = ProjectData ( id :: ProjectId )
 
+-- | Data needed to render the tutorial in the list
+type TutorialOverview
+  = { name :: String
+    , id :: TutorialId
+    , completed :: Boolean
+    }
+
+-- | Stuff we get from the server to render on the projects page
 type ProjectList
   = { exampleProjects :: Array { | ProjectOverview }
     , userProjects :: Array { | ProjectOverview }
+    , tutorials :: Array TutorialOverview
     }
 
 -- Lenses

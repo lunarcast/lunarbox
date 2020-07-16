@@ -25,6 +25,7 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
 import Lunarbox.Data.ProjectId (ProjectId)
+import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
 import Lunarbox.Data.Tutorial (TutorialId(..))
@@ -93,7 +94,34 @@ instance manageProjectsAppM :: ManageProjects AppM where
     pure $ jsonToState =<< response
   saveProject id json = void <$> mkRawRequest { endpoint: Project id, method: Put $ Just json }
   deleteProject id = void <$> mkRawRequest { endpoint: Project id, method: Delete }
-  getProjects = mkRequest { endpoint: Projects, method: Get }
+  getProjects =
+    -- All this mess is here to mock tutorials
+    -- | TODO: Remove when bg finally updates the api
+    map (Record.merge { tutorials: mockTutorials })
+      <$> ( mkRequest { endpoint: Projects, method: Get } ::
+            AppM
+              ( Either String
+                  { exampleProjects :: Array { | ProjectOverview }
+                  , userProjects :: Array { | ProjectOverview }
+                  }
+              )
+        )
+    where
+    mockTutorials :: Array TutorialOverview
+    mockTutorials =
+      [ { id: TutorialId "0"
+        , name: "A sample tutorial"
+        , completed: false
+        }
+      , { id: TutorialId "1"
+        , name: "Another tutorial"
+        , completed: false
+        }
+      , { id: TutorialId "2"
+        , name: "Actually completed this"
+        , completed: true
+        }
+      ]
 
 instance manageTutorialsAppM :: ManageTutorials AppM where
   createTutorial =
