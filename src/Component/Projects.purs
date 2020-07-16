@@ -109,8 +109,8 @@ component =
   handleAction = case _ of
     Initialize -> do
       projectList <- getProjects
-      modify_ $ set _projectList $ fromEither projectList
-    Search term -> modify_ $ set _search term
+      modify_ _ { projectList = fromEither projectList }
+    Search term -> modify_ _ { search = term }
     Navigate route -> navigate route
     OpenProject id -> navigate $ Project id
     SetTab tab -> modify_ _ { currentTab = tab }
@@ -118,7 +118,7 @@ component =
       response <- cloneProject id
       case response of
         Right cloneId -> navigate $ Project cloneId
-        Left err -> modify_ $ set _projectList $ Failure err
+        Left err -> modify_ _ { projectList = Failure err }
     DeleteProject id event -> do
       liftEffect $ stopPropagation $ MouseEvent.toEvent event
       oldProjects <- gets $ preview $ _projectList <<< _Success
@@ -129,9 +129,10 @@ component =
           modify_
             $ set _projectList
             $ case oldProjects of
-                Just { exampleProjects, userProjects } ->
+                Just value ->
                   Success
-                    { exampleProjects, userProjects: filter ((_ /= id) <<< _.id) userProjects }
+                    $ value
+                        { userProjects = filter ((_ /= id) <<< _.id) value.userProjects }
                 Nothing -> Failure "Cannot find projec list"
         Left err -> modify_ $ set _projectList $ Failure err
     CreateProject -> do
@@ -147,17 +148,17 @@ component =
     HH.div [ className "project", onClick $ const $ Just $ (if isExample then CloneProject else OpenProject) id ]
       [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
       , HH.div [ className "project__data" ]
-          [ HH.div [ className "project__data-function-count" ]
+          [ HH.div [ className "project__data-item" ]
               [ icon "functions"
               , HH.text $ show functionCount
               ]
-          , HH.div [ className "project__data-node-count" ]
+          , HH.div [ className "project__data-item" ]
               [ icon "track_changes"
               , HH.text $ show nodeCount
               ]
           , whenElem (not isExample) \_ ->
               HH.div
-                [ className "project__data-node-icon"
+                [ className "project__data-icon"
                 , onClick $ Just <<< DeleteProject id
                 ]
                 [ icon "delete"
@@ -180,7 +181,6 @@ component =
     Failure err -> HH.text $ "error " <> err
     Success result -> f result
 
-  -- | Check if at least one example exists
   examplesExist = case _ of
     Success { exampleProjects } -> not $ Array.null exampleProjects
     _ -> true
@@ -191,19 +191,47 @@ component =
       where
       projects = sortBySearch _.name search exampleProjects
 
+  newProject a =
+    HH.div
+      [ className "project project--new"
+      , onClick $ const
+          $ Just a
+      ]
+      [ icon "add" ]
+
   projectsHtml { projectList, search } = withRemoteData projectList go
     where
     go { userProjects } = renderProjectList false projects [ createProject ]
       where
       projects = sortBySearch _.name search userProjects
 
-      createProject =
-        HH.div
-          [ className "project project--new"
-          , onClick $ const
-              $ Just CreateProject
+      createProject = newProject CreateProject
+
+  tutorialsHtml { projectList, search } = withRemoteData projectList go
+    where
+    go { tutorials } =
+      HH.div [ className "projects__list" ]
+        $ [ newProject CreateProject ]
+        <> (mkItem <$> tutorials)
+      where
+      mkItem { name, completed } =
+        HH.div [ className "project", onClick $ const Nothing ]
+          [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
+          , HH.div [ className "project__data" ]
+              [ whenElem completed \_ ->
+                  HH.div
+                    [ className "project__data-icon"
+                    , onClick $ const Nothing
+                    ]
+                    [ icon "verified" ]
+              , HH.div
+                  [ className "project__data-icon"
+                  , onClick $ const Nothing
+                  ]
+                  [ icon "delete"
+                  ]
+              ]
           ]
-          [ icon "add" ]
 
   goBack =
     HH.div
@@ -238,7 +266,7 @@ component =
                     ]
                       <> examplesTab
                       <> [ { name: Tutorials
-                          , content: HH.text "Tutorials go here"
+                          , content: tutorialsHtml state
                           }
                         ]
                   }

@@ -93,8 +93,8 @@
   display: flex;
 }
 
-.project__data-function-count,
-.project__data-node-count {
+.project__data-item,
+.project__data-item {
   display: flex;
   align-items: center;
   margin-right: 1rem;
@@ -103,6 +103,10 @@
     margin-right: 0.2rem;
     font-size: 1rem;
   }
+}
+
+.project__data-icon {
+  margin-right: 1rem;
 }
 
 .project--new {
