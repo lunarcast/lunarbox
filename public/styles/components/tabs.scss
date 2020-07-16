@@ -1,0 +1,41 @@
+@import "../theme.scss";
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tabs__header {
+  display: flex;
+}
+
+.tabs__tab {
+  background: $primary-dark;
+  color: $on-primary;
+  padding: 1rem;
+
+  transition: filter $transition-time, border-bottom-color $transition-time;
+  cursor: pointer;
+
+  border-bottom-width: 3px;
+  border-bottom-style: solid;
+  border-bottom-color: transparent;
+}
+
+.tabs__tab:hover:not(.tabs__tab--current) {
+  filter: brightness(1.25);
+  border-bottom-color: rgba($on-primary, 0.4);
+}
+
+.tabs__tab--current {
+  filter: brightness(1.5);
+  border-bottom-color: $on-primary;
+}
+
+.tabs__content {
+  height: 100%;
+  background: $primary;
+  color: $on-primary;
+  padding: 1rem;
+}

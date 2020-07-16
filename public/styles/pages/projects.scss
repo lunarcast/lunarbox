@@ -25,11 +25,6 @@
   margin: 1rem;
 }
 
-#projects > #projects-header > #back {
-  color: $on-primary;
-  flex-grow: 1;
-}
-
 #projects > #projects-header > #back > .material-icons {
   filter: brightness(0.9);
   cursor: pointer;
@@ -165,4 +160,11 @@
     flex-direction: column-reverse;
     overflow: auto;
   }
+}
+
+.projects__back {
+  @include utils.center;
+
+  margin: 1rem;
+  color: $on-primary;
 }

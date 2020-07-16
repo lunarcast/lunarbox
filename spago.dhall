@@ -20,6 +20,7 @@
   , "halogen"
   , "halogen-css"
   , "halogen-formless"
+  , "halogen-hooks"
   , "halogen-vdom"
   , "lists"
   , "math"

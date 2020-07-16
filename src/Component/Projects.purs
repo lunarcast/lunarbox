@@ -14,12 +14,13 @@ import Data.Symbol (SProxy(..))
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick, onValueInput)
-import Halogen.HTML.Properties as HP
+import Halogen.HTML.Events (onClick)
+import Halogen.HTML.Events as HE
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject, createProject, deleteProject, getProjects)
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
+import Lunarbox.Component.Tabs as Tabs
 import Lunarbox.Component.Utils (className, container, whenElem)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
@@ -33,9 +34,22 @@ import Web.Event.Event (stopPropagation)
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
 
+data Tab
+  = PersonalProjects
+  | Examples
+  | Tutorials
+
+derive instance eqTab :: Eq Tab
+
+instance showTab :: Show Tab where
+  show PersonalProjects = "Projects"
+  show Examples = "Examples"
+  show Tutorials = "Tutorials"
+
 type State
   = { projectList :: RemoteData String ProjectList
     , search :: String
+    , currentTab :: Tab
     }
 
 -- Lenses
@@ -77,6 +91,7 @@ component =
       const
         { projectList: NotAsked
         , search: ""
+        , currentTab: PersonalProjects
         }
     , render
     , eval:
@@ -178,19 +193,32 @@ component =
     where
     order = sortBySearch _.name search
 
-  render state@{ search } =
+  render { search, currentTab } =
     container "projects-container"
       [ withLogo
           $ container "projects"
-              [ container "projects-header"
-                  [ HH.div [ HP.id_ "back", onClick $ const $ Just $ Navigate Home ] [ icon "arrow_back_ios" ]
-                  , HH.input
-                      [ HP.value search
-                      , HP.placeholder "Search"
-                      , onValueInput $ Just <<< Search
-                      ]
-                  ]
-              , container "project-lists"
-                  $ renderProjects state
+              [ Tabs.component
+                  { currentTab
+                  , headerStart:
+                    Just
+                      $ HH.div
+                          [ HE.onClick $ const
+                              $ Just
+                              $ Navigate Home
+                          , className "projects__back"
+                          ]
+                          [ icon "arrow_back_ios" ]
+                  , tabs:
+                    [ { name: PersonalProjects
+                      , content: HH.text "Projects go here"
+                      }
+                    , { name: Examples
+                      , content: HH.text "Examples go here"
+                      }
+                    , { name: Tutorials
+                      , content: HH.text "Tutorials go here"
+                      }
+                    ]
+                  }
               ]
       ]
