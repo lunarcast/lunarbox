@@ -4,7 +4,6 @@ module Lunarbox.Component.Projects
 
 import Prelude
 import Control.Monad.Reader (class MonadAsk)
-import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Filterable (filter)
 import Data.Lens (Lens', preview, set)
@@ -22,7 +21,7 @@ import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject,
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Tabs as Tabs
-import Lunarbox.Component.Utils (className, container, whenElem)
+import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.State (emptyState)
@@ -144,19 +143,19 @@ component =
 
   renderProject isExample { name, id, metadata: { functionCount, nodeCount } } =
     HH.div [ className "project", onClick $ const $ Just $ (if isExample then CloneProject else OpenProject) id ]
-      [ HH.div [ className "project-name no-overflow" ] [ HH.text name ]
-      , HH.div [ className "project-data" ]
-          [ HH.div [ className "function-count" ]
+      [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
+      , HH.div [ className "project__data" ]
+          [ HH.div [ className "project__data-function-count" ]
               [ icon "functions"
               , HH.text $ show functionCount
               ]
-          , HH.div [ className "node-count" ]
+          , HH.div [ className "project__data-node-count" ]
               [ icon "track_changes"
               , HH.text $ show nodeCount
               ]
           , whenElem (not isExample) \_ ->
               HH.div
-                [ className "node-icon"
+                [ className "project__data-node-icon"
                 , onClick $ Just <<< DeleteProject id
                 ]
                 [ icon "delete"
@@ -164,37 +163,33 @@ component =
           ]
       ]
 
-  renderProjectList :: Boolean -> String -> Array { | ProjectOverview } -> Array (HH.HTML _ _) -> HH.HTML _ _
-  renderProjectList areExamples title projects buttons =
-    container "project-list"
-      [ container "list-header"
-          $ [ container "list-title" [ HH.text title ]
-            ]
-          <> buttons
-      , container
-          "list-items"
-          $ renderProject areExamples
-          <$> projects
-      ]
+  renderProjectList :: Boolean -> Array { | ProjectOverview } -> Array (HH.HTML _ _) -> HH.HTML _ _
+  renderProjectList areExamples projects buttons =
+    HH.div
+      [ className "projects__list" ]
+      $ renderProject areExamples
+      <$> projects
 
   listButton :: String -> Action -> HH.HTML _ _
   listButton name handleClick =
     HH.div
-      [ className "list-button"
+      [ className "projects__list-button"
       , onClick $ const $ Just handleClick
       ]
       [ icon name ]
 
-  renderProjects { projectList, search } = case projectList of
-    NotAsked -> pure loading
-    Loading -> pure loading
-    Failure err -> pure $ HH.text $ "error " <> err
-    Success { userProjects, exampleProjects } ->
-      [ renderProjectList false "Projects" (order $ Array.reverse userProjects) [ listButton "add" CreateProject ]
-      , renderProjectList true "Examples" (order $ Array.reverse exampleProjects) []
-      ]
-    where
-    order = sortBySearch _.name search
+  withRemoteData remoteData f = case remoteData of
+    NotAsked -> loading
+    Loading -> loading
+    Failure err -> HH.text $ "error " <> err
+    Success result -> f result
+
+  projectsHtml { projectList, search } =
+    withRemoteData projectList \{ userProjects } ->
+      let
+        projects = sortBySearch _.name search userProjects
+      in
+        renderProjectList false projects [ listButton "add" CreateProject ]
 
   goBack =
     HH.div
@@ -213,10 +208,10 @@ component =
       , className "projects__search-bar"
       ]
 
-  render { search, currentTab } =
-    container "projects-container"
+  render state@{ search, currentTab } =
+    HH.div [ className "projects" ]
       [ withLogo
-          $ container "projects"
+          $ HH.div [ className "projects__container" ]
               [ Tabs.component
                   { currentTab
                   , headerStart: Just goBack
@@ -224,7 +219,7 @@ component =
                   , setTab: Just <<< SetTab
                   , tabs:
                     [ { name: PersonalProjects
-                      , content: HH.text "Projects go here"
+                      , content: projectsHtml state
                       }
                     , { name: Examples
                       , content: HH.text "Examples go here"

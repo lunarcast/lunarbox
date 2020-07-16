@@ -11,33 +11,38 @@
 }
 
 .tabs__tab {
-  background: $primary-dark;
+  background: transparent;
   color: $on-primary;
   padding: 1rem;
 
-  transition: filter $transition-time, border-bottom-color $transition-time;
+  transition: filter $transition-time, border-top-color $transition-time,
+    background $transition-time;
   cursor: pointer;
 
   outline: none;
   border: none;
 
-  border-bottom-width: 3px;
-  border-bottom-style: solid;
-  border-bottom-color: transparent;
+  border-top-width: 3px;
+  border-top-style: solid;
+  border-top-color: transparent;
 }
 
 .tabs__tab:hover:not(.tabs__tab--current) {
-  filter: brightness(1.25);
+  background: rgba($primary, 0.5);
+  filter: brightness(1.1);
 }
 
+// Changing this every time is annoying so I just made a var
+$content-bg: lighten($very-dark, 3);
+
 .tabs__tab--current {
-  filter: brightness(1.5);
-  border-bottom-color: $on-primary;
+  background: $content-bg;
+  border-top-color: $on-primary;
 }
 
 .tabs__content {
   height: 100%;
-  background: $primary;
+  background: $content-bg;
   color: $on-primary;
   padding: 1rem;
 }
