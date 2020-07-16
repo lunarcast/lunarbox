@@ -49,6 +49,9 @@ derive newtype instance decodeJsonTutorialTest :: DecodeJson TutorialTest
 newtype TutorialId
   = TutorialId String
 
+instance showTutorialId :: Show TutorialId where
+  show (TutorialId a) = a
+
 derive newtype instance encodeJsonTutorialId :: EncodeJson TutorialId
 
 derive newtype instance decodeJsonTutorialId :: DecodeJson TutorialId
@@ -66,7 +69,7 @@ type Tutorial r
     }
 
 type TutorialWithMetadata
-  = Tutorial ( id :: TutorialId, completed :: Boolean )
+  = Tutorial ( completed :: Boolean )
 
 -- | Possible errors we can get by validating a tutorial
 data TutorialValidationError

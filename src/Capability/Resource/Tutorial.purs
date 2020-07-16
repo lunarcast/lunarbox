@@ -3,14 +3,14 @@ module Lunarbox.Capability.Resource.Tutorial where
 import Prelude
 import Data.Either (Either)
 import Halogen (HalogenM, lift)
-import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
+import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata, Tutorial)
 
 -- | Capability for managing projects
 class
   Monad m <= ManageTutorials m where
-  createTutorial :: m (Either String TutorialWithMetadata)
+  createTutorial :: m (Either String (Tutorial ()))
   deleteTutorial :: TutorialId -> m (Either String Unit)
-  saveTutorial :: TutorialWithMetadata -> m (Either String Unit)
+  saveTutorial :: Tutorial () -> m (Either String Unit)
   getTutorials :: m (Either String (Array TutorialWithMetadata))
   getTutorial :: TutorialId -> m (Either String TutorialWithMetadata)
 

@@ -3,7 +3,7 @@ module Lunarbox.AppM where
 import Prelude
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
 import Data.Argonaut (encodeJson)
-import Data.Either (Either, hush)
+import Data.Either (Either(..), hush)
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
@@ -18,12 +18,17 @@ import Lunarbox.Api.Request as Request
 import Lunarbox.Api.Utils (authenticate, mkRawRequest, mkRequest, withBaseUrl)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
+import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, createTutorial)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
+import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
+import Lunarbox.Data.Tutorial (TutorialId(..))
+import Record as Record
 import Routing.Duplex (print)
 
 -- Todo: better type for errors
@@ -89,3 +94,20 @@ instance manageProjectsAppM :: ManageProjects AppM where
   saveProject id json = void <$> mkRawRequest { endpoint: Project id, method: Put $ Just json }
   deleteProject id = void <$> mkRawRequest { endpoint: Project id, method: Delete }
   getProjects = mkRequest { endpoint: Projects, method: Get }
+
+instance manageTutorialsAppM :: ManageTutorials AppM where
+  createTutorial =
+    pure
+      $ Right
+          { base: NodeId "76"
+          , name: "First tutorial"
+          , id: TutorialId "0"
+          , requires: []
+          , steps: []
+          , hiddenElements: []
+          , tests: []
+          }
+  deleteTutorial id = Right <$> printString ("Deleted id " <> show id)
+  saveTutorial _ = pure $ Right unit
+  getTutorials = pure $ Right []
+  getTutorial id = map (Record.merge { completed: false, id }) <$> createTutorial
