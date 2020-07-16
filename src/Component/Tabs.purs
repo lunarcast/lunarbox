@@ -16,11 +16,12 @@ type Input h t
         }
     , currentTab :: t
     , headerStart :: Maybe h
+    , headerEnd :: Maybe h
     }
 
 -- | Standard reusable tabs component. The state needs to be handled outside this.
 component :: forall h a t. Show t => Eq t => Input (HH.HTML h a) t -> HH.HTML h a
-component { tabs, currentTab, headerStart } =
+component { tabs, currentTab, headerStart, headerEnd } =
   HH.div [ className "tabs" ]
     [ HH.header [ className "tabs__header" ] header
     , HH.main [ className "tabs__content" ] [ maybeElement maybeContent \{ content } -> content ]
@@ -32,8 +33,12 @@ component { tabs, currentTab, headerStart } =
 
     currentTabClass = "tabs__tab--current" <$ guard (name == currentTab)
 
-  header = start <> (tabHtml <$> tabs)
+  header = start <> (tabHtml <$> tabs) <> end
     where
-    start = maybe [] (\s -> [ s ]) headerStart
+    mkPiece = maybe [] pure
+
+    start = mkPiece headerStart
+
+    end = mkPiece headerEnd
 
   maybeContent = find (\{ name } -> name == currentTab) tabs

@@ -34,22 +34,6 @@
     filter: brightness(1.3);
   }
 }
-
-#projects > #projects-header > input {
-  border: none;
-  outline: none;
-
-  background: $very-dark;
-  color: $on-dark-pale;
-  transition: filter $transition-time;
-
-  padding: 0.5rem;
-
-  &:hover {
-    filter: brightness(1.7);
-  }
-}
-
 #projects #project-lists {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -167,4 +151,21 @@
 
   margin: 1rem;
   color: $on-primary;
+}
+
+.projects__search-bar {
+  border: none;
+  outline: none;
+
+  background: $very-dark;
+  color: $on-dark-pale;
+  transition: filter $transition-time;
+
+  padding: 0.5rem;
+  margin: auto;
+  margin-right: 0;
+
+  &:hover {
+    filter: brightness(1.7);
+  }
 }

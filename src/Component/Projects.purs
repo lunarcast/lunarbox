@@ -16,6 +16,7 @@ import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, mod
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject, createProject, deleteProject, getProjects)
 import Lunarbox.Component.Icon (icon)
@@ -193,21 +194,31 @@ component =
     where
     order = sortBySearch _.name search
 
+  goBack =
+    HH.div
+      [ HE.onClick $ const
+          $ Just
+          $ Navigate Home
+      , className "projects__back"
+      ]
+      [ icon "arrow_back_ios" ]
+
+  searchBar search =
+    HH.input
+      [ HP.value search
+      , HP.placeholder "Search"
+      , HE.onValueInput $ Just <<< Search
+      , className "projects__search-bar"
+      ]
+
   render { search, currentTab } =
     container "projects-container"
       [ withLogo
           $ container "projects"
               [ Tabs.component
                   { currentTab
-                  , headerStart:
-                    Just
-                      $ HH.div
-                          [ HE.onClick $ const
-                              $ Just
-                              $ Navigate Home
-                          , className "projects__back"
-                          ]
-                          [ icon "arrow_back_ios" ]
+                  , headerStart: Just goBack
+                  , headerEnd: Just $ searchBar search
                   , tabs:
                     [ { name: PersonalProjects
                       , content: HH.text "Projects go here"
