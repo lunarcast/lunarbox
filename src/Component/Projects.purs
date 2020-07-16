@@ -68,6 +68,7 @@ data Action
   | CloneProject ProjectId
   | Search String
   | Navigate Route
+  | SetTab Tab
 
 type Output
   = Void
@@ -111,6 +112,7 @@ component =
     Search term -> modify_ $ set _search term
     Navigate route -> navigate route
     OpenProject id -> navigate $ Project id
+    SetTab tab -> modify_ _ { currentTab = tab }
     CloneProject id -> do
       response <- cloneProject id
       case response of
@@ -219,6 +221,7 @@ component =
                   { currentTab
                   , headerStart: Just goBack
                   , headerEnd: Just $ searchBar search
+                  , setTab: Just <<< SetTab
                   , tabs:
                     [ { name: PersonalProjects
                       , content: HH.text "Projects go here"

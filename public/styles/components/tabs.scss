@@ -18,6 +18,9 @@
   transition: filter $transition-time, border-bottom-color $transition-time;
   cursor: pointer;
 
+  outline: none;
+  border: none;
+
   border-bottom-width: 3px;
   border-bottom-style: solid;
   border-bottom-color: transparent;
@@ -25,7 +28,6 @@
 
 .tabs__tab:hover:not(.tabs__tab--current) {
   filter: brightness(1.25);
-  border-bottom-color: rgba($on-primary, 0.4);
 }
 
 .tabs__tab--current {
