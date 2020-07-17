@@ -71,6 +71,9 @@ type Tutorial r
     | r
     }
 
+type TutorialFields
+  = Tutorial ()
+
 type TutorialWithMetadata
   = Tutorial ( completed :: Boolean )
 
@@ -95,3 +98,9 @@ validateTest nonFunction (Test { output }) = invalid $ pure $ ExpectedFunction n
 -- | Validate a tutorial
 validateTutorial :: forall r. RuntimeValue -> Tutorial r -> V (NonEmptyList TutorialValidationError) Unit
 validateTutorial main { tests } = fold $ validateTest main <$> tests
+
+-- | Type edited by the user visually
+type TutorialSpec
+  = { name :: String
+    , base :: NodeId
+    }

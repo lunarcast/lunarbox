@@ -2,6 +2,7 @@ module Lunarbox.Component.Router (component, Query(..)) where
 
 import Prelude
 import Control.Monad.Reader (class MonadReader, asks)
+import Data.Const (Const)
 import Data.Either (Either(..))
 import Data.Foldable (find)
 import Data.Lens (view)
@@ -9,7 +10,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Symbol (SProxy(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
-import Halogen (Component, HalogenM, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
+import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, logout, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
@@ -23,12 +24,14 @@ import Lunarbox.Component.Login as Login
 import Lunarbox.Component.Project as ProjectC
 import Lunarbox.Component.Projects as ProjectsC
 import Lunarbox.Component.Register as Register
+import Lunarbox.Component.TutorialEditor as TutorialEditor
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Config (Config, _locationState)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Profile (Profile)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Route (Route(..), parseRoute)
+import Lunarbox.Data.Tutorial (TutorialId)
 import Record as Record
 
 type State
@@ -53,6 +56,7 @@ type ChildSlots
     , project :: OpaqueSlot ProjectId
     , clone :: OpaqueSlot ProjectId
     , home :: OpaqueSlot Unit
+    , editTutorial :: Slot (Const Void) Void TutorialId
     )
 
 type ComponentM
@@ -138,7 +142,7 @@ component =
           Clone targetId -> requireAuthorization $ HH.slot (SProxy :: _ "clone") targetId CloneC.component { targetId } absurd
           Project id -> requireAuthorization $ HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
           Tutorial id -> HH.text $ "You are trying the " <> show id <> " tutorial"
-          EditTutorial id -> HH.text $ "You are editing the " <> show id <> " tutorial"
+          EditTutorial id -> HH.slot (SProxy :: _ "editTutorial") id TutorialEditor.component { id } absurd
       # fromMaybe notFound
     where
     requireAuthorization = authorize currentUser

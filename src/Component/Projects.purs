@@ -244,7 +244,7 @@ component =
         <> (mkItem <$> tutorials)
       where
       mkItem { name, completed, id } =
-        HH.div [ className "project", onClick $ const $ Just CreateProject ]
+        HH.div [ className "project", onClick $ const $ Just CreateTutorial ]
           [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
           , HH.div [ className "project__data" ]
               [ whenElem completed \_ ->
