@@ -22,9 +22,10 @@
   padding: 0.5rem;
 }
 
-.dropdown.dropdown--is-flex .dropdown__trigger-button {
+.dropdown .dropdown__trigger-button {
   color: inherit;
   background: $primary;
+  box-shadow: 3px 3px 3px 3px $very-dark;
 }
 
 .dropdown.dropdown--is-active .dropdown__menu {

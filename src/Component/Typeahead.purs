@@ -120,7 +120,7 @@ single = spec' (\i av -> const (av !! i)) (const $ const Nothing) filter' render
             ( Setters.setInputProps
                 [ HP.placeholder st.placeholder
                 , HP.value st.search
-                , className "dropdown__typeahead-input"
+                , className "dropdown__typeahead-input form__field form__field--text"
                 ]
             )
         , Dropdown.menu st
@@ -149,8 +149,7 @@ multi = spec' selectByIndex (filter <<< (/=)) difference render
           ( st.selected
               <#> \i ->
                   HH.div
-                    [ className "panel-block has-background-white"
-                    , HE.onClick \_ -> Just $ remove i
+                    [ HE.onClick \_ -> Just $ remove i
                     ]
                     [ HH.text $ show i ]
           )
@@ -162,7 +161,7 @@ multi = spec' selectByIndex (filter <<< (/=)) difference render
           ]
           [ HH.input
               ( Setters.setInputProps
-                  [ className "input"
+                  [ className "form__field form__field--text"
                   , HP.placeholder st.placeholder
                   , HP.value st.search
                   ]

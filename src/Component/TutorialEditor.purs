@@ -18,6 +18,7 @@ import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Typeahead as TA
 import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Tutorial (TutorialId, TutorialSpec, UserProject(..))
+import Lunarbox.Form.Field (customFormField)
 import Lunarbox.Form.Field as Field
 import Lunarbox.Form.Validation (FormError(..))
 import Lunarbox.Form.Validation as V
@@ -152,10 +153,11 @@ formComponent =
               [ HP.placeholder "Name"
               , HP.type_ HP.InputText
               ]
-          , singleTypeahead unit
-              { placeholder: "My awesome project"
-              , items: projects
-              }
+          , customFormField proxies.base form
+              $ singleTypeahead unit
+                  { placeholder: "My awesome project"
+                  , items: projects
+                  }
           , Field.submit "Save"
           ]
       ]
