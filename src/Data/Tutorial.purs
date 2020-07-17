@@ -4,13 +4,10 @@ import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
-import Data.Foldable (fold)
 import Data.Generic.Rep (class Generic)
-import Data.List.Types (List(..), NonEmptyList, (:))
+import Data.List.Types (List)
 import Data.Tuple (Tuple(..))
-import Data.Validation.Semigroup (V, invalid)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Tab (Tab)
 
@@ -61,15 +58,20 @@ derive newtype instance encodeJsonTutorialId :: EncodeJson TutorialId
 
 derive newtype instance decodeJsonTutorialId :: DecodeJson TutorialId
 
+-- | Type edited by the user visually
+type TutorialSpec
+  = { name :: String
+    , base :: UserProject
+    , solution :: UserProject
+    }
+
 -- | The actual data structure for the tutorials
 type Tutorial r
   = { name :: String
-    , id :: TutorialId
-    , base :: NodeId
-    , requires :: Array TutorialId
+    , base :: ProjectId
+    , solution :: ProjectId
     , steps :: Array TutorialStep
     , hiddenElements :: Array EditorElement
-    , tests :: Array TutorialTest
     | r
     }
 
@@ -77,29 +79,7 @@ type TutorialFields
   = Tutorial ()
 
 type TutorialWithMetadata
-  = Tutorial ( completed :: Boolean )
-
--- | Possible errors we can get by validating a tutorial
-data TutorialValidationError
-  = NonEqual RuntimeValue RuntimeValue
-  | ExpectedFunction RuntimeValue RuntimeValue
-
--- | Validate a test
-validateTest :: RuntimeValue -> TutorialTest -> V (NonEmptyList TutorialValidationError) Unit
-validateTest result (Test { inputs: Nil, output })
-  | result == output = pure unit
-  | otherwise = invalid $ pure $ NonEqual result output
-
-validateTest (Function call) (Test { inputs: head : inputs, output }) =
-  validateTest
-    (call head)
-    (Test { inputs, output })
-
-validateTest nonFunction (Test { output }) = invalid $ pure $ ExpectedFunction nonFunction output
-
--- | Validate a tutorial
-validateTutorial :: forall r. RuntimeValue -> Tutorial r -> V (NonEmptyList TutorialValidationError) Unit
-validateTutorial main { tests } = fold $ validateTest main <$> tests
+  = Tutorial ( completed :: Boolean, id :: TutorialId )
 
 newtype UserProject
   = UserProject (Tuple String ProjectId)
@@ -111,10 +91,3 @@ instance showUserProject :: Show UserProject where
 
 instance semigroupUserProject :: Semigroup UserProject where
   append a b = b
-
--- | Type edited by the user visually
-type TutorialSpec
-  = { name :: String
-    , base :: UserProject
-    , solution :: UserProject
-    }

@@ -19,8 +19,29 @@
   width: 800px;
 }
 
-.tutorial-editor__title {
+.tutorial-editor__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   color: $on-primary;
+}
+
+.tutorial-editor__delete {
+  cursor: pointer;
+
+  outline: none;
+  border: none;
+
+  color: inherit;
+  background: none;
+
+  transition: filter $transition-time, transform $transition-time;
+  filter: brightness(0.8);
+}
+
+.tutorial-editor__delete:hover {
+  filter: brightness(1.3);
+  transform: scale(1.2);
 }
 
 .tutorial-editor .form__field.form__field--text {

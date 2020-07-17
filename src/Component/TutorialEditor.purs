@@ -1,4 +1,6 @@
-module Lunarbox.Component.TutorialEditor where
+module Lunarbox.Component.TutorialEditor
+  ( component
+  ) where
 
 import Prelude
 import Data.Const (Const)
@@ -8,15 +10,20 @@ import Data.Newtype (class Newtype)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Formless as F
-import Halogen (modify_)
+import Halogen (get, gets, modify_)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProjects)
+import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, deleteTutorial, saveTutorial)
 import Lunarbox.Component.Error (error)
+import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Typeahead as TA
 import Lunarbox.Component.Utils (className)
+import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialId, TutorialSpec, UserProject(..))
 import Lunarbox.Form.Field (customFormField)
 import Lunarbox.Form.Field as Field
@@ -39,12 +46,15 @@ type State
 
 data HandleAction
   = HandleTutorial TutorialSpec
+  | Delete
   | Init
 
 component ::
   forall m.
   MonadAff m =>
   ManageProjects m =>
+  ManageTutorials m =>
+  Navigate m =>
   H.Component HH.HTML (Const Void) { | Input () } Void m
 component =
   H.mkComponent
@@ -62,7 +72,29 @@ component =
     }
   where
   handleAction = case _ of
-    HandleTutorial tut -> pure unit
+    HandleTutorial
+      { name
+    , base: UserProject (Tuple _ base)
+    , solution: UserProject (Tuple _ solution)
+    } -> do
+      { id } <- get
+      response <-
+        saveTutorial id
+          { name
+          , base
+          , solution
+          , steps: []
+          , hiddenElements: []
+          }
+      case response of
+        Left err -> modify_ _ { projects = Failure err }
+        _ -> pure unit
+    Delete -> do
+      id <- gets _.id
+      deleteTutorial id
+        >>= case _ of
+            Left err -> modify_ _ { projects = Failure err }
+            _ -> navigate Projects
     Init -> do
       result <- getProjects
       let
@@ -82,6 +114,12 @@ component =
             [ HH.header [ className "tutorial-editor__header" ]
                 [ HH.h1 [ className "tutorial-editor__title" ]
                     [ HH.text "Edit tutorial"
+                    ]
+                , HH.button
+                    [ className "tutorial-editor__delete"
+                    , HE.onClick $ const $ Just Delete
+                    ]
+                    [ icon "delete"
                     ]
                 ]
             , HH.slot F._formless unit formComponent
