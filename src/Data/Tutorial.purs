@@ -116,4 +116,5 @@ instance semigroupUserProject :: Semigroup UserProject where
 type TutorialSpec
   = { name :: String
     , base :: UserProject
+    , solution :: UserProject
     }

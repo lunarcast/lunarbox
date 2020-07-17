@@ -3,7 +3,7 @@ module Lunarbox.Component.TutorialEditor where
 import Prelude
 import Data.Const (Const)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -20,7 +20,6 @@ import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Tutorial (TutorialId, TutorialSpec, UserProject(..))
 import Lunarbox.Form.Field (customFormField)
 import Lunarbox.Form.Field as Field
-import Lunarbox.Form.Validation (FormError(..))
 import Lunarbox.Form.Validation as V
 import Network.RemoteData (RemoteData(..))
 import Record as Record
@@ -98,6 +97,7 @@ newtype TutorialForm r f
   ( r
       ( name :: f V.FormError String String
       , base :: f V.FormError (Maybe UserProject) UserProject
+      , solution :: f V.FormError (Maybe UserProject) UserProject
       )
   )
 
@@ -108,11 +108,20 @@ type FormInput
   = { projects :: Array UserProject }
 
 data FormAction
-  = HandleTypeahead (TA.Message Maybe UserProject)
+  = HandleTypeahead UserProjectTypeahead (TA.Message Maybe UserProject)
+
+-- | Different typeaheads used to select projects
+data UserProjectTypeahead
+  = Base
+  | Solution
+
+derive instance eqUserProjectTypeahead :: Eq UserProjectTypeahead
+
+derive instance ordUserProjectTypeahead :: Ord UserProjectTypeahead
 
 -- | Form child component types
 type FormChildSlots
-  = ( typeahead :: TA.Slot Maybe UserProject Unit )
+  = ( typeahead :: TA.Slot Maybe UserProject UserProjectTypeahead )
 
 formComponent ::
   forall m.
@@ -133,14 +142,16 @@ formComponent =
       { validators:
         TutorialForm
           { name: F.noValidation
-          , base: F.hoistFnE_ $ maybe (Left Required) Right
+          , base: V.exists
+          , solution: V.exists
           }
       , initialInputs: Nothing
       }
 
   handleAction = case _ of
-    HandleTypeahead (TA.SelectionsChanged new) -> do
-      eval $ F.setValidate proxies.base new
+    HandleTypeahead slot (TA.SelectionsChanged new) -> case slot of
+      Base -> eval $ F.setValidate proxies.base new
+      Solution -> eval $ F.setValidate proxies.solution new
     where
     eval act = F.handleAction handleAction handleEvent act
 
@@ -154,8 +165,13 @@ formComponent =
               , HP.type_ HP.InputText
               ]
           , customFormField proxies.base form
-              $ singleTypeahead unit
-                  { placeholder: "My awesome project"
+              $ singleTypeahead Base
+                  { placeholder: "My awesome base project"
+                  , items: projects
+                  }
+          , customFormField proxies.base form
+              $ singleTypeahead Solution
+                  { placeholder: "My awesome solution"
                   , items: projects
                   }
           , Field.submit "Save"
@@ -164,4 +180,4 @@ formComponent =
 
   singleTypeahead slot input = HH.slot TA._typeahead slot (Select.component TA.input TA.single) input handler
     where
-    handler = Just <<< F.injAction <<< HandleTypeahead
+    handler = Just <<< F.injAction <<< HandleTypeahead slot

@@ -2,6 +2,7 @@ module Lunarbox.Form.Validation where
 
 import Prelude
 import Data.Either (Either(..))
+import Data.Maybe (Maybe, maybe)
 import Data.String as String
 import Formless (Validation)
 import Formless as F
@@ -42,6 +43,10 @@ condition predicate err value =
 -- Mark a field as required
 required :: forall form m a. Eq a => Monoid a => Monad m => F.Validation form m FormError a a
 required = F.hoistFnE_ $ condition (_ /= mempty) Required
+
+-- | A required field which can be non-existent
+exists :: forall form m a. Monad m => F.Validation form m FormError (Maybe a) a
+exists = F.hoistFnE_ $ maybe (Left Required) Right
 
 -- The next 2 helpers handle strings which are either too short or too long
 maxLength :: forall form m. Monad m => Int -> F.Validation form m FormError String String
