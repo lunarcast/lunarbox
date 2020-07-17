@@ -7,9 +7,11 @@ import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
 import Data.Foldable (fold)
 import Data.Generic.Rep (class Generic)
 import Data.List.Types (List(..), NonEmptyList, (:))
+import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Tab (Tab)
 
 -- | Elements we can hide in the editor
@@ -99,8 +101,19 @@ validateTest nonFunction (Test { output }) = invalid $ pure $ ExpectedFunction n
 validateTutorial :: forall r. RuntimeValue -> Tutorial r -> V (NonEmptyList TutorialValidationError) Unit
 validateTutorial main { tests } = fold $ validateTest main <$> tests
 
+newtype UserProject
+  = UserProject (Tuple String ProjectId)
+
+derive instance eqUserProject :: Eq UserProject
+
+instance showUserProject :: Show UserProject where
+  show (UserProject (Tuple name _)) = name
+
+instance semigroupUserProject :: Semigroup UserProject where
+  append a b = b
+
 -- | Type edited by the user visually
 type TutorialSpec
   = { name :: String
-    , base :: NodeId
+    , base :: UserProject
     }

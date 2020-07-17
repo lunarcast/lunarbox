@@ -1,0 +1,30 @@
+@use "../utils/utils";
+@import "../theme.scss";
+
+.tutorial-editor {
+  @include utils.center;
+
+  background: $very-dark;
+  height: 100%;
+}
+
+.tutorial-editor__main {
+  background: $primary-dark;
+  border-top: 3px solid $secondary;
+
+  padding: 2rem;
+  box-shadow: 4px 0 5px 3px black;
+
+  height: 100%;
+  width: 800px;
+}
+
+.tutorial-editor__title {
+  color: $on-primary;
+}
+
+@media only screen and (max-width: 1200px) {
+  .tutorial-editor__main {
+    width: 100vw;
+  }
+}

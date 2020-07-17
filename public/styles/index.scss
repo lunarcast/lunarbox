@@ -12,12 +12,14 @@
 @import "./components/error.scss";
 @import "./components/modal.scss";
 @import "./components/tabs.scss";
+@import "./components/dropdown.scss";
 
 // Pages
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
 @import "./pages/login.scss";
 @import "./pages/projects.scss";
+@import "./pages/editTutorial.scss";
 
 * {
   // we don't want the user to drag stuff

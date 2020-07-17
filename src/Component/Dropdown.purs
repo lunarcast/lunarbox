@@ -1,4 +1,15 @@
-module Lunarbox.Component.Dropdown where
+module Lunarbox.Component.Dropdown
+  ( Slot
+  , Query(..)
+  , Input
+  , Message
+  , _dropdown
+  , clear
+  , spec
+  -- Those are reused by the typeahead
+  , toggle
+  , menu
+  ) where
 
 import Prelude
 import DOM.HTML.Indexed (HTMLbutton)
@@ -69,7 +80,7 @@ spec =
     HH.div
       [ className
           if st.visibility == Select.On then
-            "dropdown is-active"
+            "dropdown dropdow--is-active"
           else
             "dropdown"
       ]
@@ -105,9 +116,9 @@ toggle ::
   H.ComponentHTML (Select.Action act) ps m
 toggle props st =
   HH.div
-    [ className "dropdown-trigger" ]
+    [ className "dropdown__trigger" ]
     [ HH.button
-        (Setters.setToggleProps props)
+        (Setters.setToggleProps $ props <> [ className "dropdown__trigger-button" ])
         [ HH.text $ fromMaybe st.placeholder (show <$> st.selected) ]
     ]
 
@@ -118,18 +129,18 @@ menu ::
   H.ComponentHTML (Select.Action act) ps m
 menu st =
   HH.div
-    [ className "dropdown-menu" ]
+    [ className "dropdown__menu" ]
     [ if st.visibility == Select.Off then
         HH.text ""
       else
         HH.div
-          (Setters.setContainerProps [ className "dropdown-content" ])
+          (Setters.setContainerProps [ className "dropdown__content" ])
           ( mapWithIndex
               ( \ix item ->
-                  HH.span
+                  HH.div
                     ( Setters.setItemProps ix case Just ix == st.highlightedIndex of
-                        true -> [ className "dropdown-item has-background-link has-text-white-bis" ]
-                        _ -> [ className "dropdown-item" ]
+                        true -> [ className "dropdown__item" ]
+                        _ -> [ className "dropdown__item" ]
                     )
                     [ HH.text (show item) ]
               )
