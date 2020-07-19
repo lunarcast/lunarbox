@@ -27,7 +27,7 @@ import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
-import Lunarbox.Data.ProjectId (ProjectId)
+import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
@@ -132,7 +132,19 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
   saveTutorial id g = do
     printString $ "Saving project " <> show id
     pure $ Right unit
-  getTutorial id = pure $ Left $ "Cannot find tutorial " <> show id
+  getTutorial id
+    -- We mock this until bg makes the api
+    | id == TutorialId 7 =
+      pure $ Right
+        $ { name: "My super duper awesome tutorial"
+          , base: ProjectId 74
+          , solution: ProjectId 80
+          , hiddenElements: []
+          , id
+          , steps: []
+          , completed: false
+          }
+    | otherwise = pure $ Left $ "Cannot find tutorial " <> show id
 
 instance manageGistsAppM :: ManageGists AppM where
   fetchGist id = do

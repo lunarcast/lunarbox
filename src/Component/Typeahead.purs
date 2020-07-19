@@ -61,14 +61,20 @@ type State f item
     , placeholder :: String
     )
 
+type Input f item
+  = { items :: Array item
+    , placeholder :: String
+    , selected :: f item
+    }
+
 -- Generates the select input from the dropdown input
-input :: forall f item. Monoid (f item) => Dropdown.Input item -> Select.Input (State f item)
-input { items, placeholder } =
+input :: forall f item. Monoid (f item) => Input f item -> Select.Input (State f item)
+input { items, placeholder, selected } =
   { inputType: Select.Text
   , search: Nothing
   , debounceTime: Nothing
   , getItemCount: length <<< _.items
-  , selected: mempty
+  , selected
   , available: items
   , items
   , placeholder

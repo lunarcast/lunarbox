@@ -240,7 +240,7 @@ component =
     where
     go { tutorials } =
       HH.div [ className "projects__list" ]
-        $ [ newProject CreateProject ]
+        $ [ newProject CreateTutorial ]
         <> (mkItem <$> tutorials)
       where
       mkItem { name, completed, id } =
