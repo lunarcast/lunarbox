@@ -1,7 +1,7 @@
 module Lunarbox.Api.Request where
 
 import Prelude
-import Affjax (Request, printError, request)
+import Affjax (Error, Request, Response, printError, request)
 import Affjax.RequestBody as RB
 import Affjax.ResponseFormat as RF
 import Affjax.StatusCode (StatusCode(..))
@@ -86,16 +86,20 @@ register baseUrl fields = do
 profile :: forall m. MonadAff m => BaseUrl -> m (Either String Profile)
 profile baseUrl = requestUser baseUrl { endpoint: Profile, method: Get }
 
--- Helper for requests which only care about the body and the status being 200
+-- | Helper for requests which only care about the body and the status being 200
 requestJson :: forall m. MonadAff m => BaseUrl -> RequestOptions -> m (Either String Json)
 requestJson baseUrl opts = do
   res <- liftAff $ request $ defaultRequest baseUrl opts
-  pure do
-    response <- lmap printError res
-    case response.status of
-      StatusCode code
-        | code >= 200 && code <= 299 -> pure response.body
-      _ -> Left =<< decodeAt "message" response.body
+  pure $ decodeJsonResponse res
+
+-- | Helper to handle possible error messages in the response json and other stuff like that
+decodeJsonResponse :: Either Error (Response Json) -> Either String Json
+decodeJsonResponse res = do
+  response <- lmap printError res
+  case response.status of
+    StatusCode code
+      | code >= 200 && code <= 299 -> pure response.body
+    _ -> Left =<< decodeAt "message" response.body
 
 -- Helper for requests which will return the profile
 requestUser :: forall m. MonadAff m => BaseUrl -> RequestOptions -> m (Either String Profile)

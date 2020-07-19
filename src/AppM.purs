@@ -1,9 +1,12 @@
 module Lunarbox.AppM where
 
 import Prelude
+import Affjax as AX
+import Affjax.ResponseFormat as RF
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
-import Data.Argonaut (encodeJson)
+import Data.Argonaut (decodeJson, encodeJson)
 import Data.Either (Either(..), hush)
+import Data.HTTP.Method as Method
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
@@ -13,10 +16,11 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Ref as Ref
 import Foreign (unsafeToForeign)
 import Lunarbox.Api.Endpoint (Endpoint(..))
-import Lunarbox.Api.Request (RequestMethod(..))
+import Lunarbox.Api.Request (RequestMethod(..), decodeJsonResponse)
 import Lunarbox.Api.Request as Request
 import Lunarbox.Api.Utils (authenticate, mkRawRequest, mkRequest, withBaseUrl)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Capability.Resource.Gist (class ManageGists)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials)
 import Lunarbox.Capability.Resource.User (class ManageUser)
@@ -129,3 +133,15 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
     printString $ "Saving project " <> show id
     pure $ Right unit
   getTutorial id = pure $ Left $ "Cannot find tutorial " <> show id
+
+instance manageGistsAppM :: ManageGists AppM where
+  fetchGist id = do
+    result <-
+      liftAff
+        $ AX.request
+        $ AX.defaultRequest
+            { url = "https://api.github.com/gists/" <> show id
+            , method = Left Method.GET
+            , responseFormat = RF.json
+            }
+    pure $ decodeJsonResponse result >>= decodeJson

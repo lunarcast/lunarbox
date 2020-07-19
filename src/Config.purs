@@ -1,8 +1,8 @@
 module Lunarbox.Config where
 
 import Prelude
-import Control.Monad.Reader (class MonadAsk, asks)
-import Data.Lens (Lens')
+import Control.Monad.Reader (class MonadAsk, class MonadReader, asks, local)
+import Data.Lens (Lens', set)
 import Data.Lens.Record (prop)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -46,6 +46,10 @@ shouldCancelOnBlur = do
   case devOptions of
     Just { cancelInputsOnBlur } -> pure cancelInputsOnBlur
     Nothing -> pure true
+
+-- | Run a monadic computation inside a context with a different base url
+withBaseUrl :: forall m a. MonadReader Config m => BaseUrl -> m a -> m a
+withBaseUrl = local <<< set _baseUrl
 
 -- Lenses
 _user :: Lens' Config UserEnv

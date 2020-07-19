@@ -13,6 +13,7 @@ import Effect.Class (class MonadEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, get, liftEffect, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate, logout, navigate)
+import Lunarbox.Capability.Resource.Gist (class ManageGists)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials)
 import Lunarbox.Capability.Resource.User (class ManageUser)
@@ -74,6 +75,7 @@ component ::
   MonadReader Config m =>
   ManageTutorials m =>
   ManageProjects m =>
+  ManageGists m =>
   ManageUser m => Component HH.HTML Query {} Void m
 component =
   Connect.component
