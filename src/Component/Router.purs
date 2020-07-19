@@ -25,6 +25,7 @@ import Lunarbox.Component.Login as Login
 import Lunarbox.Component.Project as ProjectC
 import Lunarbox.Component.Projects as ProjectsC
 import Lunarbox.Component.Register as Register
+import Lunarbox.Component.Tutorial as Tutorial
 import Lunarbox.Component.TutorialEditor as TutorialEditor
 import Lunarbox.Component.Utils (OpaqueSlot)
 import Lunarbox.Config (Config, _locationState)
@@ -58,6 +59,7 @@ type ChildSlots
     , clone :: OpaqueSlot ProjectId
     , home :: OpaqueSlot Unit
     , editTutorial :: Slot (Const Void) Void TutorialId
+    , tutorial :: Slot (Const Void) Void TutorialId
     )
 
 type ComponentM
@@ -143,8 +145,8 @@ component =
           Projects -> requireAuthorization $ HH.slot (SProxy :: _ "projects") unit ProjectsC.component {} absurd
           Clone targetId -> requireAuthorization $ HH.slot (SProxy :: _ "clone") targetId CloneC.component { targetId } absurd
           Project id -> requireAuthorization $ HH.slot (SProxy :: _ "project") id ProjectC.component { id } absurd
-          Tutorial id -> HH.text $ "You are trying the " <> show id <> " tutorial"
-          EditTutorial id -> HH.slot (SProxy :: _ "editTutorial") id TutorialEditor.component { id } absurd
+          Tutorial id -> requireAuthorization $ HH.slot (SProxy :: _ "tutorial") id Tutorial.component { id } absurd
+          EditTutorial id -> requireAuthorization $ HH.slot (SProxy :: _ "editTutorial") id TutorialEditor.component { id } absurd
       # fromMaybe notFound
     where
     requireAuthorization = authorize currentUser
