@@ -4,6 +4,7 @@ import Prelude
 import Data.Argonaut (class DecodeJson, decodeJson)
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Newtype (class Newtype)
 import Foreign.Object (Object)
 
 -- | Data about a particular file in a gist
@@ -43,6 +44,8 @@ newtype GistId
 
 instance showGistId :: Show GistId where
   show (GistId a) = a
+
+derive instance newtypeGistId :: Newtype GistId _
 
 derive instance eqGistId :: Eq GistId
 

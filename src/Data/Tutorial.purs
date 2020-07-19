@@ -8,6 +8,7 @@ import Data.Generic.Rep (class Generic)
 import Data.List.Types (List)
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Gist (GistId)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Tab (Tab)
 
@@ -63,6 +64,7 @@ type TutorialSpec
   = { name :: String
     , base :: UserProject
     , solution :: UserProject
+    , content :: GistId
     }
 
 -- | The actual data structure for the tutorials
@@ -70,7 +72,7 @@ type Tutorial r
   = { name :: String
     , base :: ProjectId
     , solution :: ProjectId
-    , steps :: Array TutorialStep
+    , content :: GistId
     , hiddenElements :: Array EditorElement
     | r
     }

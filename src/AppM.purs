@@ -27,6 +27,7 @@ import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
 import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
+import Lunarbox.Data.Gist (GistId(..))
 import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
 import Lunarbox.Data.Route (routingCodec)
@@ -141,7 +142,7 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
           , solution: ProjectId 80
           , hiddenElements: []
           , id
-          , steps: []
+          , content: GistId "c36e060c76f2493bed9df58285e3b13f"
           , completed: false
           }
     | otherwise = pure $ Left $ "Cannot find tutorial " <> show id

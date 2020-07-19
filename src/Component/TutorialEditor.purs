@@ -7,7 +7,7 @@ import Data.Const (Const)
 import Data.Either (Either(..))
 import Data.Foldable (find)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Formless (InputField(..))
@@ -25,6 +25,7 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Typeahead as TA
 import Lunarbox.Component.Utils (className)
+import Lunarbox.Data.Gist (GistId(..))
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialFields, TutorialId, TutorialSpec, UserProject(..))
 import Lunarbox.Form.Field (customFormField)
@@ -80,6 +81,7 @@ component =
       { name
     , base: UserProject (Tuple _ base)
     , solution: UserProject (Tuple _ solution)
+    , content
     } -> do
       { id } <- get
       response <-
@@ -87,7 +89,7 @@ component =
           { name
           , base
           , solution
-          , steps: []
+          , content
           , hiddenElements: []
           }
       case response of
@@ -141,6 +143,7 @@ component =
                     { name: InputField tutorial'.name
                     , base: InputField $ mkUserProject tutorial'.base
                     , solution: InputField $ mkUserProject tutorial'.solution
+                    , content: InputField $ unwrap tutorial'.content
                     }
                 }
                 (Just <<< HandleTutorial)
@@ -161,6 +164,7 @@ newtype TutorialForm r f
       ( name :: f V.FormError String String
       , base :: f V.FormError (Maybe UserProject) UserProject
       , solution :: f V.FormError (Maybe UserProject) UserProject
+      , content :: f V.FormError String GistId
       )
   )
 
@@ -208,6 +212,7 @@ formComponent =
         { name: F.noValidation
         , base: V.exists
         , solution: V.exists
+        , content: F.hoistFnE_ $ Right <<< GistId
         }
     , projects
     , initialInputs: Just spec
@@ -227,6 +232,10 @@ formComponent =
       [ HH.div_
           [ Field.input proxies.name form
               [ HP.placeholder "Name"
+              , HP.type_ HP.InputText
+              ]
+          , Field.input proxies.content form
+              [ HP.placeholder "Gist id"
               , HP.type_ HP.InputText
               ]
           , customFormField proxies.base form
