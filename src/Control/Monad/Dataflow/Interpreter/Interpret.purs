@@ -80,7 +80,6 @@ interpret expression = do
         go = case _ of
           Term (Bool true) -> interpret then'
           Term (Bool false) -> interpret else'
-          Term (RLazy exec) -> go (Term $ exec unit)
           t -> pure def
       Let _ name value body -> do
         runtimeValue <- interpret value

@@ -6,24 +6,20 @@ module Lunarbox.Data.Dataflow.Runtime
   , toNumber
   , toString
   , toArray
-  , strictEval
-  , checkEquality
   , _Number
   , _String
   , _Function
   ) where
 
 import Prelude
-import Control.Lazy (class Lazy, defer)
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (.:), (:=), (~>))
+import Control.Lazy (defer)
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (.:), (:=), (~>))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
-import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
-import Effect.Unsafe (unsafePerformEffect)
-import Test.QuickCheck (class Arbitrary, class Coarbitrary, Result(..), checkResults, coarbitrary, quickCheckPure, quickCheckPure', randomSeed, (===))
+import Test.QuickCheck (class Arbitrary, class Coarbitrary, class Testable, Result(..), coarbitrary, test)
 import Test.QuickCheck.Arbitrary (genericArbitrary)
 
 -- Representations of all possible runtime values
@@ -34,19 +30,14 @@ data RuntimeValue
   | NArray (Array RuntimeValue)
   | Null
   | Function (RuntimeValue -> RuntimeValue)
-  | RLazy (Unit -> RuntimeValue)
 
 derive instance genericRuntimeValue :: Generic RuntimeValue _
-
-instance lazyRuntimeValue :: Lazy RuntimeValue where
-  defer = RLazy
 
 instance encodeJsonRuntimeValue :: EncodeJson RuntimeValue where
   encodeJson (Number inner) = "type" := "number" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (String inner) = "type" := "string" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (Bool inner) = "type" := "boolean" ~> "value" := inner ~> jsonEmptyObject
   encodeJson (NArray inner) = "type" := "array" ~> "value" := inner ~> jsonEmptyObject
-  encodeJson (RLazy inner) = encodeJson $ inner unit
   encodeJson _ = "type" := "null" ~> jsonEmptyObject
 
 instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
@@ -77,7 +68,6 @@ instance showRuntimeValue :: Show RuntimeValue where
     String value -> show value
     NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
     Function _ -> "Function"
-    RLazy exec -> "Lazy"
 
 instance coarbitraryRuntimeValue :: Coarbitrary RuntimeValue where
   coarbitrary (Number a) = coarbitrary a
@@ -85,7 +75,6 @@ instance coarbitraryRuntimeValue :: Coarbitrary RuntimeValue where
   coarbitrary (Bool a) = coarbitrary a
   coarbitrary (NArray arr) = coarbitrary arr
   coarbitrary Null = coarbitrary unit
-  coarbitrary (RLazy a) = coarbitrary $ a unit
   coarbitrary (Function a) = coarbitrary a
 
 instance arbitraryRuntimeValue :: Arbitrary RuntimeValue where
@@ -97,16 +86,6 @@ instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Bool v) (Bool v') = v == v'
   eq (NArray array) (NArray array') = array == array'
   eq Null Null = true
-  eq (RLazy a) (RLazy b) = a unit == b unit
-  eq (Function a) (Function b) = not $ List.any go (quickCheckPure seed 50 prop)
-    where
-    prop val = a val === b val
-
-    go (Failed _) = true
-
-    go Success = false
-
-    seed = unsafePerformEffect randomSeed
   eq _ _ = false
 
 instance ordRuntimeValue :: Ord RuntimeValue where
@@ -114,7 +93,6 @@ instance ordRuntimeValue :: Ord RuntimeValue where
   compare (String s) (String s') = compare s s'
   compare (Bool v) (Bool v') = compare v v'
   compare (NArray array) (NArray array') = compare array array'
-  compare (RLazy a) (RLazy b) = compare (a unit) (b unit)
   compare _ _ = EQ
 
 -- helper to ease the creation of binary functions
@@ -149,29 +127,37 @@ toString (String inner) = inner
 
 toString other = show other
 
--- Unwrap all the lazies
-strictEval :: RuntimeValue -> RuntimeValue
-strictEval (RLazy exec) = strictEval $ exec unit
+-- | Different testable versions for runtime values
+data RuntimeTest
+  = FunctionTest (RuntimeValue -> RuntimeTest)
+  | ConstantTest Result
 
-strictEval a = a
+instance testableRuntimeTest :: Testable RuntimeTest where
+  test (ConstantTest a) = pure a
+  test (FunctionTest function) = test function
 
 -- | Basically the same as == but works for functions as well
-checkEquality :: RuntimeValue -> RuntimeValue -> { messages :: List.List String, result :: Boolean }
-checkEquality (Function a) (Function b) =
-  { result: List.null checkResult.failures
-  , messages: _.message <$> checkResult.failures
-  }
+areEqual :: RuntimeValue -> RuntimeValue -> RuntimeTest
+areEqual (Function a) (Function b) = FunctionTest go
   where
-  checkResult = checkResults $ quickCheckPure' seed 100 prop
+  go val = areEqual (a val) (b val)
 
-  prop val = a val === b val
+areEqual (Function a) b =
+  ConstantTest
+    $ Failed
+    $ "Cannot call a non-function value with argument "
+    <> show b
 
-  seed = unsafePerformEffect randomSeed
+areEqual a b@(Function _) = areEqual b a
 
-checkEquality a b =
-  { result: a == b
-  , messages: List.Nil
-  }
+areEqual a b
+  | a == b = ConstantTest Success
+  | otherwise =
+    ConstantTest
+      $ Failed
+      $ show a
+      <> " != "
+      <> show b
 
 -- Lenses
 _Number :: Prism' RuntimeValue Number
