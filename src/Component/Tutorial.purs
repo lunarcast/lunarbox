@@ -6,8 +6,10 @@ import Control.MonadZero (guard)
 import Data.Array ((!!), (..))
 import Data.Array as Array
 import Data.Const (Const)
-import Data.Foldable (for_)
+import Data.Foldable (for_, traverse_)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
+import Data.Newtype (unwrap)
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
@@ -26,6 +28,9 @@ import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (className, maybeElement)
 import Lunarbox.Config (Config)
+import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term)
+import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
+import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.State as EditorState
 import Lunarbox.Data.Gist (Gist)
 import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
@@ -58,6 +63,7 @@ data Action
   | HandleSlideModalAction SlideModalAction
   | OpenCurrent
   | TryOpeningSlides
+  | NewState EditorState.State
 
 type ChildSlots m
   = ( editor :: Slot (Const Void) Editor.Output Unit
@@ -135,6 +141,15 @@ component =
             $ fork do
                 liftAff $ delay $ Milliseconds 300.0
                 handleAction TryOpeningSlides
+    NewState state -> do
+      gets _.solution
+        >>= traverse_ \solution -> do
+            case lookupMain state, lookupMain solution of
+              Just a, Just b -> pure unit
+              _, _ -> pure unit
+      where
+      lookupMain :: EditorState.State -> Maybe (Term Location)
+      lookupMain s = Map.lookup (AtFunction (FunctionName "main")) $ unwrap s.valueMap
 
   openSlide value = void $ query _slideModal value $ tell Modal.Open
 
@@ -156,11 +171,15 @@ component =
         steps = getTutorialSteps gist'
       modify_ _ { steps = fromEither steps }
 
+  handleEditorOutput = case _ of
+    Editor.StateEmit state -> Just $ NewState state
+    Editor.Save _ -> Nothing
+
   render { tutorial, gist, steps, base, solution, currentSlide } = case tutorial, gist, steps, base, solution of
     Success tutorial', Success gist', Success steps', Success base', Success solution' ->
       HH.div_
         $ [ HH.main [ className "tutorial__editor" ]
-              [ HH.slot (SProxy :: _ "editor") unit Editor.component base' (const Nothing)
+              [ HH.slot (SProxy :: _ "editor") unit Editor.component editorState handleEditorOutput
               ]
           , HH.button
               [ className "tutorial__hint-button"
@@ -176,6 +195,11 @@ component =
           ]
         <> slides
       where
+      editorState =
+        base'
+          { emitInterval = Just $ Milliseconds 1000.0
+          }
+
       slides =
         (0 .. (slideCount - 1))
           <#> mkModal

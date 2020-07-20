@@ -62,7 +62,6 @@ main production =
           { devOptions: Just { cancelInputsOnBlur: true }
           , baseUrl
           , pushStateInterface: nav
-          , autosaveInterval: Milliseconds 3000.0
           , user:
             { currentUser
             , userBus

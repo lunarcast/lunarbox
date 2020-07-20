@@ -8,7 +8,7 @@ module Lunarbox.Component.Editor
   ) where
 
 import Prelude
-import Control.Monad.Reader (class MonadReader, asks)
+import Control.Monad.Reader (class MonadReader)
 import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
@@ -29,7 +29,7 @@ import Data.Tuple (Tuple(..), uncurry)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe', tell)
+import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onKeyUp, onMouseUp, onValueInput)
@@ -48,8 +48,8 @@ import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
 import Lunarbox.Component.Tooltip as Tooltip
-import Lunarbox.Component.Utils (className, maybeElement, whenElem)
-import Lunarbox.Config (Config, _autosaveInterval)
+import Lunarbox.Component.Utils (className, intervalEventSource, maybeElement, whenElem)
+import Lunarbox.Config (Config)
 import Lunarbox.Data.Class.GraphRep (toGraph)
 import Lunarbox.Data.Dataflow.Expression.Lint as LintError
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
@@ -102,7 +102,6 @@ data Action
   | SetVisibility Boolean
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
-  | Autosave Json
   | Navigate Route
   | LoadScene
   | Rerender
@@ -120,9 +119,13 @@ data Action
   | StartNodeEditing NodeId
   -- This handles actions triggerd by the node editing modal
   | HandleNodeEdits NodeEditingAction
+  -- Actions which run periodically
+  | Autosave Json
+  | EmitState
 
 data Output
   = Save Json
+  | StateEmit State
 
 type ChildSlots m
   = Add.ChildSlots
@@ -225,6 +228,9 @@ component =
           KET.keydown
           (HTMLDocument.toEventTarget document)
           (map (HandleKey sid) <<< KE.fromEvent)
+      gets _.emitInterval
+        >>= traverse_ \interval ->
+            void $ subscribe $ EmitState <$ intervalEventSource interval
       void <<< fork <<< handleAction <<< Autosave <<< stateToJson =<< get
     HandleKey sid event
       -- TODO: readd this with the new foreign system
@@ -328,15 +334,18 @@ component =
     SearchNodes input -> modify_ $ set _nodeSearchTerm input
     DeleteFunction name -> modify_ $ deleteFunction name
     Autosave oldState -> do
-      interval <- asks $ view _autosaveInterval
-      liftAff $ delay interval
-      name <- gets $ view _name
-      if String.length name >= 2 then do
-        newState <- gets stateToJson
-        raise $ Save newState
-        handleAction $ Autosave newState
-      else
-        handleAction $ Autosave oldState
+      gets _.autosaveInterval
+        >>= traverse_ \interval -> do
+            liftAff $ delay interval
+            name <- gets $ view _name
+            --  TODO: do some actual validation here
+            if String.length name >= 2 then do
+              newState <- gets stateToJson
+              unless (newState == oldState) do
+                raise $ Save newState
+              handleAction $ Autosave newState
+            else
+              handleAction $ Autosave oldState
     Navigate route -> navigate route
     Rerender -> do
       -- TODO: optimize this to not rerender the previews on each render
@@ -517,6 +526,9 @@ component =
             )
         $ Just
         $ Term value
+    EmitState -> do
+      state <- get
+      raise $ StateEmit state
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of

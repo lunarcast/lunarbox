@@ -96,6 +96,7 @@ component =
   handleEditorOutput :: Editor.Output -> Maybe Action
   handleEditorOutput = case _ of
     Editor.Save state -> Just $ Save state
+    Editor.StateEmit _ -> Nothing
 
   render { projectData, currentUser } = case projectData of
     NotAsked -> loading
