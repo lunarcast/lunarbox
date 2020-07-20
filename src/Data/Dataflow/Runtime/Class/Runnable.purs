@@ -1,11 +1,13 @@
 module Lunarbox.Data.Dataflow.Runtime.Class.Runnable where
 
 import Prelude
+import Data.Default (class Default, def)
 import Data.Int (fromNumber, toNumber)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Number (isNaN)
 import Data.Traversable (traverse)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
+import Math (floor)
 
 class Runnable a where
   toRuntime :: a -> RuntimeValue
@@ -23,7 +25,9 @@ instance coRunnableInt :: Corunnable Int where
 instance runnableNumber :: Runnable Number where
   toRuntime a
     | isNaN a = Null
-    | otherwise = Number a
+    | otherwise = Number $ floorAt 1000.0 a
+      where
+      floorAt at x = floor (x * at) / at
 
 instance corunnableNumber :: Corunnable Number where
   fromRuntime (Number inner) = Just inner
@@ -49,8 +53,11 @@ instance runnableArrow :: (Corunnable a, Runnable b) => Runnable (a -> b) where
       Just inner -> toRuntime $ f inner
       Nothing -> Null
 
-instance coRunnableArrow :: (Runnable a, Corunnable b) => Corunnable (a -> Maybe b) where
+instance corunnableArrow :: (Runnable a, Corunnable b) => Corunnable (a -> Maybe b) where
   fromRuntime (Function f) = Just $ fromRuntime <<< f <<< toRuntime
+  fromRuntime _ = Nothing
+else instance corunnableArrow' :: (Runnable a, Corunnable b, Default b) => Corunnable (a -> b) where
+  fromRuntime (Function f) = Just $ fromMaybe def <<< fromRuntime <<< f <<< toRuntime
   fromRuntime _ = Nothing
 
 instance runnableString :: Runnable String where

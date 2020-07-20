@@ -23,6 +23,7 @@ import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Error (error)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Modal as Modal
+import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (className, maybeElement)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.State as EditorState
@@ -165,7 +166,12 @@ component =
               [ className "tutorial__hint-button"
               , onClick $ const $ Just OpenCurrent
               ]
-              [ HH.text "?"
+              [ Tooltip.tooltip
+                  "See tutorial help"
+                  Tooltip.Left
+                  HH.span
+                  []
+                  [ HH.text "?" ]
               ]
           ]
         <> slides
