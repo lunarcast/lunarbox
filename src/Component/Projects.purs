@@ -68,6 +68,8 @@ data Action
   | OpenProject ProjectId
   | DeleteProject ProjectId MouseEvent
   | DeleteTutorial TutorialId MouseEvent
+  | EditTutorial' TutorialId MouseEvent
+  | StartTutorial TutorialId
   | CreateProject
   | CreateTutorial
   | CloneProject ProjectId
@@ -124,6 +126,11 @@ component =
       case response of
         Right cloneId -> navigate $ Project cloneId
         Left err -> modify_ _ { projectList = Failure err }
+    EditTutorial' id event -> do
+      liftEffect $ stopPropagation $ MouseEvent.toEvent event
+      navigate $ EditTutorial id
+    StartTutorial id -> do
+      navigate $ Tutorial id
     DeleteProject id event -> do
       liftEffect $ stopPropagation $ MouseEvent.toEvent event
       oldProjects <- gets $ preview $ _projectList <<< _Success
@@ -187,7 +194,7 @@ component =
               ]
           , whenElem (not isExample) \_ ->
               HH.div
-                [ className "project__data-icon"
+                [ className "project__data-icon project__data-icon--clickable"
                 , onClick $ Just <<< DeleteProject id
                 ]
                 [ icon "delete"
@@ -243,8 +250,8 @@ component =
         $ [ newProject CreateTutorial ]
         <> (mkItem <$> tutorials)
       where
-      mkItem { name, completed, id } =
-        HH.div [ className "project", onClick $ const $ Just CreateTutorial ]
+      mkItem { name, completed, id, own } =
+        HH.div [ className "project", onClick $ const $ Just $ StartTutorial id ]
           [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
           , HH.div [ className "project__data" ]
               [ whenElem completed \_ ->
@@ -252,8 +259,14 @@ component =
                     [ className "project__data-icon"
                     ]
                     [ icon "verified" ]
+              , whenElem own \_ ->
+                  HH.div
+                    [ className "project__data-icon project__data-icon--clickable"
+                    , onClick $ Just <<< EditTutorial' id
+                    ]
+                    [ icon "edit" ]
               , HH.div
-                  [ className "project__data-icon"
+                  [ className "project__data-icon project__data-icon--clickable"
                   , onClick $ Just <<< DeleteTutorial id
                   ]
                   [ icon "delete"

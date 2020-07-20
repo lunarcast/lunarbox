@@ -109,6 +109,14 @@
   margin-right: 1rem;
 }
 
+.project__data-icon--clickable {
+  transition: transform $transition-time;
+}
+
+.project__data-icon--clickable:hover {
+  transform: scale(1.4);
+}
+
 .project--new {
   @include utils.center;
   background: $primary;

@@ -31,6 +31,7 @@ type TutorialOverview
   = { name :: String
     , id :: TutorialId
     , completed :: Boolean
+    , own :: Boolean
     }
 
 -- | Stuff we get from the server to render on the projects page

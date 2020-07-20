@@ -116,14 +116,22 @@ instance manageProjectsAppM :: ManageProjects AppM where
       [ { id: TutorialId 0
         , name: "A sample tutorial"
         , completed: false
+        , own: true
         }
       , { id: TutorialId 1
         , name: "Another tutorial"
         , completed: false
+        , own: false
         }
       , { id: TutorialId 2
         , name: "Actually completed this"
         , completed: true
+        , own: false
+        }
+      , { id: TutorialId 7
+        , name: "A tutorial I can edit"
+        , completed: false
+        , own: true
         }
       ]
 
