@@ -21,7 +21,6 @@ import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, getTutorial)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Error (error)
-import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Utils (className, maybeElement)
@@ -166,7 +165,7 @@ component =
               [ className "tutorial__hint-button"
               , onClick $ const $ Just OpenCurrent
               ]
-              [ icon "help"
+              [ HH.text "?"
               ]
           ]
         <> slides

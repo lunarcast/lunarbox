@@ -9,10 +9,9 @@
   z-index: 3;
 
   position: absolute;
-  background: $secondary;
 
-  height: 2.4rem;
-  width: 2.4rem;
+  height: 3.5rem;
+  width: 3.5rem;
 
   right: 1rem;
   bottom: 1rem;
@@ -22,12 +21,12 @@
 
   cursor: pointer;
   transition: filter $transition-time, transform $transition-time;
-}
 
-.tutorial__hint-button .material-icons {
-  font-size: 2.4rem;
+  font-size: 2rem;
+  font-weight: bolder;
 
-  color: $primary-dark;
+  background: darken($blue, 0);
+  color: white;
 }
 
 .tutorial__hint-button:hover {
