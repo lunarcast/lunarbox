@@ -6464,6 +6464,11 @@ micromodal@^0.4.6:
   resolved "https://registry.yarnpkg.com/micromodal/-/micromodal-0.4.6.tgz#0425ad026c47923208cf826de6b58ed0693cb25a"
   integrity sha512-2VDso2a22jWPpqwuWT/4RomVpoU3Bl9qF9D01xzwlNp5UVsImeA0gY4nSpF44vqcQtQOtkiMUV9EZkAJSRxBsg==
 
+microtip@^0.2.2:
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/microtip/-/microtip-0.2.2.tgz#9d9d43cbbf6815d6d16a514abc71c17c5b91d1e9"
+  integrity sha512-oah38eH5vSHVFP6yXjbKWOYt92mav++0j3zh844h1vhOscqEg7Rf4agDEIwUTFCcAPPdlhYUQMe6eZfHgD+4oQ==
+
 miller-rabin@^4.0.0:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/miller-rabin/-/miller-rabin-4.0.1.tgz#f080351c865b0dc562a8462966daa53543c78a4d"

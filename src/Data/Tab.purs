@@ -5,6 +5,7 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
 import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 
 data Tab
   = Settings
@@ -15,6 +16,9 @@ data Tab
 derive instance eqTab :: Eq Tab
 
 derive instance genericTab :: Generic Tab _
+
+instance showTab :: Show Tab where
+  show = genericShow
 
 instance encodeJsonTab :: EncodeJson Tab where
   encodeJson = genericEncodeJson

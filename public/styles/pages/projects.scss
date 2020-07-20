@@ -24,7 +24,8 @@
   flex-direction: column;
 
   height: calc(100vh - 8rem);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .projects__back {
@@ -110,11 +111,14 @@
 }
 
 .project__data-icon--clickable {
+  @include utils.base-input;
+
+  color: inherit;
   transition: transform $transition-time;
 }
 
-.project__data-icon--clickable:hover {
-  transform: scale(1.4);
+.project__data-icon--clickable:hover .material-icons {
+  transform: scale(1.2);
 }
 
 .project--new {

@@ -19,6 +19,7 @@
     "@thi.ng/transducers": "^7.0.0",
     "@thi.ng/vectors": "^4.4.3",
     "micromodal": "^0.4.6",
+    "microtip": "^0.2.2",
     "normalize.css": "^8.0.1",
     "seedrandom": "^3.0.5",
     "ts-adt": "^1.0.1",

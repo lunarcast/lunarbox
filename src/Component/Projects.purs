@@ -24,6 +24,7 @@ import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, createTutor
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Tabs as Tabs
+import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (className, whenElem)
 import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
@@ -184,16 +185,24 @@ component =
     HH.div [ className "project", onClick $ const $ Just $ (if isExample then CloneProject else OpenProject) id ]
       [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
       , HH.div [ className "project__data" ]
-          [ HH.div [ className "project__data-item" ]
+          [ Tooltip.tooltip ("This project has " <> show functionCount <> " functions")
+              Tooltip.Bottom
+              HH.div
+              [ className "project__data-item" ]
               [ icon "functions"
               , HH.text $ show functionCount
               ]
-          , HH.div [ className "project__data-item" ]
+          , Tooltip.tooltip ("This project has " <> show nodeCount <> " nodes")
+              Tooltip.Bottom
+              HH.div
+              [ className "project__data-item" ]
               [ icon "track_changes"
               , HH.text $ show nodeCount
               ]
           , whenElem (not isExample) \_ ->
-              HH.div
+              Tooltip.tooltip "Delete this tutorial"
+                Tooltip.Bottom
+                HH.button
                 [ className "project__data-icon project__data-icon--clickable"
                 , onClick $ Just <<< DeleteProject id
                 ]
@@ -227,8 +236,10 @@ component =
       where
       projects = sortBySearch _.name search exampleProjects
 
-  newProject a =
-    HH.div
+  newProject text a =
+    Tooltip.tooltip text
+      Tooltip.Top
+      HH.div
       [ className "project project--new"
       , onClick $ const
           $ Just a
@@ -241,13 +252,13 @@ component =
       where
       projects = sortBySearch _.name search userProjects
 
-      createProject = newProject CreateProject
+      createProject = newProject "Create a new project" CreateProject
 
   tutorialsHtml { projectList, search } = withRemoteData projectList go
     where
     go { tutorials } =
       HH.div [ className "projects__list" ]
-        $ [ newProject CreateTutorial ]
+        $ [ newProject "Create a new tutorial" CreateTutorial ]
         <> (mkItem <$> tutorials)
       where
       mkItem { name, completed, id, own } =
@@ -255,17 +266,24 @@ component =
           [ HH.div [ className "project__name no-overflow" ] [ HH.text name ]
           , HH.div [ className "project__data" ]
               [ whenElem completed \_ ->
-                  HH.div
+                  Tooltip.tooltip
+                    "You completed this tutorial"
+                    Tooltip.Bottom
+                    HH.div
                     [ className "project__data-icon"
                     ]
                     [ icon "verified" ]
               , whenElem own \_ ->
-                  HH.div
+                  Tooltip.tooltip "Edit this tutorial"
+                    Tooltip.Bottom
+                    HH.button
                     [ className "project__data-icon project__data-icon--clickable"
                     , onClick $ Just <<< EditTutorial' id
                     ]
                     [ icon "edit" ]
-              , HH.div
+              , Tooltip.tooltip "Delete this tutorial"
+                  Tooltip.Bottom
+                  HH.button
                   [ className "project__data-icon project__data-icon--clickable"
                   , onClick $ Just <<< DeleteTutorial id
                   ]

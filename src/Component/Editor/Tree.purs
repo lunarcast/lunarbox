@@ -16,7 +16,7 @@ import Halogen.HTML.Events (onBlur, onClick, onInput, onKeyUp)
 import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Tooltip (maybeTooltip)
+import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (StaticHtml, className)
 import Lunarbox.Config (Config, shouldCancelOnBlur)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
@@ -28,10 +28,9 @@ data ValidationError
   = Duplicate String
   | Empty
 
-validationErrorToHtml :: forall a b. ValidationError -> HTML a b
-validationErrorToHtml (Duplicate s) = HH.span_ [ HH.text "Function ", HH.strong_ [ HH.text s ], HH.text " already exists." ]
-
-validationErrorToHtml Empty = HH.text "Function names cannot be empty"
+instance showValidationError :: Show ValidationError where
+  show (Duplicate s) = "Function " <> s <> " already exists."
+  show Empty = "Function names cannot be empty"
 
 type State
   = { functions :: List FunctionName
@@ -185,27 +184,34 @@ component =
     -- this is the html for the list of existing functions
     existingFunctions = List.toUnfoldable $ (displayFunction selected) <$> functions
 
+    inputAttribs =
+      [ className "explorer__input"
+      , onKeyUp \event -> do
+          -- when the user presses enter we create the function
+          guard (KE.key event == "Enter")
+          pure CreateFunction
+      -- if the user clicks outside the input we can cancel the creation
+      , onBlur $ const $ Just CancelCreation
+      -- this is called on each keystroke to validate the input
+      , onInput $ const $ Just ValidateFunctionName
+      -- this will only work for the first function creation, but it's still good to haves
+      , HP.autofocus true
+      -- the ref is necessary to solve focus issues
+      , HP.ref inputRef
+      -- we don't want autocomplete for function names
+      , HP.autocomplete false
+      ]
+
     -- this is a list which may contain the input box for creating new functions
     newFunctionTextBox =
       guard creating
         $> HH.div [ className "explorer__input-container" ]
             [ icon "code"
-            , maybeTooltip (validationErrorToHtml <$> validationError)
-                $ HH.input
-                    [ className "explorer__input"
-                    , onKeyUp \event -> do
-                        -- when the user presses enter we create the function
-                        guard (KE.key event == "Enter")
-                        pure CreateFunction
-                    -- if the user clicks outside the input we can cancel the creation
-                    , onBlur $ const $ Just CancelCreation
-                    -- this is called on each keystroke to validate the input
-                    , onInput $ const $ Just ValidateFunctionName
-                    -- this will only work for the first function creation, but it's still good to haves
-                    , HP.autofocus true
-                    -- the ref is necessary to solve focus issues
-                    , HP.ref inputRef
-                    -- we don't want autocomplete for function names
-                    , HP.autocomplete false
-                    ]
+            , case validationError of
+                Nothing -> HH.input inputAttribs
+                Just err ->
+                  Tooltip.tooltip (show err)
+                    Tooltip.Bottom
+                    HH.input
+                    inputAttribs
             ]

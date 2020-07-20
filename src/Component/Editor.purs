@@ -47,6 +47,7 @@ import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
+import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (className, maybeElement, whenElem)
 import Lunarbox.Config (Config, _autosaveInterval)
 import Lunarbox.Data.Class.GraphRep (toGraph)
@@ -532,8 +533,11 @@ component =
     Native.Goto id -> Just $ GotoId id
     _ -> Nothing
 
-  sidebarIcon extraClasses activeTab current =
-    HH.div
+  sidebarIcon text extraClasses activeTab current =
+    Tooltip.tooltip
+      text
+      Tooltip.Right
+      HH.div
       [ classes $ ClassName <$> [ "editor__activity" ] <> (guard isActive $> "editor__activity--active") <> extraClasses
       , onClick $ const $ Just $ ChangeTab current
       ]
@@ -557,7 +561,7 @@ component =
 
     classes _ = []
 
-    icon tab = sidebarIcon (classes tab) currentTab tab
+    icon tab = sidebarIcon (show tab) (classes tab) currentTab tab
 
   mkPanel :: _
   mkPanel { title, actions, content, footer, header } =
