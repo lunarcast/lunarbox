@@ -1,13 +1,11 @@
 module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
-  , RuntimeTest(..)
   , binaryFunction
   , ternaryFunction
   , toBoolean
   , toNumber
   , toString
   , toArray
-  , areEqual
   , _Number
   , _String
   , _Function
@@ -21,7 +19,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
-import Test.QuickCheck (class Arbitrary, class Coarbitrary, class Testable, Result(..), coarbitrary, test)
+import Test.QuickCheck (class Arbitrary, class Coarbitrary, coarbitrary)
 import Test.QuickCheck.Arbitrary (genericArbitrary)
 
 -- Representations of all possible runtime values
@@ -128,38 +126,6 @@ toString :: RuntimeValue -> String
 toString (String inner) = inner
 
 toString other = show other
-
--- | Different testable versions for runtime values
-data RuntimeTest
-  = FunctionTest (RuntimeValue -> RuntimeTest)
-  | ConstantTest Result
-
-instance testableRuntimeTest :: Testable RuntimeTest where
-  test (ConstantTest a) = pure a
-  test (FunctionTest function) = test function
-
--- | Basically the same as == but works for functions as well
-areEqual :: RuntimeValue -> RuntimeValue -> RuntimeTest
-areEqual (Function a) (Function b) = FunctionTest go
-  where
-  go val = areEqual (a val) (b val)
-
-areEqual (Function a) b =
-  ConstantTest
-    $ Failed
-    $ "Cannot call a non-function value with argument "
-    <> show b
-
-areEqual a b@(Function _) = areEqual b a
-
-areEqual a b
-  | a == b = ConstantTest Success
-  | otherwise =
-    ConstantTest
-      $ Failed
-      $ show a
-      <> " != "
-      <> show b
 
 -- Lenses
 _Number :: Prism' RuntimeValue Number

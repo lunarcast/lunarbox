@@ -12,6 +12,7 @@ class
   deleteTutorial :: TutorialId -> m (Either String Unit)
   saveTutorial :: TutorialId -> Tutorial () -> m (Either String Unit)
   getTutorial :: TutorialId -> m (Either String TutorialWithMetadata)
+  completeTutorial :: TutorialId -> m (Either String Unit)
 
 -- | This instance lets us avoid having to use `lift` when we use these functions in a component.
 instance manageTutorialsHalogenM :: ManageTutorials m => ManageTutorials (HalogenM st act slots msg m) where
@@ -19,3 +20,4 @@ instance manageTutorialsHalogenM :: ManageTutorials m => ManageTutorials (Haloge
   deleteTutorial = lift <<< deleteTutorial
   saveTutorial = (lift <<< _) <<< saveTutorial
   getTutorial = lift <<< getTutorial
+  completeTutorial = lift <<< completeTutorial

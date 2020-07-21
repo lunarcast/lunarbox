@@ -10,6 +10,7 @@ import Data.Default (def)
 import Data.Foldable (for_, traverse_)
 import Data.Lens (over)
 import Data.Lens.Iso.Newtype (_Newtype)
+import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
@@ -17,13 +18,13 @@ import Data.Symbol (SProxy(..))
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Halogen (Component, HalogenM, Slot, defaultEval, fork, get, gets, mkComponent, mkEval, modify_, query, tell)
+import Halogen (Component, HalogenM, Slot, defaultEval, fork, get, gets, mkComponent, mkEval, modify_, query, request, tell)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
-import Lunarbox.Capability.Navigate (class Navigate)
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Gist (class ManageGists, fetchGist)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject)
-import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, getTutorial)
+import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, completeTutorial, getTutorial)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Error (error)
 import Lunarbox.Component.Icon (icon)
@@ -39,6 +40,7 @@ import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.State as EditorState
 import Lunarbox.Data.Gist (Gist)
+import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
 import Lunarbox.Data.TutorialConfig (TutorialSteps, getTutorialSteps)
 import Network.RemoteData (RemoteData(..), fromEither)
@@ -58,6 +60,7 @@ type State
       , base :: RemoteData String EditorState.State
       , solution :: RemoteData String EditorState.State
       , currentSlide :: Int
+      , finished :: Boolean
       )
     }
 
@@ -69,17 +72,18 @@ data SlideModalAction
 data ResultModalAction
   = Continue
   | ToPlayground
-  | ToProjects
 
 data Action
   = Init
-  | HandleSlideModalAction SlideModalAction
   | OpenCurrent
   | TryOpeningSlides
-  | NewState EditorState.State
+  | TestSolution
+  -- | These 2 handle the closing of different modals
+  | HandleSlideModalAction SlideModalAction
+  | HandleResultModalAction ResultModalAction
 
 type ChildSlots m
-  = ( editor :: Slot (Const Void) Editor.Output Unit
+  = ( editor :: Slot Editor.Query Editor.Output Unit
     , slideModal :: Modal.Slot Action () SlideModalAction m Int
     , resultModal :: Modal.Slot Action () ResultModalAction m Unit
     )
@@ -112,6 +116,7 @@ component =
         , base: NotAsked
         , solution: NotAsked
         , currentSlide: 0
+        , finished: false
         }
     , render
     , eval:
@@ -150,6 +155,80 @@ component =
     OpenCurrent -> do
       a <- gets _.currentSlide
       gets _.currentSlide >>= openSlide
+    TestSolution -> do
+      gets _.solution
+        >>= traverse_ \solution -> do
+            query (SProxy :: SProxy "editor") unit (request Editor.GetState)
+              >>= traverse_ (go solution)
+      where
+      go solution state = do
+        case lookupMain state, lookupMain solution of
+          Just baseTerm, Just solutionTerm -> do
+            seed <- liftEffect randomSeed
+            let
+              results =
+                checkResults
+                  $ quickCheckPure'
+                      seed
+                      100
+                      (areEqual baseTerm solutionTerm)
+
+              success = List.null results.failures
+
+              continue =
+                { primary: true
+                , text:
+                  if success then
+                    "Playground"
+                  else
+                    "Continue"
+                , value: if success then ToPlayground else Continue
+                }
+
+              back = do
+                guard success
+                pure
+                  { primary: false
+                  , text: "Projects"
+                  , value: Continue
+                  }
+            when success do
+              modify_ _ { finished = true }
+              gets _.id >>= void <<< completeTutorial
+            void $ query (SProxy :: SProxy "resultModal") unit
+              $ tell
+              $ Modal.UpdateInput
+              $ resultModal
+                  { content =
+                    \_ ->
+                      if success then
+                        HH.text "Congratulations! You completed this tutorial!"
+                      else
+                        HH.div [ className "tutorial__results" ]
+                          $ [ HH.text "Some errors occured" ]
+                          <> (mkError <$> Array.fromFoldable results.failures)
+                  , buttons = back <> [ continue ]
+                  }
+            void $ query (SProxy :: SProxy "resultModal") unit $ tell Modal.Open
+            pure unit
+          _, _ -> pure unit
+        where
+        mkError { message } =
+          HH.div [ className "tutorial__result-error" ]
+            [ HH.text message
+            ]
+
+        lookupMain :: EditorState.State -> Maybe RuntimeValue
+        lookupMain s = fromTerm <$> term
+          where
+          term = Map.lookup (AtFunction (FunctionName "main")) $ unwrap s.valueMap
+
+          fromTerm t = termToRuntime ctx t
+            where
+            ctx =
+              over _Newtype
+                _ { overwrites = s.runtimeOverwrites }
+                (def :: InterpreterContext Location)
     TryOpeningSlides -> do
       state <- get
       case state.tutorial, state.gist, state.steps, state.base, state.solution of
@@ -164,33 +243,13 @@ component =
             $ fork do
                 liftAff $ delay $ Milliseconds 300.0
                 handleAction TryOpeningSlides
-    NewState state -> do
-      gets _.solution
-        >>= traverse_ \solution -> do
-            case lookupMain state, lookupMain solution of
-              Just baseTerm, Just solutionTerm -> do
-                seed <- liftEffect randomSeed
-                let
-                  results =
-                    checkResults
-                      $ quickCheckPure'
-                          seed
-                          100
-                          (areEqual baseTerm solutionTerm)
-                pure unit
-              _, _ -> pure unit
-      where
-      lookupMain :: EditorState.State -> Maybe RuntimeValue
-      lookupMain s = go <$> term
-        where
-        term = Map.lookup (AtFunction (FunctionName "main")) $ unwrap s.valueMap
-
-        go t = termToRuntime ctx t
-          where
-          ctx =
-            over _Newtype
-              _ { overwrites = s.runtimeOverwrites }
-              (def :: InterpreterContext Location)
+    HandleResultModalAction a -> case a of
+      Continue -> do
+        finished <- gets _.finished
+        when finished do
+          navigate Projects
+      ToPlayground -> do
+        pure unit
 
   openSlide value = void $ query _slideModal value $ tell Modal.Open
 
@@ -214,6 +273,10 @@ component =
 
   handleEditorOutput = const Nothing
 
+  handleResultModalOutput = case _ of
+    Modal.ClosedWith a -> Just $ HandleResultModalAction a
+    Modal.BubbledAction a -> Just a
+
   render { tutorial, gist, steps, base, solution, currentSlide } = case tutorial, gist, steps, base, solution of
     Success tutorial', Success gist', Success steps', Success base', Success solution' ->
       HH.div_
@@ -222,7 +285,17 @@ component =
               ]
           , HH.aside [ className "tutorial__buttons" ]
               [ HH.button
-                  [ className "tutorial__hint-button"
+                  [ className "tutorial__button tutorial__button--run"
+                  , onClick $ const $ Just TestSolution
+                  ]
+                  [ Tooltip.tooltip "Check solution"
+                      Tooltip.Left
+                      HH.span
+                      []
+                      [ icon "play_arrow" ]
+                  ]
+              , HH.button
+                  [ className "tutorial__button tutorial__button--hint"
                   , onClick $ const $ Just OpenCurrent
                   ]
                   [ Tooltip.tooltip
@@ -232,16 +305,12 @@ component =
                       []
                       [ HH.text "?" ]
                   ]
-              , HH.button [ className "tutorial__run-button" ]
-                  [ Tooltip.tooltip "Check solution"
-                      Tooltip.Left
-                      HH.span
-                      []
-                      [ icon "play-arrow" ]
-                  ]
               ]
           ]
         <> slides
+        <> [ HH.slot (SProxy :: SProxy "resultModal") unit Modal.component resultModal
+              handleResultModalOutput
+          ]
       where
       slides =
         (0 .. (slideCount - 1))

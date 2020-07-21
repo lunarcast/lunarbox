@@ -138,6 +138,9 @@ instance manageProjectsAppM :: ManageProjects AppM where
 instance manageTutorialsAppM :: ManageTutorials AppM where
   createTutorial = pure $ Right $ TutorialId 0
   deleteTutorial id = Right <$> printString ("Deleted id " <> show id)
+  completeTutorial id = do
+    printString $ "Completed tutorial " <> show id
+    pure $ Right unit
   saveTutorial id g = do
     printString $ "Saving project " <> show id
     pure $ Right unit

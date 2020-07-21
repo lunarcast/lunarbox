@@ -1,22 +1,27 @@
 @use "../utils/utils";
 @import "../theme.scss";
 
-.tutorial__hint-button {
-  @include utils.base-input;
+.tutorial__buttons {
   @include utils.center;
 
-  border-radius: 50%;
   z-index: 3;
 
   position: absolute;
 
+  right: 1rem;
+  bottom: 1rem;
+}
+
+.tutorial__button {
+  @include utils.base-input;
+  @include utils.center;
+
+  border-radius: 50%;
+
   height: 3.5rem;
   width: 3.5rem;
 
-  right: 1rem;
-  bottom: 1rem;
-
-  margin: 0;
+  margin: 0.5rem;
   padding: 0;
 
   cursor: pointer;
@@ -29,7 +34,11 @@
   color: white;
 }
 
-.tutorial__hint-button:hover {
+.tutorial__button.tutorial__button--run {
+  background: darken($error-text, 3);
+}
+
+.tutorial__button:hover {
   filter: brightness(1.4);
   transform: scale(1.1);
 }

@@ -2,6 +2,7 @@ module Lunarbox.Component.Editor
   ( component
   , Action(..)
   , Output(..)
+  , Query(..)
   , PendingConnectionAction(..)
   , NodeEditingAction(..)
   , ChildSlots
@@ -183,6 +184,9 @@ data NodeEditingAction
   = NEDeleteNode
   | NECloseModal
 
+data Query a
+  = GetState (State -> a)
+
 -- | The config of the modal used for editing nodes
 nodeEditingModal :: forall m. Modal.InputType (EditNode.ChildSlots ()) NodeEditingAction Action m
 nodeEditingModal =
@@ -202,7 +206,7 @@ nodeEditingModal =
   , onClose: NECloseModal
   }
 
-component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q State Output m
+component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML Query State Output m
 component =
   mkComponent
     { initialState: identity
@@ -211,10 +215,15 @@ component =
       mkEval
         $ defaultEval
             { handleAction = handleAction
+            , handleQuery = handleQuery
             , initialize = Just Init
             }
     }
   where
+  handleQuery :: forall a. Query a -> HalogenM State Action (ChildSlots m) Output m (Maybe a)
+  handleQuery = case _ of
+    GetState return -> Just <$> return <$> get
+
   handleAction :: Action -> HalogenM State Action (ChildSlots m) Output m Unit
   handleAction = case _ of
     Init -> do
