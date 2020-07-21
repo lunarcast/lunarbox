@@ -6,14 +6,17 @@ import Control.MonadZero (guard)
 import Data.Array ((!!), (..))
 import Data.Array as Array
 import Data.Const (Const)
+import Data.Default (def)
 import Data.Foldable (for_, traverse_)
+import Data.Lens (over)
+import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
-import Effect.Class (class MonadEffect)
+import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, fork, get, gets, mkComponent, mkEval, modify_, query, tell)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
@@ -23,12 +26,15 @@ import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, getTutorial)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Error (error)
+import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (className, maybeElement)
 import Lunarbox.Config (Config)
-import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term)
+import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext)
+import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (termToRuntime)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue, areEqual)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.State as EditorState
@@ -36,7 +42,9 @@ import Lunarbox.Data.Gist (Gist)
 import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
 import Lunarbox.Data.TutorialConfig (TutorialSteps, getTutorialSteps)
 import Network.RemoteData (RemoteData(..), fromEither)
+import Random.LCG (randomSeed)
 import Record as Record
+import Test.QuickCheck (checkResults, quickCheckPure')
 
 type Input r
   = ( id :: TutorialId | r )
@@ -58,6 +66,11 @@ data SlideModalAction
   | Previous
   | Skip
 
+data ResultModalAction
+  = Continue
+  | ToPlayground
+  | ToProjects
+
 data Action
   = Init
   | HandleSlideModalAction SlideModalAction
@@ -68,7 +81,17 @@ data Action
 type ChildSlots m
   = ( editor :: Slot (Const Void) Editor.Output Unit
     , slideModal :: Modal.Slot Action () SlideModalAction m Int
+    , resultModal :: Modal.Slot Action () ResultModalAction m Unit
     )
+
+resultModal :: forall m. Modal.InputType () ResultModalAction Action m
+resultModal =
+  { buttons: []
+  , id: "result-modal"
+  , onClose: Continue
+  , title: "Test results"
+  , content: \_ -> HH.text "Unimplemented"
+  }
 
 component ::
   forall m.
@@ -145,11 +168,29 @@ component =
       gets _.solution
         >>= traverse_ \solution -> do
             case lookupMain state, lookupMain solution of
-              Just a, Just b -> pure unit
+              Just baseTerm, Just solutionTerm -> do
+                seed <- liftEffect randomSeed
+                let
+                  results =
+                    checkResults
+                      $ quickCheckPure'
+                          seed
+                          100
+                          (areEqual baseTerm solutionTerm)
+                pure unit
               _, _ -> pure unit
       where
-      lookupMain :: EditorState.State -> Maybe (Term Location)
-      lookupMain s = Map.lookup (AtFunction (FunctionName "main")) $ unwrap s.valueMap
+      lookupMain :: EditorState.State -> Maybe RuntimeValue
+      lookupMain s = go <$> term
+        where
+        term = Map.lookup (AtFunction (FunctionName "main")) $ unwrap s.valueMap
+
+        go t = termToRuntime ctx t
+          where
+          ctx =
+            over _Newtype
+              _ { overwrites = s.runtimeOverwrites }
+              (def :: InterpreterContext Location)
 
   openSlide value = void $ query _slideModal value $ tell Modal.Open
 
@@ -171,35 +212,37 @@ component =
         steps = getTutorialSteps gist'
       modify_ _ { steps = fromEither steps }
 
-  handleEditorOutput = case _ of
-    Editor.StateEmit state -> Just $ NewState state
-    Editor.Save _ -> Nothing
+  handleEditorOutput = const Nothing
 
   render { tutorial, gist, steps, base, solution, currentSlide } = case tutorial, gist, steps, base, solution of
     Success tutorial', Success gist', Success steps', Success base', Success solution' ->
       HH.div_
         $ [ HH.main [ className "tutorial__editor" ]
-              [ HH.slot (SProxy :: _ "editor") unit Editor.component editorState handleEditorOutput
+              [ HH.slot (SProxy :: _ "editor") unit Editor.component base' handleEditorOutput
               ]
-          , HH.button
-              [ className "tutorial__hint-button"
-              , onClick $ const $ Just OpenCurrent
-              ]
-              [ Tooltip.tooltip
-                  "See tutorial help"
-                  Tooltip.Left
-                  HH.span
-                  []
-                  [ HH.text "?" ]
+          , HH.aside [ className "tutorial__buttons" ]
+              [ HH.button
+                  [ className "tutorial__hint-button"
+                  , onClick $ const $ Just OpenCurrent
+                  ]
+                  [ Tooltip.tooltip
+                      "See tutorial help"
+                      Tooltip.Left
+                      HH.span
+                      []
+                      [ HH.text "?" ]
+                  ]
+              , HH.button [ className "tutorial__run-button" ]
+                  [ Tooltip.tooltip "Check solution"
+                      Tooltip.Left
+                      HH.span
+                      []
+                      [ icon "play-arrow" ]
+                  ]
               ]
           ]
         <> slides
       where
-      editorState =
-        base'
-          { emitInterval = Just $ Milliseconds 1000.0
-          }
-
       slides =
         (0 .. (slideCount - 1))
           <#> mkModal

@@ -51,7 +51,15 @@ scoped = local $ set _toplevel false
 termToRuntime :: forall l. Ord l => Default l => InterpreterContext l -> Term l -> RuntimeValue
 termToRuntime _ (Term a) = a
 
-termToRuntime _ (Closure env (Lambda _ _ _)) = Null
+termToRuntime ctx (Closure env (Lambda _ name body)) =
+  -- WARNING: This branch is not safe for use inside the interpreter.
+  -- This is only safe when comparing test solutions
+  Function \arg ->
+    termToRuntime ctx
+      $ evalInterpreter ctx
+      $ withEnv env
+      $ withTerm (show name) (Term arg)
+      $ interpret body
 
 termToRuntime ctx (Closure env expr) = termToRuntime ctx result
   where

@@ -1,11 +1,13 @@
 module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
+  , RuntimeTest(..)
   , binaryFunction
   , ternaryFunction
   , toBoolean
   , toNumber
   , toString
   , toArray
+  , areEqual
   , _Number
   , _String
   , _Function
