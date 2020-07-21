@@ -23,7 +23,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Gist (class ManageGists, fetchGist)
-import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject)
+import Lunarbox.Capability.Resource.Project (class ManageProjects, createProject, getProject)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, completeTutorial, getTutorial)
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
@@ -282,13 +282,16 @@ component =
             $ fork do
                 liftAff $ delay $ Milliseconds 300.0
                 handleAction TryOpeningSlides
-    HandleResultModalAction a -> case a of
-      Continue -> do
-        finished <- gets _.finished
-        when finished do
+    HandleResultModalAction a -> do
+      finished <- gets _.finished
+      when finished case a of
+        Continue -> do
           navigate Projects
-      ToPlayground -> do
-        pure unit
+        ToPlayground ->
+          query (SProxy :: _ "editor") unit (request Editor.GetState)
+            >>= traverse_ \state ->
+                createProject state
+                  >>= traverse_ (navigate <<< Project)
 
   openSlide value = void $ query _slideModal value $ tell Modal.Open
 
