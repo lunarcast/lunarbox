@@ -7,10 +7,10 @@ import Data.Array ((!!), (..))
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Default (def)
+import Data.Either (Either(..), isRight)
 import Data.Foldable (for_, traverse_)
 import Data.Lens (over)
 import Data.Lens.Iso.Newtype (_Newtype)
-import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
@@ -26,6 +26,7 @@ import Lunarbox.Capability.Resource.Gist (class ManageGists, fetchGist)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, completeTutorial, getTutorial)
 import Lunarbox.Component.Editor as Editor
+import Lunarbox.Component.Editor.HighlightedType (highlightTypeToHTML)
 import Lunarbox.Component.Error (error)
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
@@ -35,7 +36,8 @@ import Lunarbox.Component.Utils (className, maybeElement)
 import Lunarbox.Config (Config)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (termToRuntime)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue, areEqual)
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Dataflow.Type (Type)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.State as EditorState
@@ -43,10 +45,10 @@ import Lunarbox.Data.Gist (Gist)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
 import Lunarbox.Data.TutorialConfig (TutorialSteps, getTutorialSteps)
+import Lunarbox.Data.ValidateSolution (SolutionError(..), validateSolution)
 import Network.RemoteData (RemoteData(..), fromEither)
 import Random.LCG (randomSeed)
 import Record as Record
-import Test.QuickCheck (checkResults, quickCheckPure')
 
 type Input r
   = ( id :: TutorialId | r )
@@ -162,18 +164,23 @@ component =
               >>= traverse_ (go solution)
       where
       go solution state = do
-        case lookupMain state, lookupMain solution of
-          Just baseTerm, Just solutionTerm -> do
+        case lookupMain state, lookupMain solution, lookupMainType state, lookupMainType solution of
+          Just baseTerm, Just solutionTerm, Just baseType, Just solutionType -> do
             seed <- liftEffect randomSeed
+            result <-
+              liftEffect
+                $ validateSolution
+                    { current:
+                      { type': baseType
+                      , value: baseTerm
+                      }
+                    , intended:
+                      { type': solutionType
+                      , value: solutionTerm
+                      }
+                    }
             let
-              results =
-                checkResults
-                  $ quickCheckPure'
-                      seed
-                      100
-                      (areEqual baseTerm solutionTerm)
-
-              success = List.null results.failures
+              success = isRight result
 
               continue =
                 { primary: true
@@ -201,27 +208,54 @@ component =
               $ resultModal
                   { content =
                     \_ ->
-                      if success then
-                        HH.text "Congratulations! You completed this tutorial!"
-                      else
-                        HH.div [ className "tutorial__results" ]
-                          $ [ HH.text "Some errors occured" ]
-                          <> (mkError <$> Array.fromFoldable results.failures)
+                      HH.div [ className "tutorial__result-container" ]
+                        [ HH.text
+                            if success then
+                              "Congratulations! You completed this tutorial!"
+                            else
+                              "It looks like your solution is not correct!"
+                        , case result of
+                            Left (CheckFailures failures) ->
+                              HH.div [ className "tutorial__result" ]
+                                $ [ HH.text "Some errors occured" ]
+                                <> (mkError <$> Array.fromFoldable failures)
+                            Left (DifferentTypes t1 t2) ->
+                              HH.div [ className "tutorial__result tutorial__result--type-error" ]
+                                [ HH.text "Cannot match type "
+                                , HH.br_
+                                , HH.span [ className "tutorial__result-type" ]
+                                    [ highlightTypeToHTML t2
+                                    ]
+                                , HH.br_
+                                , HH.text " with type "
+                                , HH.br_
+                                , HH.span [ className "tutorial__result-type" ]
+                                    [ highlightTypeToHTML t1
+                                    ]
+                                ]
+                            _ -> HH.text ""
+                        ]
                   , buttons = back <> [ continue ]
                   }
             void $ query (SProxy :: SProxy "resultModal") unit $ tell Modal.Open
             pure unit
-          _, _ -> pure unit
+          _, _, _, _ -> pure unit
         where
-        mkError { message } =
+        mkError message =
           HH.div [ className "tutorial__result-error" ]
             [ HH.text message
             ]
 
+        main :: Location
+        main = AtFunction (FunctionName "main")
+
+        lookupMainType :: EditorState.State -> Maybe Type
+        lookupMainType s = Map.lookup main s.typeMap
+
         lookupMain :: EditorState.State -> Maybe RuntimeValue
         lookupMain s = fromTerm <$> term
           where
-          term = Map.lookup (AtFunction (FunctionName "main")) $ unwrap s.valueMap
+          term = Map.lookup main $ unwrap s.valueMap
 
           fromTerm t = termToRuntime ctx t
             where

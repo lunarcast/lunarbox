@@ -46,3 +46,15 @@
 .tutorial__slide.tutorial__slide--active {
   z-index: 30;
 }
+
+.tutorial__result.tutorial__result--type-error {
+  padding: 1rem;
+  margin-top: 1.3rem;
+
+  background: $primary-dark;
+  border-left: 3px solid $secondary;
+}
+
+.tutorial__result-type {
+  margin-left: 2rem;
+}
