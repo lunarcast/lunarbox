@@ -216,9 +216,14 @@ component =
                               "It looks like your solution is not correct!"
                         , case result of
                             Left (CheckFailures failures) ->
-                              HH.div [ className "tutorial__result" ]
-                                $ [ HH.text "Some errors occured" ]
-                                <> (mkError <$> Array.fromFoldable failures)
+                              HH.details [ className "tutorial__result" ]
+                                $ [ HH.summary [ className "tutorial__result-summary" ]
+                                      [ HH.text "The function doesn't have the correct behavior"
+                                      ]
+                                  ]
+                                <> ( mkError
+                                      <$> Array.fromFoldable failures
+                                  )
                             Left (DifferentTypes t1 t2) ->
                               HH.div [ className "tutorial__result tutorial__result--type-error" ]
                                 [ HH.text "Cannot match type "

@@ -47,12 +47,27 @@
   z-index: 30;
 }
 
-.tutorial__result.tutorial__result--type-error {
+.tutorial__result {
   padding: 1rem;
   margin-top: 1.3rem;
 
   background: $primary-dark;
+  // background: $error-bg;
   border-left: 3px solid $secondary;
+
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.tutorial__result-summary {
+  outline: none;
+  cursor: pointer;
+}
+
+.tutorial__result-error {
+  margin-left: 3rem;
+  text-align: justify;
+  color: $error-text;
 }
 
 .tutorial__result-type {

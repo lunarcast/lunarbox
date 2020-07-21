@@ -149,8 +149,8 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
     | id == TutorialId 7 =
       pure $ Right
         $ { name: "My super duper awesome tutorial"
-          , base: ProjectId 86
-          , solution: ProjectId 85
+          , base: ProjectId 88
+          , solution: ProjectId 87
           , hiddenElements: []
           , id
           , content: GistId "c36e060c76f2493bed9df58285e3b13f"
