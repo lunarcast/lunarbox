@@ -21,6 +21,7 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, Slot, defaultEval, fork, get, gets, mkComponent, mkEval, modify_, query, request, tell)
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick)
+import Html.Renderer.Halogen as RH
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Gist (class ManageGists, fetchGist)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, createProject, getProject)
@@ -46,6 +47,7 @@ import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
 import Lunarbox.Data.TutorialConfig (TutorialSteps, getTutorialSteps)
 import Lunarbox.Data.ValidateSolution (SolutionError(..), validateSolution)
+import Lunarbox.Foreign.Marked (parseMarkdown)
 import Network.RemoteData (RemoteData(..), fromEither)
 import Random.LCG (randomSeed)
 import Record as Record
@@ -402,7 +404,7 @@ component =
                       else
                         "tutorial__slide"
                   ]
-                  [ HH.text content ]
+                  [ HH.lazy (\_ -> RH.render_ $ parseMarkdown content) false ]
           , id: "slide-modal-" <> show slideIndex
           , onClose: Skip
           , title: maybe "Cannot find title" _.title slide

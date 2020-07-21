@@ -23,6 +23,7 @@
   , "halogen-hooks"
   , "halogen-select"
   , "halogen-vdom"
+  , "html-parser-halogen"
   , "lists"
   , "math"
   , "maybe"
