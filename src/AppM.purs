@@ -171,7 +171,7 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
           , solution: ProjectId 85
           , hiddenElements: []
           , id
-          , content: GistId "c36e060c76f2493bed9df58285e3b13f"
+          , content: GistId "8526c4d00f87ac912b9c94d2fb52b7fb"
           , completed: false
           }
     | id == TutorialId 8 =
@@ -181,7 +181,7 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
           , solution: ProjectId 91
           , hiddenElements: []
           , id
-          , content: GistId "784700072c9490e2d088c4738d0ceb6d"
+          , content: GistId "97c2ba9e11703883838a880bd506ea34"
           , completed: false
           }
     | id == TutorialId 9 =
@@ -191,7 +191,7 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
           , solution: ProjectId 93
           , hiddenElements: []
           , id
-          , content: GistId "758167dc3110e93225279a5d0320f7f4"
+          , content: GistId "34cd7f6be9e4dafece4c15b4227b334b"
           , completed: false
           }
     | otherwise = pure $ Left $ "Cannot find tutorial " <> show id
