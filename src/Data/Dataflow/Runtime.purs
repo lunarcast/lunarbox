@@ -12,15 +12,15 @@ module Lunarbox.Data.Dataflow.Runtime
   ) where
 
 import Prelude
-import Control.Lazy (defer)
+import Control.Monad.Gen (oneOf)
+import Data.NonEmpty ((:|))
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (.:), (:=), (~>))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
-import Test.QuickCheck (class Arbitrary, class Coarbitrary, coarbitrary)
-import Test.QuickCheck.Arbitrary (genericArbitrary)
+import Test.QuickCheck (class Arbitrary, class Coarbitrary, arbitrary, coarbitrary)
 
 -- Representations of all possible runtime values
 data RuntimeValue
@@ -78,7 +78,12 @@ instance coarbitraryRuntimeValue :: Coarbitrary RuntimeValue where
   coarbitrary (Function a) = coarbitrary a
 
 instance arbitraryRuntimeValue :: Arbitrary RuntimeValue where
-  arbitrary = defer \_ -> genericArbitrary
+  arbitrary =
+    oneOf $ pure Null
+      :| [ Number <$> arbitrary
+        , String <$> arbitrary
+        , Bool <$> arbitrary
+        ]
 
 instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Number n) (Number n') = n == n'

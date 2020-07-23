@@ -50,7 +50,7 @@ typeToArbitrary ty@(TConstant "Function" [ _, to ]) = Function <$> go
   where
   go = repeatable \a -> coarbitrary a $ typeToArbitrary to
 
-typeToArbitrary ty = arbitrary
+typeToArbitrary _ = arbitrary
 
 -- | Validate that a provided solution has the same behavior as the intended one.
 validateSolution :: Solution -> Effect (Either SolutionError Unit)
