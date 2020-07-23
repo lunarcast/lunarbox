@@ -11,8 +11,8 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Traversable (for)
 import Effect (Effect)
+import Lunarbox.Control.Monad.Dataflow.Solve.Unify (canUnify)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
-import Lunarbox.Data.Dataflow.Runtime.Class.Describable (generalizeType)
 import Lunarbox.Data.Dataflow.Type (Type(..), inputs, typeBool, typeNumber, typeString)
 import Test.QuickCheck (Result(..), arbitrary, checkResults, coarbitrary, quickCheckPure', randomSeed)
 import Test.QuickCheck.Gen (Gen, arrayOf, repeatable)
@@ -55,7 +55,8 @@ typeToArbitrary _ = arbitrary
 -- | Validate that a provided solution has the same behavior as the intended one.
 validateSolution :: Solution -> Effect (Either SolutionError Unit)
 validateSolution { current, intended }
-  | generalizeType current.type' /= generalizeType intended.type' =
+  -- | TODO: do more than just unification
+  | not $ canUnify current.type' intended.type' =
     pure
       $ Left
       $ DifferentTypes current.type' intended.type'

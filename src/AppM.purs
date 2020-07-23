@@ -184,6 +184,16 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
           , content: GistId "784700072c9490e2d088c4738d0ceb6d"
           , completed: false
           }
+    | id == TutorialId 9 =
+      pure $ Right
+        $ { name: "My super duper awesome tutorial 3"
+          , base: ProjectId 94
+          , solution: ProjectId 93
+          , hiddenElements: []
+          , id
+          , content: GistId "758167dc3110e93225279a5d0320f7f4"
+          , completed: false
+          }
     | otherwise = pure $ Left $ "Cannot find tutorial " <> show id
 
 instance manageGistsAppM :: ManageGists AppM where
