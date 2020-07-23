@@ -5,10 +5,13 @@ import Affjax as AX
 import Affjax.ResponseFormat as RF
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
 import Data.Argonaut (decodeJson, encodeJson)
+import Data.Array as Array
 import Data.Either (Either(..), hush)
 import Data.HTTP.Method as Method
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
+import Data.Set as Set
+import Data.Traversable (for)
 import Effect.Aff (Aff)
 import Effect.Aff.Bus as Bus
 import Effect.Aff.Class (class MonadAff, liftAff)
@@ -24,9 +27,12 @@ import Lunarbox.Capability.Resource.Gist (class ManageGists)
 import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials)
 import Lunarbox.Capability.Resource.User (class ManageUser)
-import Lunarbox.Config (Config, _changeRoute, _currentUser, _userBus)
+import Lunarbox.Config (Config, _allowedNodes, _changeRoute, _currentUser, _userBus)
 import Lunarbox.Control.Monad.Effect (printString)
+import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..), loadNativeConfigs)
+import Lunarbox.Data.Dataflow.Native.Prelude as Prelude
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
+import Lunarbox.Data.Editor.State (compile)
 import Lunarbox.Data.Gist (GistId(..))
 import Lunarbox.Data.ProjectId (ProjectId(..))
 import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
@@ -95,7 +101,19 @@ instance manageProjectsAppM :: ManageProjects AppM where
     pure $ _.project.id <$> response
   getProject id = do
     response <- mkRawRequest { endpoint: Project id, method: Get }
-    pure $ jsonToState =<< response
+    for (response >>= jsonToState) \project -> do
+      allowed <- asks $ view _allowedNodes
+      pure
+        $ compile case allowed of
+            Just nodes ->
+              loadNativeConfigs
+                (Array.filter go Prelude.configs)
+                project
+              where
+              go (NativeConfig { name }) = Set.member name nodeSet
+
+              nodeSet = Set.fromFoldable nodes
+            Nothing -> Prelude.loadPrelude project
   saveProject id json = void <$> mkRawRequest { endpoint: Project id, method: Put $ Just json }
   deleteProject id = void <$> mkRawRequest { endpoint: Project id, method: Delete }
   getProjects =
@@ -154,6 +172,16 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
           , hiddenElements: []
           , id
           , content: GistId "c36e060c76f2493bed9df58285e3b13f"
+          , completed: false
+          }
+    | id == TutorialId 8 =
+      pure $ Right
+        $ { name: "My super duper awesome tutorial 2"
+          , base: ProjectId 92
+          , solution: ProjectId 91
+          , hiddenElements: []
+          , id
+          , content: GistId "784700072c9490e2d088c4738d0ceb6d"
           , completed: false
           }
     | otherwise = pure $ Left $ "Cannot find tutorial " <> show id

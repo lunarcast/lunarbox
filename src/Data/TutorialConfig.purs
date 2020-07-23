@@ -4,7 +4,9 @@ import Prelude
 import Data.Argonaut (decodeJson, jsonParser)
 import Data.Either (Either(..), note)
 import Data.Map as Map
+import Data.Maybe (Maybe)
 import Data.Traversable (for)
+import Lunarbox.Data.Editor.FunctionName (FunctionName)
 import Lunarbox.Data.Gist (Gist(..), GistFiles(..))
 
 -- | A step will be displayed as a modal in the editor while doing the tutorial
@@ -16,6 +18,7 @@ type TutorialStep
 -- | Config made by an admin about what steps a tutorial has
 type TutorialConfig
   = { steps :: Array TutorialStep
+    , allowedNodes :: Maybe (Array FunctionName)
     }
 
 -- | Basically grouped step data together from the github gist config

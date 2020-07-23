@@ -1,7 +1,7 @@
 module Lunarbox.Component.Tutorial (component) where
 
 import Prelude
-import Control.Monad.Reader (class MonadReader)
+import Control.Monad.Reader (class MonadReader, lift, local)
 import Control.MonadZero (guard)
 import Data.Array ((!!), (..))
 import Data.Array as Array
@@ -9,7 +9,7 @@ import Data.Const (Const)
 import Data.Default (def)
 import Data.Either (Either(..), isRight)
 import Data.Foldable (for_, traverse_)
-import Data.Lens (over)
+import Data.Lens (over, set)
 import Data.Lens.Iso.Newtype (_Newtype)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
@@ -34,7 +34,7 @@ import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (className, maybeElement)
-import Lunarbox.Config (Config)
+import Lunarbox.Config (Config, _allowedNodes)
 import Lunarbox.Control.Monad.Dataflow.Interpreter (InterpreterContext)
 import Lunarbox.Control.Monad.Dataflow.Interpreter.Interpret (termToRuntime)
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
@@ -60,7 +60,7 @@ type State
     | Input
       ( tutorial :: RemoteData String TutorialWithMetadata
       , gist :: RemoteData String Gist
-      , steps :: RemoteData String TutorialSteps
+      , tutorialConfig :: RemoteData String TutorialSteps
       , base :: RemoteData String EditorState.State
       , solution :: RemoteData String EditorState.State
       , currentSlide :: Int
@@ -116,7 +116,7 @@ component =
       Record.merge
         { tutorial: NotAsked
         , gist: NotAsked
-        , steps: NotAsked
+        , tutorialConfig: NotAsked
         , base: NotAsked
         , solution: NotAsked
         , currentSlide: 0
@@ -141,15 +141,17 @@ component =
       response <- getTutorial id
       modify_ _ { tutorial = fromEither response }
       for_ response \response' ->
-        for_ setupFetchers \f -> fork $ f response'
+        fetchTutorialConfig response' \tutorialConfig -> do
+          void $ fork $ fetchBase tutorialConfig.config response'
+          void $ fork $ fetchSolution response'
       handleAction TryOpeningSlides
     HandleSlideModalAction action -> do
-      { currentSlide, steps } <- get
-      for_ steps \{ steps: steps' } -> do
+      { currentSlide, tutorialConfig } <- get
+      for_ tutorialConfig \{ steps } -> do
         case action of
           Skip -> pure unit
           Next ->
-            when (Array.length steps' > currentSlide + 1) do
+            when (Array.length steps > currentSlide + 1) do
               modify_ _ { currentSlide = currentSlide + 1 }
               handleAction OpenCurrent
           Previous ->
@@ -272,7 +274,7 @@ component =
                 (def :: InterpreterContext Location)
     TryOpeningSlides -> do
       state <- get
-      case state.tutorial, state.gist, state.steps, state.base, state.solution of
+      case state.tutorial, state.gist, state.tutorialConfig, state.base, state.solution of
         Success _, Success _, Success _, Success _, Success _ -> handleAction OpenCurrent
         Failure _, _, _, _, _ -> pure unit
         _, Failure _, _, _, _ -> pure unit
@@ -297,23 +299,24 @@ component =
 
   openSlide value = void $ query _slideModal value $ tell Modal.Open
 
-  setupFetchers = [ fetchBase, fetchSolution, fetchSteps ]
-
-  fetchBase { base } = do
-    base' <- getProject base
+  fetchBase { allowedNodes } { base } = do
+    base' <- lift $ local (set _allowedNodes allowedNodes) $ getProject base
     modify_ _ { base = fromEither base' }
 
   fetchSolution { solution } = do
     solution' <- getProject solution
     modify_ _ { solution = fromEither solution' }
 
-  fetchSteps { content } = do
+  fetchTutorialConfig { content } continue = do
     gist <- fetchGist content
     modify_ _ { gist = fromEither gist }
     for_ gist \gist' -> do
       let
         steps = getTutorialSteps gist'
-      modify_ _ { steps = fromEither steps }
+      modify_ _ { tutorialConfig = fromEither steps }
+      case steps of
+        Right config -> continue config
+        _ -> pure unit
 
   handleEditorOutput = const Nothing
 
@@ -321,8 +324,8 @@ component =
     Modal.ClosedWith a -> Just $ HandleResultModalAction a
     Modal.BubbledAction a -> Just a
 
-  render { tutorial, gist, steps, base, solution, currentSlide } = case tutorial, gist, steps, base, solution of
-    Success tutorial', Success gist', Success steps', Success base', Success solution' ->
+  render { tutorial, gist, tutorialConfig, base, solution, currentSlide } = case tutorial, gist, tutorialConfig, base, solution of
+    Success tutorial', Success gist', Success { steps }, Success base', Success solution' ->
       HH.div_
         $ [ HH.main [ className "tutorial__editor" ]
               [ HH.slot (SProxy :: _ "editor") unit Editor.component base' handleEditorOutput
@@ -360,7 +363,7 @@ component =
         (0 .. (slideCount - 1))
           <#> mkModal
 
-      slideCount = Array.length steps'.steps
+      slideCount = Array.length steps
 
       mkModal slideIndex =
         HH.slot _slideModal
@@ -369,11 +372,11 @@ component =
           slideModal
           handleSlideModalOutput
         where
-        slide = steps'.steps !! slideIndex
+        slide = steps !! slideIndex
 
         next =
           { text:
-            if (slideIndex + 1 >= Array.length steps'.steps) then
+            if (slideIndex + 1 >= Array.length steps) then
               "Done"
             else
               "Next"

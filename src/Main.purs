@@ -4,7 +4,7 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Aff (Aff, Milliseconds(..), launchAff_)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Aff.Bus as Bus
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
@@ -62,6 +62,7 @@ main production =
           { devOptions: Just { cancelInputsOnBlur: true }
           , baseUrl
           , pushStateInterface: nav
+          , allowedNodes: Nothing
           , user:
             { currentUser
             , userBus

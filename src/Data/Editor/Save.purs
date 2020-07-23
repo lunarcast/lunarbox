@@ -7,8 +7,7 @@ import Prelude
 import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Either (Either)
 import Effect.Unsafe (unsafePerformEffect)
-import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Editor.State (State, StatePermanentData, compile, emptyState, nodeCount, visualFunctionCount)
+import Lunarbox.Data.Editor.State (State, StatePermanentData, emptyState, nodeCount, visualFunctionCount)
 import Lunarbox.Data.ProjectList (ProjectData)
 import Record as Record
 
@@ -65,4 +64,4 @@ jsonToState json = do
     -- unsafePerformEffect by making the whole function return an effect
     baseState :: State
     baseState = Record.merge recivedData $ unsafePerformEffect emptyState
-  pure $ compile $ loadPrelude baseState
+  pure baseState

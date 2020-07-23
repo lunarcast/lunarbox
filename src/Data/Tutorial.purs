@@ -5,9 +5,7 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
 import Data.Generic.Rep (class Generic)
-import Data.List.Types (List)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
 import Lunarbox.Data.Gist (GistId)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.Tab (Tab)
@@ -24,26 +22,6 @@ instance encodeJsonEditorElement :: EncodeJson EditorElement where
 
 instance decodeJsonEditorElement :: DecodeJson EditorElement where
   decodeJson = genericDecodeJson
-
--- | Different ways of informing users about stuff 
--- | (will add more of them in the future)
-newtype TutorialStep
-  = TextBlock String
-
-derive newtype instance encodeJsonTutorialStep :: EncodeJson TutorialStep
-
-derive newtype instance decodeJsonTutorialStep :: DecodeJson TutorialStep
-
--- | A test case for an user defined function 
-newtype TutorialTest
-  = Test
-  { inputs :: List RuntimeValue
-  , output :: RuntimeValue
-  }
-
-derive newtype instance encodeJsonTutorialTest :: EncodeJson TutorialTest
-
-derive newtype instance decodeJsonTutorialTest :: DecodeJson TutorialTest
 
 -- | Id used to identify tutorials
 newtype TutorialId

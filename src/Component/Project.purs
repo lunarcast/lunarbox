@@ -54,7 +54,7 @@ data Action
   | Receive { | Connect.WithCurrentUser (Input ()) }
 
 type ChildSlots
-  = ( editor :: forall query. Slot query Editor.Output Unit )
+  = ( editor :: Slot Editor.Query Editor.Output Unit )
 
 component ::
   forall m q o.

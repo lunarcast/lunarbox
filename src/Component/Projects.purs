@@ -10,8 +10,9 @@ import Data.Either (Either(..))
 import Data.Filterable (filter)
 import Data.Lens (Lens', preview, set)
 import Data.Lens.Record (prop)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Symbol (SProxy(..))
+import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (Component, HalogenM, defaultEval, gets, mkComponent, mkEval, modify_)
 import Halogen.HTML as HH
@@ -21,6 +22,8 @@ import Halogen.HTML.Properties as HP
 import Lunarbox.Capability.Navigate (class Navigate, navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, cloneProject, createProject, deleteProject, getProjects)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, createTutorial, deleteTutorial)
+import Lunarbox.Component.HOC.Connect (WithCurrentUser)
+import Lunarbox.Component.HOC.Connect as Connect
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
 import Lunarbox.Component.Tabs as Tabs
@@ -30,11 +33,13 @@ import Lunarbox.Component.WithLogo (withLogo)
 import Lunarbox.Config (Config)
 import Lunarbox.Data.Editor.State (emptyState)
 import Lunarbox.Data.Ord (sortBySearch)
+import Lunarbox.Data.Profile (Profile)
 import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectList, ProjectOverview)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialId)
 import Network.RemoteData (RemoteData(..), _Success, fromEither)
+import Record as Record
 import Web.Event.Event (stopPropagation)
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
@@ -55,6 +60,7 @@ type State
   = { projectList :: RemoteData String ProjectList
     , search :: String
     , currentTab :: Tab
+    , currentUser :: Maybe Profile
     }
 
 -- Lenses
@@ -77,6 +83,7 @@ data Action
   | Search String
   | Navigate Route
   | SetTab Tab
+  | Receive { | WithCurrentUser () }
 
 type Output
   = Void
@@ -84,37 +91,40 @@ type Output
 type ChildSlots
   = ()
 
-type Input
-  = {}
-
 component ::
   forall m q.
   MonadEffect m =>
+  MonadAff m =>
   ManageProjects m =>
   ManageTutorials m =>
   MonadAsk
     Config
     m =>
-  Navigate m => Component HH.HTML q Input Output m
+  Navigate m => Component HH.HTML q {} Output m
 component =
-  mkComponent
-    { initialState:
-      const
-        { projectList: NotAsked
-        , search: ""
-        , currentTab: PersonalProjects
-        }
-    , render
-    , eval:
-      mkEval
-        $ defaultEval
-            { handleAction = handleAction
-            , initialize = Just Initialize
+  Connect.component
+    $ mkComponent
+        { initialState:
+          const
+            { projectList: NotAsked
+            , search: ""
+            , currentTab: PersonalProjects
+            , currentUser: Nothing
             }
-    }
+        , render
+        , eval:
+          mkEval
+            $ defaultEval
+                { handleAction = handleAction
+                , initialize = Just Initialize
+                , receive = Just <<< Receive
+                }
+        }
   where
   handleAction :: Action -> HalogenM State Action ChildSlots Output m Unit
   handleAction = case _ of
+    Receive inputs -> do
+      modify_ $ Record.merge inputs
     Initialize -> do
       projectList <- getProjects
       modify_ _ { projectList = fromEither projectList }
@@ -254,11 +264,13 @@ component =
 
       createProject = newProject "Create a new project" CreateProject
 
-  tutorialsHtml { projectList, search } = withRemoteData projectList go
+  tutorialsHtml { projectList, search, currentUser } = withRemoteData projectList go
     where
     go { tutorials } =
       HH.div [ className "projects__list" ]
-        $ [ newProject "Create a new tutorial" CreateTutorial ]
+        $ [ whenElem (maybe false _.isAdmin currentUser) \_ ->
+              newProject "Create a new tutorial" CreateTutorial
+          ]
         <> (mkItem <$> tutorials)
       where
       mkItem { name, completed, id, own } =
