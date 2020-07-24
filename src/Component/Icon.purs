@@ -1,11 +1,19 @@
 module Lunarbox.Component.Icon where
 
-import Prelude
 import Halogen.HTML as HH
+import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Utils (StaticHtml, className)
 
+-- | Helper for using material icons
 icon :: forall a b. StaticHtml String a b
 icon name = HH.i [ className "material-icons" ] [ HH.text name ]
 
-iconInsideContainer :: forall a b. String -> StaticHtml String a b
-iconInsideContainer class' = HH.div [ className class' ] <<< pure <<< icon
+-- | Tooltip integration for material icons
+iconWithTooltip :: forall a b. String -> Tooltip.TooltipPosition -> String -> HH.HTML a b
+iconWithTooltip tooltipText position name =
+  Tooltip.tooltip
+    tooltipText
+    position
+    HH.i
+    [ className "material-icons" ]
+    [ HH.text name ]

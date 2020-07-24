@@ -19,14 +19,17 @@
   width: 800px;
 }
 
+.tutorial-editor__title {
+  margin-right: auto;
+}
+
 .tutorial-editor__header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   color: $on-primary;
 }
 
-.tutorial-editor__delete {
+.tutorial-editor__header-icon {
   cursor: pointer;
 
   outline: none;
@@ -39,7 +42,7 @@
   filter: brightness(0.8);
 }
 
-.tutorial-editor__delete:hover {
+.tutorial-editor__header-icon:hover {
   filter: brightness(1.3);
   transform: scale(1.2);
 }

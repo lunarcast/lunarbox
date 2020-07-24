@@ -44,7 +44,7 @@ import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.State as EditorState
 import Lunarbox.Data.Gist (Gist)
 import Lunarbox.Data.Route (Route(..))
-import Lunarbox.Data.Tutorial (TutorialId, TutorialWithMetadata)
+import Lunarbox.Data.Tutorial (TutorialId, Tutorial)
 import Lunarbox.Data.TutorialConfig (TutorialSteps, getTutorialSteps)
 import Lunarbox.Data.ValidateSolution (SolutionError(..), validateSolution)
 import Lunarbox.Foreign.Marked (parseMarkdown)
@@ -58,7 +58,7 @@ type Input r
 type State
   = { 
     | Input
-      ( tutorial :: RemoteData String TutorialWithMetadata
+      ( tutorial :: RemoteData String Tutorial
       , gist :: RemoteData String Gist
       , tutorialConfig :: RemoteData String TutorialSteps
       , base :: RemoteData String EditorState.State

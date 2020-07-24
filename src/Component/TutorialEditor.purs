@@ -23,11 +23,12 @@ import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials, deleteTutor
 import Lunarbox.Component.Error (error)
 import Lunarbox.Component.Icon (icon)
 import Lunarbox.Component.Loading (loading)
+import Lunarbox.Component.Tooltip as Tooltip
 import Lunarbox.Component.Typeahead as TA
 import Lunarbox.Component.Utils (className)
 import Lunarbox.Data.Gist (GistId(..))
 import Lunarbox.Data.Route (Route(..))
-import Lunarbox.Data.Tutorial (TutorialFields, TutorialId, TutorialSpec, UserProject(..))
+import Lunarbox.Data.Tutorial (TutorialId, TutorialSpec, UserProject(..), Tutorial)
 import Lunarbox.Form.Field (customFormField)
 import Lunarbox.Form.Field as Field
 import Lunarbox.Form.Validation as V
@@ -44,13 +45,14 @@ type State
   = { 
     | Input
       ( projects :: RemoteData String (Array UserProject)
-      , tutorial :: RemoteData String TutorialFields
+      , tutorial :: RemoteData String Tutorial
       )
     }
 
 data HandleAction
   = HandleTutorial TutorialSpec
   | Delete
+  | Play
   | Init
 
 component ::
@@ -90,7 +92,6 @@ component =
           , base
           , solution
           , content
-          , hiddenElements: []
           }
       case response of
         Left err -> modify_ _ { projects = Failure err }
@@ -101,6 +102,7 @@ component =
         >>= case _ of
             Left err -> modify_ _ { projects = Failure err }
             _ -> navigate Projects
+    Play -> gets _.id >>= (navigate <<< Tutorial)
     Init -> do
       void $ fork fetchTutorial
       void $ fork fetchProjects
@@ -129,11 +131,21 @@ component =
                 [ HH.h1 [ className "tutorial-editor__title" ]
                     [ HH.text "Edit tutorial"
                     ]
-                , HH.button
-                    [ className "tutorial-editor__delete"
+                , Tooltip.tooltip "Delete this tutorial"
+                    Tooltip.BottomLeft
+                    HH.button
+                    [ className "tutorial-editor__header-icon"
                     , HE.onClick $ const $ Just Delete
                     ]
                     [ icon "delete"
+                    ]
+                , Tooltip.tooltip "Try out this tutorial"
+                    Tooltip.Left
+                    HH.button
+                    [ className "tutorial-editor__header-icon"
+                    , HE.onClick $ const $ Just Play
+                    ]
+                    [ icon "play_arrow"
                     ]
                 ]
             , HH.slot F._formless unit formComponent

@@ -1,7 +1,8 @@
 module Lunarbox.Data.Gist where
 
 import Prelude
-import Data.Argonaut (class DecodeJson, decodeJson)
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson)
+import Data.Default (class Default)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Newtype (class Newtype)
@@ -50,3 +51,8 @@ derive instance newtypeGistId :: Newtype GistId _
 derive instance eqGistId :: Eq GistId
 
 derive newtype instance decodeJsonGistId :: DecodeJson GistId
+
+derive newtype instance encodeJsonGistId :: EncodeJson GistId
+
+instance defaultGistId :: Default GistId where
+  def = GistId "d1e270048b1f276438ee31ca345862aa"

@@ -38,7 +38,7 @@ import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectList, ProjectOverview)
 import Lunarbox.Data.Route (Route(..))
 import Lunarbox.Data.Tutorial (TutorialId)
-import Network.RemoteData (RemoteData(..), _Success, fromEither)
+import Network.RemoteData (RemoteData(..), _Success, fromEither, toMaybe)
 import Record as Record
 import Web.Event.Event (stopPropagation)
 import Web.UIEvent.MouseEvent (MouseEvent)
@@ -185,11 +185,15 @@ component =
         Right id -> navigate $ Project id
         Left err -> modify_ $ set _projectList $ Failure err
     CreateTutorial -> do
-      modify_ $ set _projectList Loading
-      response <- createTutorial
-      case response of
-        Right id -> navigate $ EditTutorial id
-        Left err -> modify_ $ set _projectList $ Failure err
+      projectList <- gets _.projectList
+      case Array.head =<< _.userProjects <$> toMaybe projectList of
+        Just { id } -> do
+          modify_ $ set _projectList Loading
+          response <- createTutorial { base: id, solution: id }
+          case response of
+            Right id' -> navigate $ EditTutorial id'
+            Left err -> modify_ $ set _projectList $ Failure err
+        Nothing -> modify_ $ set _projectList $ Failure "You have no projects which can be used as a solution/base for this tutorial!"
 
   renderProject isExample { name, id, metadata: { functionCount, nodeCount } } =
     HH.div [ className "project", onClick $ const $ Just $ (if isExample then CloneProject else OpenProject) id ]

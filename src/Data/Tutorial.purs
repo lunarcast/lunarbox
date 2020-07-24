@@ -46,20 +46,12 @@ type TutorialSpec
     }
 
 -- | The actual data structure for the tutorials
-type Tutorial r
+type Tutorial
   = { name :: String
     , base :: ProjectId
     , solution :: ProjectId
     , content :: GistId
-    , hiddenElements :: Array EditorElement
-    | r
     }
-
-type TutorialFields
-  = Tutorial ()
-
-type TutorialWithMetadata
-  = Tutorial ( completed :: Boolean, id :: TutorialId )
 
 newtype UserProject
   = UserProject (Tuple String ProjectId)

@@ -6,11 +6,14 @@ import Affjax.ResponseFormat as RF
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, asks, runReaderT)
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Array as Array
+import Data.Default (def)
 import Data.Either (Either(..), hush)
+import Data.Functor (voidRight)
 import Data.HTTP.Method as Method
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
+import Data.Symbol (SProxy(..))
 import Data.Traversable (for)
 import Effect.Aff (Aff)
 import Effect.Aff.Bus as Bus
@@ -33,12 +36,13 @@ import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..), loadNativeC
 import Lunarbox.Data.Dataflow.Native.Prelude as Prelude
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
 import Lunarbox.Data.Editor.State (compile)
-import Lunarbox.Data.Gist (GistId(..))
-import Lunarbox.Data.ProjectId (ProjectId(..))
+import Lunarbox.Data.Gist (GistId)
+import Lunarbox.Data.ProjectId (ProjectId)
 import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
-import Lunarbox.Data.Tutorial (TutorialId(..))
+import Lunarbox.Data.Tutorial (TutorialId)
+import Lunarbox.Data.Tutorial as Tutorial
 import Record as Record
 import Routing.Duplex (print)
 
@@ -119,82 +123,41 @@ instance manageProjectsAppM :: ManageProjects AppM where
   getProjects =
     -- All this mess is here to mock tutorials
     -- | TODO: Remove when bg finally updates the api
-    map (Record.merge { tutorials: mockTutorials })
+    map (Record.rename (SProxy :: _ "tutorialProjects") (SProxy :: _ "tutorials"))
       <$> ( mkRequest { endpoint: Projects, method: Get } ::
             AppM
               ( Either String
                   { exampleProjects :: Array { | ProjectOverview }
                   , userProjects :: Array { | ProjectOverview }
+                  , tutorialProjects :: Array TutorialOverview
                   }
               )
         )
-    where
-    mockTutorials :: Array TutorialOverview
-    mockTutorials =
-      [ { id: TutorialId 0
-        , name: "A sample tutorial"
-        , completed: false
-        , own: true
-        }
-      , { id: TutorialId 1
-        , name: "Another tutorial"
-        , completed: false
-        , own: false
-        }
-      , { id: TutorialId 2
-        , name: "Actually completed this"
-        , completed: true
-        , own: false
-        }
-      , { id: TutorialId 7
-        , name: "A tutorial I can edit"
-        , completed: false
-        , own: true
-        }
-      ]
 
 instance manageTutorialsAppM :: ManageTutorials AppM where
-  createTutorial = pure $ Right $ TutorialId 0
-  deleteTutorial id = Right <$> printString ("Deleted id " <> show id)
+  createTutorial projectData = do
+    response :: Either String { tutorial :: { id :: TutorialId } } <-
+      mkRequest { endpoint: Tutorials, method: Post $ Just $ encodeJson tutorial }
+    pure $ _.id <$> _.tutorial <$> response
+    where
+    tutorial :: Tutorial.Tutorial
+    tutorial =
+      Record.merge
+        { content: def :: GistId
+        , name: "My tutorial"
+        }
+        projectData
+  deleteTutorial id = mkRequest { endpoint: Tutorial id, method: Delete }
   completeTutorial id = do
     printString $ "Completed tutorial " <> show id
     pure $ Right unit
-  saveTutorial id g = do
-    printString $ "Saving project " <> show id
-    pure $ Right unit
-  getTutorial id
-    -- We mock this until bg makes the api
-    | id == TutorialId 7 =
-      pure $ Right
-        $ { name: "My super duper awesome tutorial"
-          , base: ProjectId 86
-          , solution: ProjectId 85
-          , hiddenElements: []
-          , id
-          , content: GistId "8526c4d00f87ac912b9c94d2fb52b7fb"
-          , completed: false
+  saveTutorial id g =
+    (voidRight unit)
+      <$> mkRawRequest
+          { endpoint: Tutorial id
+          , method: Put $ Just $ encodeJson g
           }
-    | id == TutorialId 8 =
-      pure $ Right
-        $ { name: "My super duper awesome tutorial 2"
-          , base: ProjectId 92
-          , solution: ProjectId 91
-          , hiddenElements: []
-          , id
-          , content: GistId "97c2ba9e11703883838a880bd506ea34"
-          , completed: false
-          }
-    | id == TutorialId 9 =
-      pure $ Right
-        $ { name: "My super duper awesome tutorial 3"
-          , base: ProjectId 94
-          , solution: ProjectId 93
-          , hiddenElements: []
-          , id
-          , content: GistId "34cd7f6be9e4dafece4c15b4227b334b"
-          , completed: false
-          }
-    | otherwise = pure $ Left $ "Cannot find tutorial " <> show id
+  getTutorial id = mkRequest { endpoint: Tutorial id, method: Get }
 
 instance manageGistsAppM :: ManageGists AppM where
   fetchGist id = do
