@@ -119,19 +119,7 @@ instance manageProjectsAppM :: ManageProjects AppM where
             Nothing -> Prelude.loadPrelude project
   saveProject id json = void <$> mkRawRequest { endpoint: Project id, method: Put $ Just json }
   deleteProject id = void <$> mkRawRequest { endpoint: Project id, method: Delete }
-  getProjects =
-    -- All this mess is here to mock tutorials
-    -- | TODO: Remove when bg finally updates the api
-    map (Record.rename (SProxy :: _ "tutorialProjects") (SProxy :: _ "tutorials"))
-      <$> ( mkRequest { endpoint: Projects, method: Get } ::
-            AppM
-              ( Either String
-                  { exampleProjects :: Array { | ProjectOverview }
-                  , userProjects :: Array { | ProjectOverview }
-                  , tutorialProjects :: Array TutorialOverview
-                  }
-              )
-        )
+  getProjects = mkRequest { endpoint: Projects, method: Get }
 
 instance manageTutorialsAppM :: ManageTutorials AppM where
   createTutorial projectData = do
