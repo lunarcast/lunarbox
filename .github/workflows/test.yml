@@ -34,7 +34,9 @@ jobs:
             ${{ runner.os }}-yarn-
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
-        run: yarn && yarn add -D purescript spago
+        run: yarn
+      - name: Install purescript
+        run: yarn add -g purescript spago
       - name: Build project
         run: yarn build
       - name: Test project
