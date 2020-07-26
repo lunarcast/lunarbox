@@ -1,50 +1,42 @@
 module Lunarbox.Data.Editor.Save
-  ( StatePermanentData
-  , stateToJson
+  ( stateToJson
   , jsonToState
   ) where
 
 import Prelude
 import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Either (Either)
-import Data.Map (Map)
-import Data.Tuple (Tuple)
-import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Dataflow.Runtime.ValueMap (ValueMap)
-import Lunarbox.Data.Editor.Camera (Camera)
-import Lunarbox.Data.Editor.FunctionName (FunctionName)
-import Lunarbox.Data.Editor.Location (Location)
-import Lunarbox.Data.Editor.Node.NodeData (NodeData)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.Project (Project)
-import Lunarbox.Data.Editor.State (State, compile, emptyState, nodeCount, visualFunctionCount)
+import Effect.Unsafe (unsafePerformEffect)
+import Lunarbox.Data.Editor.State (State, StatePermanentData, emptyState, nodeCount, visualFunctionCount)
 import Lunarbox.Data.ProjectList (ProjectData)
 import Record as Record
-
-type StatePermanentData
-  = { project :: Project
-    , nextId :: Int
-    , nodeData :: Map (Tuple FunctionName NodeId) NodeData
-    , cameras :: Map FunctionName Camera
-    , runtimeOverwrites :: ValueMap Location
-    }
 
 type Save
   = { 
     | ProjectData
-      ( project :: StatePermanentData
+      ( project :: { | StatePermanentData () }
       , isExample :: Boolean
+      , visible :: Boolean
       )
     }
 
 -- Encoding and decoding
-stateToJson :: forall a s m. State a s m -> Json
-stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExample, name } = encodeJson save
+stateToJson :: State -> Json
+stateToJson state@{ project
+, nextId
+, geometries
+, runtimeOverwrites
+, isExample
+, name
+, isVisible
+, currentFunction
+} = encodeJson save
   where
   save :: Save
   save =
     { name
     , isExample
+    , visible: isVisible
     , metadata:
       { nodeCount: nodeCount state
       , functionCount: visualFunctionCount state
@@ -52,21 +44,24 @@ stateToJson state@{ project, nextId, nodeData, cameras, runtimeOverwrites, isExa
     , project:
       { project
       , nextId
-      , nodeData
-      , cameras
+      , geometries
       , runtimeOverwrites
+      , currentFunction
       }
     }
 
-jsonToState :: forall a s m. Json -> Either String (State a s m)
+jsonToState :: Json -> Either String State
 jsonToState json = do
   obj <- decodeJson json
   name :: String <- obj .: "name"
   isExample :: Boolean <- obj .: "isExample"
-  saveData :: StatePermanentData <- obj .: "project"
+  isVisible :: Boolean <- obj .: "visible"
+  saveData :: { | StatePermanentData () } <- obj .: "project"
   let
-    recivedData = Record.merge { name, isExample } saveData
+    recivedData = Record.merge { name, isExample, isVisible } saveData
 
-    baseState :: State a s m
-    baseState = Record.merge recivedData emptyState
-  pure $ compile $ loadPrelude baseState
+    -- TODO: this is pretty low priority but maybe I could get rid of the call to
+    -- unsafePerformEffect by making the whole function return an effect
+    baseState :: State
+    baseState = Record.merge recivedData $ unsafePerformEffect emptyState
+  pure baseState

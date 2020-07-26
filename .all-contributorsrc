@@ -53,6 +53,15 @@
         "doc",
         "tool"
       ]
+    },
+    {
+      "login": "pantharshit00",
+      "name": "Harshit Pant",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/22195362?v=4",
+      "profile": "https://harshitpant.com",
+      "contributions": [
+        "data"
+      ]
     }
   ],
   "contributorsPerLine": 7,

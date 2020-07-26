@@ -6,9 +6,11 @@
 
 .cache
 pnpm-debug.log
+yarn-error.log
 
-/output/
+output
+dce-output
 dist
+public/index.js
 
 .env.*
-src/**/*.js

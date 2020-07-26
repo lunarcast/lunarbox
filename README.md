@@ -1,12 +1,14 @@
 # Lunarbox
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=for-the-badge)](#contributors)
+[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=for-the-badge)](#contributors)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com)
 
-![](https://img.shields.io/github/release-date/Mateiadrielrafael/lunarbox?label=Last%20release&style=for-the-badge) ![](https://img.shields.io/github/v/release/Mateiadrielrafael/lunarbox?style=for-the-badge) ![](https://img.shields.io/github/languages/top/Mateiadrielrafael/lunarbox?color=yellow&style=for-the-badge) ![](https://img.shields.io/github/workflow/status/Mateiadrielrafael/lunarbox/Test%20⛳/develop?style=for-the-badge)
+![](https://img.shields.io/github/release-date/Mateiadrielrafael/lunarbox?label=Last%20release&style=for-the-badge) ![](https://img.shields.io/github/v/release/Mateiadrielrafael/lunarbox?style=for-the-badge) ![](https://img.shields.io/github/languages/top/Mateiadrielrafael/lunarbox?color=yellow&style=for-the-badge)
+
+![Netlify](https://img.shields.io/netlify/f7ec074d-16b0-4592-a4d1-cb7712931df4?style=for-the-badge) ![](https://img.shields.io/github/workflow/status/Mateiadrielrafael/lunarbox/Test%20⛳/develop?style=for-the-badge)
 
 Tool to help beginners learn functional programming
 
@@ -41,6 +43,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="http://xwafl.github.io/portfolio"><img src="https://avatars2.githubusercontent.com/u/35458851?v=4" width="100px;" alt=""/><br /><sub><b>xWafl</b></sub></a><br /><a href="#design-xWafl" title="Design">🎨</a> <a href="#ideas-xWafl" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/Mateiadrielrafael/lunarbox/commits?author=xWafl" title="Documentation">📖</a></td>
     <td align="center"><a href="https://discordapp.com/users/270972671490129921"><img src="https://avatars0.githubusercontent.com/u/49570123?v=4" width="100px;" alt=""/><br /><sub><b>Sandu Victor</b></sub></a><br /><a href="#design-Vyctor661" title="Design">🎨</a> <a href="#ideas-Vyctor661" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/BlueGhostGH"><img src="https://avatars0.githubusercontent.com/u/17652623?v=4" width="100px;" alt=""/><br /><sub><b>Dragomir George</b></sub></a><br /><a href="https://github.com/Mateiadrielrafael/lunarbox/commits?author=BlueGhostGH" title="Code">💻</a> <a href="https://github.com/Mateiadrielrafael/lunarbox/commits?author=BlueGhostGH" title="Documentation">📖</a> <a href="#tool-BlueGhostGH" title="Tools">🔧</a></td>
+    <td align="center"><a href="https://harshitpant.com"><img src="https://avatars3.githubusercontent.com/u/22195362?v=4" width="100px;" alt=""/><br /><sub><b>Harshit Pant</b></sub></a><br /><a href="#data-pantharshit00" title="Data">🔣</a></td>
   </tr>
 </table>
 

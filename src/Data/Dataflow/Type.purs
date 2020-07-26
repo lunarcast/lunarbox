@@ -110,6 +110,8 @@ instance typeShow :: Show Type where
 printType :: Boolean -> Type -> String
 printType _ (TVariable _ v) = show v
 
+printType _ (TConstant name []) = name
+
 printType _ (TConstant "Array" [ inner ]) = "[" <> printType false inner <> "]"
 
 printType p (TConstant "Function" [ from, to ]) = if p then "(" <> result <> ")" else result

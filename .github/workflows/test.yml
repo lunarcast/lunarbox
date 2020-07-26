@@ -21,20 +21,23 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install pnpm
-        run: npm i -g pnpm
-      - name: Config pnpm for ci
-        run: pnpm config set verify-store-integrity false
-      - name: Cache node_modules
-        uses: actions/cache@v1
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v1
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
-          path: ~/.pnpm-store
-          key: "I wonder if anyone sees this"
-      - name: Install purescript
-        run: pnpm i -g purescript spago
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
       - name: Install dependencies
-        run: pnpm i
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn
+      - name: Install purescript
+        run: yarn add -g purescript spago
       - name: Build project
-        run: pnpm run build
+        run: yarn build
       - name: Test project
-        run: pnpm test
+        run: yarn test

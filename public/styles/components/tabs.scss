@@ -1,0 +1,48 @@
+@use "../utils/utils";
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tabs__header {
+  display: flex;
+}
+
+.tabs__tab {
+  background: transparent;
+  color: $on-primary;
+  padding: 1rem;
+
+  transition: filter $transition-time, border-top-color $transition-time,
+    background $transition-time;
+  cursor: pointer;
+
+  outline: none;
+  border: none;
+
+  border-top-width: 3px;
+  border-top-style: solid;
+  border-top-color: transparent;
+}
+
+.tabs__tab:hover:not(.tabs__tab--current) {
+  background: rgba($primary, 0.5);
+  filter: brightness(1.1);
+}
+
+// Changing this every time is annoying so I just made a var
+$content-bg: lighten($very-dark, 3);
+
+.tabs__tab--current {
+  background: $content-bg;
+  border-top-color: $on-primary;
+}
+
+.tabs__content {
+  height: 100%;
+  background: $content-bg;
+  color: $on-primary;
+  padding: 1rem;
+}

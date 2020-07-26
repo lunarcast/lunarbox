@@ -3,26 +3,23 @@ module Lunarbox.Control.Monad.Dataflow.Infer.InferExpression
   ) where
 
 import Prelude
-import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (ask, asks, local)
 import Control.Monad.State (gets, modify_)
 import Control.Monad.Writer (listen)
 import Data.Array (zip)
-import Data.Either (Either(..))
 import Data.Lens (over, view)
-import Data.List (List(..), (:))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
-import Data.Traversable (sequence)
+import Data.Traversable (for_, sequence)
 import Data.Tuple (Tuple(..))
-import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _location, _typeEnv, createConstraint, rememberType, withLocation)
-import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), runSolve)
+import Lunarbox.Control.Monad.Dataflow.Infer (Infer, InferOutput(..), _count, _typeEnv, createConstraint, createError, rememberType, withLocation)
+import Lunarbox.Control.Monad.Dataflow.Solve (SolveContext(..), SolveState(..), runSolve)
 import Lunarbox.Control.Monad.Dataflow.Solve.SolveConstraintSet (solve)
 import Lunarbox.Data.Dataflow.Class.Substituable (Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Expression (Expression(..), NativeExpression(..), VarName, getLocation)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeFunction)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeBool, typeFunction)
 import Lunarbox.Data.Dataflow.TypeEnv (TypeEnv(..))
 import Lunarbox.Data.Dataflow.TypeEnv as TypeEnv
 import Lunarbox.Data.Dataflow.TypeError (TypeError(..))
@@ -69,10 +66,11 @@ generalize t = do
 -- Lookup a TypeEnv and return the type. If the type doen't exist an error is thrown 
 lookupEnv :: forall l. Ord l => Show l => VarName -> Infer l Type
 lookupEnv var = do
-  location <- asks $ view _location
   (TypeEnv env) <- asks $ view _typeEnv
   case Map.lookup var env of
-    Nothing -> throwError $ UnboundVariable var location
+    Nothing -> do
+      createError $ UnboundVariable var
+      fresh false
     Just s -> instantiate s
 
 -- Infers a type and marks it location on the typeMap
@@ -92,26 +90,29 @@ infer expression =
         tv <- fresh true
         createConstraint funcType (typeFunction inputType tv)
         pure tv
+      If _ cond then' else' -> do
+        tyCond <- infer cond
+        tyThen <- infer then'
+        tyElse <- infer else'
+        tv <- fresh true
+        createConstraint tyCond typeBool
+        createConstraint tv tyThen
+        createConstraint tv tyElse
+        pure tv
       Let location name value body -> do
         env <- ask
-        (Tuple t0 (InferOutput { constraints })) <- listen $ infer value
-        subst <- case runSolve (SolveContext { location }) $ solve constraints of
-          Right result -> pure result
-          Left err -> throwError err
+        Tuple valueType (InferOutput { constraints }) <- listen $ infer value
         let
-          t1 = apply subst t0
-        generalized <- local (const env) $ generalize t1
+          (Tuple subst (SolveState { errors })) = runSolve (SolveContext { location }) $ solve constraints
+        for_ errors $ createError <<< Stacked
+        generalized <- local (const $ apply subst env) $ generalize $ apply subst valueType
         createClosure name generalized $ infer body
-      FixPoint _ body -> do
-        t <- infer body
+      FixPoint loc name body -> do
         tv <- fresh true
-        createConstraint (typeFunction tv tv) t
-        pure tv
-      Chain _ Nil -> fresh true
-      Chain _ (expression' : Nil) -> infer expression'
-      Chain location (expression' : expressions) -> do
-        void $ infer expression'
-        infer $ Chain location expressions
+        ty <- createClosure name (Forall [] tv) $ infer body
+        createConstraint tv ty
+        pure ty
+      Expression _ inner -> infer inner
       TypedHole _ -> fresh false
       Native _ (NativeExpression scheme _) -> instantiate scheme
     rememberType type'

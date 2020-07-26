@@ -1,0 +1,53 @@
+@import "../theme.scss";
+
+.dropdown {
+  color: $on-primary;
+  position: relative;
+}
+
+.dropdown__typeahead-input {
+  background: $very-dark;
+}
+
+.dropdown__typeahead-input,
+.dropdown__trigger-button {
+  outline: none;
+  border: none;
+  width: 100%;
+  color: inherit;
+}
+
+.dropdown__typeahead-input,
+.dropdown__trigger-button {
+  padding: 0.5rem;
+}
+
+.dropdown .dropdown__trigger-button {
+  color: inherit;
+  background: $primary;
+  box-shadow: 3px 3px 3px 3px $very-dark;
+}
+
+.dropdown.dropdown--is-active .dropdown__menu {
+  display: flex;
+  flex-direction: column;
+
+  position: absolute;
+  background: $primary;
+  z-index: 10;
+
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.dropdown__item {
+  padding: 0.5rem;
+  background: $primary;
+
+  transition: filter $transition-time;
+}
+
+.dropdown__item:hover {
+  filter: brightness(1.3);
+}

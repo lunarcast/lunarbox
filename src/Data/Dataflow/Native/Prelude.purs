@@ -16,7 +16,7 @@ import Lunarbox.Data.Dataflow.Native.String (stringNodes)
 import Lunarbox.Data.Editor.State (State)
 
 -- Array wita s mll the built in nodes
-configs :: forall a s m. Array (NativeConfig a s m)
+configs :: Array (NativeConfig)
 configs =
   mathNodes
     <> functionNodes
@@ -28,5 +28,5 @@ configs =
     <> predicateNodes
 
 -- Load all the built in nodes
-loadPrelude :: forall a s m. State a s m -> State a s m
+loadPrelude :: State -> State
 loadPrelude = loadNativeConfigs configs

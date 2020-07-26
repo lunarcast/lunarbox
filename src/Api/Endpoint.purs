@@ -7,7 +7,8 @@ import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Lunarbox.Data.ProjectId (ProjectId)
-import Lunarbox.Data.Route (projectId)
+import Lunarbox.Data.Route (projectId, tutorialId)
+import Lunarbox.Data.Tutorial (TutorialId)
 import Routing.Duplex (RouteDuplex', prefix, root, segment)
 import Routing.Duplex.Generic (noArgs, sum)
 import Routing.Duplex.Generic.Syntax ((/))
@@ -21,6 +22,9 @@ data Endpoint
   | Projects
   | Project ProjectId
   | Clone ProjectId
+  | Tutorial TutorialId
+  | CompleteTutorial TutorialId
+  | Tutorials
 
 derive instance eqEndpoint :: Eq Endpoint
 
@@ -43,4 +47,7 @@ endpointCodec =
         , "Projects": "projects" / noArgs
         , "Project": "projects" / projectId segment
         , "Clone": "projects" / "clone" / projectId segment
+        , "Tutorial": "tutorials" / tutorialId segment
+        , "CompleteTutorial": "tutorials" / "complete" / tutorialId segment
+        , "Tutorials": "tutorials" / noArgs
         }

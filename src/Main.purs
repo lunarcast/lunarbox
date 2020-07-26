@@ -4,7 +4,7 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Aff (Aff, Milliseconds(..), launchAff_)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Aff.Bus as Bus
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
@@ -21,10 +21,10 @@ import Lunarbox.Data.Route (parseRoute)
 import Routing.PushState (makeInterface, matchesWith)
 
 devUrl :: BaseUrl
-devUrl = BaseUrl "http://localhost:8090"
+devUrl = BaseUrl "http://localhost:8090" true
 
 prodUrl :: BaseUrl
-prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com"
+prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com" false
 
 main :: Boolean -> Effect Unit
 main production =
@@ -54,7 +54,7 @@ main production =
     nav <- liftEffect makeInterface
     -- wait for the body to be created
     body <- awaitBody
-    -- TODO: make this depend on some .env file
+    -- Readonly config readable from anywhere in the app
     let
       env :: Config
       env =
@@ -62,7 +62,7 @@ main production =
           { devOptions: Just { cancelInputsOnBlur: true }
           , baseUrl
           , pushStateInterface: nav
-          , autosaveInterval: Milliseconds 3000.0
+          , allowedNodes: Nothing
           , user:
             { currentUser
             , userBus

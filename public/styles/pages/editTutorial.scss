@@ -1,0 +1,60 @@
+@use "../utils/utils";
+@import "../theme.scss";
+
+.tutorial-editor {
+  @include utils.center;
+
+  background: $very-dark;
+  height: 100%;
+}
+
+.tutorial-editor__main {
+  background: $primary-dark;
+  border-top: 3px solid $secondary;
+
+  padding: 2rem;
+  box-shadow: 4px 0 5px 3px black;
+
+  height: 100%;
+  width: 800px;
+}
+
+.tutorial-editor__title {
+  margin-right: auto;
+}
+
+.tutorial-editor__header {
+  display: flex;
+  align-items: center;
+  color: $on-primary;
+}
+
+.tutorial-editor__header-icon {
+  cursor: pointer;
+
+  outline: none;
+  border: none;
+
+  color: inherit;
+  background: none;
+
+  transition: filter $transition-time, transform $transition-time;
+  filter: brightness(0.8);
+}
+
+.tutorial-editor__header-icon:hover {
+  filter: brightness(1.3);
+  transform: scale(1.2);
+}
+
+.tutorial-editor .form__field.form__field--text {
+  background: $very-dark;
+
+  box-shadow: 4px 4px 4px 2px rgba(darken($very-dark, 7), 0.6);
+}
+
+@media only screen and (max-width: 1200px) {
+  .tutorial-editor__main {
+    width: 100vw;
+  }
+}

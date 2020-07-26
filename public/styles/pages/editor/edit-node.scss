@@ -1,0 +1,50 @@
+@import "../../theme.scss";
+
+.edit-node__type {
+  margin: 1rem;
+  margin-left: 0;
+  padding: 0.3rem;
+
+  font-size: 1.2rem;
+  background: $primary-dark;
+}
+
+.edit-node__description {
+  width: 100%;
+  padding: 1em;
+
+  background: $primary-dark;
+  color: $on-primary;
+
+  border-left: 2px solid $secondary;
+}
+
+.edit-node__inputs {
+  margin-top: 1em;
+  padding: 1em;
+
+  background: $primary-dark;
+  color: $on-primary;
+
+  border-left: 2px solid $secondary;
+}
+
+.edit-node__inputs-header {
+  margin: 0;
+}
+
+.edit-node__input-name {
+  outline: none;
+  cursor: pointer;
+}
+
+.edit-node__input-description {
+  margin-left: 1rem;
+  color: darken($color: $on-primary, $amount: 20);
+}
+
+.edit-node__value {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: auto auto;
+}

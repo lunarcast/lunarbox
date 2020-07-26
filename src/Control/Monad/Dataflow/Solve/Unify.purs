@@ -6,10 +6,11 @@ module Lunarbox.Control.Monad.Dataflow.Solve.Unify
 
 import Prelude
 import Data.Array as Array
-import Data.Either (isRight)
 import Data.List (List(..), (:))
 import Data.Map as Map
+import Data.Newtype (unwrap)
 import Data.Set as Set
+import Data.Tuple (snd)
 import Lunarbox.Control.Monad.Dataflow.Solve (Solve, SolveContext(..), runSolve, throwTypeError)
 import Lunarbox.Data.Dataflow.Class.Substituable (class Substituable, Substitution(..), apply, ftv)
 import Lunarbox.Data.Dataflow.Type (TVarName, Type(..))
@@ -57,4 +58,4 @@ unifyMany types types' = throwTypeError $ DifferentLength types types'
 
 -- Check if it's possible to unify 2 types without erroring out
 canUnify :: Type -> Type -> Boolean
-canUnify type' = isRight <<< runSolve (SolveContext { location: unit }) <<< unify type'
+canUnify type' = ((==) 0) <<< Array.length <<< _.errors <<< unwrap <<< snd <<< runSolve (SolveContext { location: unit }) <<< unify type'

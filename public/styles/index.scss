@@ -2,20 +2,26 @@
 
 // Libraries
 @import "normalize.css";
+@import "microtip/microtip.css";
 
 // Components
-@import "./components/tooltip.scss";
 @import "./components/switch.scss";
 @import "./components/node-input.scss";
 @import "./components/with-logo.scss";
 @import "./components/loading.scss";
 @import "./components/error.scss";
+@import "./components/modal.scss";
+@import "./components/tabs.scss";
+@import "./components/dropdown.scss";
+@import "./components/input.scss";
 
 // Pages
 @import "./pages/home.scss";
 @import "./pages/editor.scss";
 @import "./pages/login.scss";
 @import "./pages/projects.scss";
+@import "./pages/editTutorial.scss";
+@import "./pages/tutorial.scss";
 
 * {
   // we don't want the user to drag stuff
@@ -27,6 +33,10 @@ img,
 .material-icons,
 .unselectable {
   user-select: none;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 // Helper for text elements which should show ... after they overflow their container

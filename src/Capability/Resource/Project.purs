@@ -20,8 +20,8 @@ import Lunarbox.Data.ProjectList (ProjectList)
 class
   Monad m <= ManageProjects m where
   getProjects :: m (Either String ProjectList)
-  getProject :: forall a s m'. ProjectId -> m (Either String (State a s m'))
-  createProject :: forall a s m'. State a s m' -> m (Either String ProjectId)
+  getProject :: ProjectId -> m (Either String State)
+  createProject :: State -> m (Either String ProjectId)
   saveProject :: ProjectId -> Json -> m (Either String Unit)
   deleteProject :: ProjectId -> m (Either String Unit)
   cloneProject :: ProjectId -> m (Either String ProjectId)

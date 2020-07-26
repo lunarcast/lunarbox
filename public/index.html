@@ -1,23 +1,35 @@
 <html>
   <head>
     <title>Lunarbox</title>
+
     <meta charset="utf-8" />
     <meta name="fragment" content="!" />
+
     <meta
       name="viewport"
       content="width=device-width, shrink-to-fit=no, initial-scale=1, maximum-scale=1, user-scalable=no"
     />
 
+    <!-- Load the material icons -->
     <link
       href="https://fonts.googleapis.com/icon?family=Material+Icons"
       rel="stylesheet"
     />
-    <link rel="shortcut icon" href="./favicon.png" />
+
+    <meta property="og:title" content="Lunarbox" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lunarbox.netlify.app/" />
+    <meta
+      property="og:description"
+      content="Visual functional programming language."
+    />
+    <meta name="theme-color" content="#262335" />
+
+    <link rel="shortcut icon" type="image/png" href="./favicon.png" />
+    <meta property="og:image" content="./favicon.png" />
 
     <base href="." />
-    <script defer src="./index.js"></script>
+    <script defer src="./index.ts"></script>
   </head>
-  <body oncontextmenu="return false">
-    <div id="app"></div>
-  </body>
+  <body oncontextmenu="return false"></body>
 </html>

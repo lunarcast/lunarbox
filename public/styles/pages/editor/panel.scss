@@ -1,0 +1,62 @@
+@import "../../theme.scss";
+
+.panel {
+  height: 100vh;
+  max-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  color: $on-dark;
+  background: $primary-dark;
+
+  width: 0;
+  visibility: hidden;
+}
+
+.panel__content {
+  height: 100%;
+  flex-grow: 1;
+
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.panel__footer {
+  display: block;
+}
+
+.panel.panel--open {
+  width: 30rem;
+  visibility: visible;
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+
+  flex-direction: column;
+}
+
+.panel__title-container {
+  display: flex;
+
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.panel__title {
+  padding: 1rem;
+  margin: 1rem;
+  font-size: 2rem;
+  flex-grow: 1;
+}
+
+.panel__action {
+  margin: 1rem;
+  font-size: 2rem;
+  cursor: pointer;
+}

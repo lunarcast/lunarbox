@@ -4,20 +4,34 @@
     "ScopeShadowing"
   ],
   "cSpell.words": [
+    "Roboto",
+    "dcons",
     "downlevel",
+    "hdom",
     "htmlnano",
     "hygen",
     "lunarbox",
+    "micromodal",
+    "microtip",
+    "monospace",
+    "neumorphism",
+    "oxanium",
     "prebuild",
     "purescript",
+    "purs",
+    "purs ts",
+    "scenegraph",
     "scrollbar",
     "seedrandom",
     "spago",
     "textfield",
+    "ts",
     "tslib",
+    "typeahead",
     "unconnectable",
     "unmount",
     "unselectable",
     "width"
-  ]
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

@@ -1,0 +1,37 @@
+@import "../../theme.scss";
+
+.setting {
+  $margin: 1rem;
+
+  color: $on-primary;
+
+  margin: $margin;
+  margin-bottom: 2rem;
+
+  width: calc(100% - 2 * #{$margin});
+  display: flex;
+  align-items: center;
+}
+
+.setting__label {
+  margin-right: 0.5rem;
+}
+
+.setting__switch-input {
+  margin-left: 1rem;
+  flex-grow: 1;
+}
+
+.setting__text-input {
+  background: transparent;
+  color: inherit;
+
+  border: none;
+  outline: none;
+
+  margin-left: 2rem;
+  width: calc(100% - 2rem);
+  padding: 0.5rem;
+
+  border-bottom: 3px solid $on-dark-pale;
+}

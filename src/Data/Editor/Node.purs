@@ -18,20 +18,23 @@ import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Argonaut.Decode.Generic.Rep (genericDecodeJson)
 import Data.Argonaut.Encode.Generic.Rep (genericEncodeJson)
+import Data.Compactable (compact)
+import Data.FoldableWithIndex (foldlWithIndex)
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Lens', Prism', Traversal', is, lens, prism', set)
 import Data.Lens.Index (ix)
 import Data.Lens.Record (prop)
-import Data.List (List(..), foldl, mapWithIndex, (!!))
+import Data.List (List(..), (:), mapWithIndex, (!!))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
+import Data.Set as Set
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), wrap)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..), nothing)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..))
+import Lunarbox.Data.Editor.Class.Depends (class Depends)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
-import Lunarbox.Data.Editor.Node.PinLocation (NodeOrPinLocation, Pin(..), inputNode, outputNode)
+import Lunarbox.Data.Editor.Node.PinLocation (Pin(..), ScopedLocation(..), inputNode, outputNode)
 import Lunarbox.Data.Functor (indexed)
 import Lunarbox.Data.Graph as G
 import Lunarbox.Data.Lens (listToArrayIso)
@@ -66,6 +69,11 @@ instance showNode :: Show Node where
   show (OutputNode id) = "Output " <> maybe "???" show id
   show (ComplexNode data') = show data'
 
+instance dependsNode :: Depends Node NodeId where
+  getDependencies (OutputNode (Just id)) = Set.singleton id
+  getDependencies (ComplexNode { inputs }) = Set.fromFoldable $ compact inputs
+  getDependencies _ = mempty
+
 -- Check if a node has an output pin
 hasOutput :: Node -> Boolean
 hasOutput = not <<< is _OutputNode
@@ -89,37 +97,56 @@ connectedInputs :: Node -> List (Tuple Int NodeId)
 connectedInputs = List.catMaybes <<< map (uncurry $ (<$>) <<< Tuple) <<< indexed <<< getInputs
 
 -- Declare a call on a curried function with any number of arguments
-functionCall :: forall l l'. ExtendedLocation l l' -> Expression (ExtendedLocation l l') -> List (Expression (ExtendedLocation l l')) -> Expression (ExtendedLocation l l')
-functionCall location calee = wrap location <<< foldl (FunctionCall Nowhere) calee
+functionCall :: ScopedLocation -> Expression ScopedLocation -> NodeId -> List (Expression ScopedLocation) -> Expression ScopedLocation
+functionCall location calee id = Expression location <<< foldlWithIndex (FunctionCall <<< AtApplication id) calee
 
 -- Compile a node into an expression
-compileNode :: G.Graph NodeId Node -> NodeId -> Expression NodeOrPinLocation -> Expression NodeOrPinLocation
+compileNode :: G.Graph NodeId Node -> NodeId -> Expression ScopedLocation -> Expression ScopedLocation
 compileNode nodes id child =
-  flip (maybe nothing) (G.lookup id nodes) case _ of
+  flip (maybe $ TypedHole $ UnexistingNode id) (G.lookup id nodes) case _ of
     InputNode -> inputNode id child
     OutputNode outputId ->
       outputNode id case outputId of
-        Just outputId' -> Variable Nowhere $ VarName $ show outputId'
-        Nothing -> nothing
-    ComplexNode { inputs, function } -> Let Nowhere name value child
+        Just outputId' -> Variable location $ VarName $ show outputId'
+        Nothing -> TypedHole location
+      where
+      location = PinLocation id $ InputPin 1
+    ComplexNode
+      { inputs: cond : then' : else' : Nil
+    , function: FunctionName "if"
+    } -> Let (NodeDefinition id) name value child
       where
       name = VarName $ show id
 
-      calee = Variable Nowhere $ VarName $ show function
+      value = Expression (NodeLocation id) $ If (PinLocation id OutputPin) condExpr thenExpr elseExpr
+
+      condExpr = mkExpr 0 cond
+
+      thenExpr = mkExpr 1 then'
+
+      elseExpr = mkExpr 2 else'
+
+      mkExpr = makePinExpression id
+    ComplexNode { inputs, function } -> Let (NodeDefinition id) name value child
+      where
+      name = VarName $ show id
+
+      calee = Variable (FunctionUsage id function) $ VarName $ show function
 
       arguments =
         mapWithIndex
-          ( \index id' ->
-              let
-                location = DeepLocation id $ InputPin index
-              in
-                case id' of
-                  Just id'' -> Variable location $ VarName $ show id''
-                  Nothing -> TypedHole location
-          )
+          (makePinExpression id)
           inputs
 
-      value = wrap (Location id) $ functionCall (DeepLocation id OutputPin) calee arguments
+      value = Expression (NodeLocation id) $ functionCall (PinLocation id OutputPin) calee id arguments
+
+-- | Helper to create an expression from some data aboout a pin
+makePinExpression :: NodeId -> Int -> (Maybe NodeId) -> Expression ScopedLocation
+makePinExpression node index = case _ of
+  Just id' -> Variable location $ VarName $ show id'
+  Nothing -> TypedHole location
+  where
+  location = PinLocation node $ InputPin index
 
 -- Lenses
 _ComplexNode :: Prism' Node ComplexNodeData

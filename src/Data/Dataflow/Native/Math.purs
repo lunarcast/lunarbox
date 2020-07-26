@@ -3,82 +3,54 @@ module Lunarbox.Data.Dataflow.Native.Math
   ) where
 
 import Prelude
-import Data.Maybe (Maybe(..))
-import Data.Number (isNaN)
-import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction)
-import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
-import Lunarbox.Data.Dataflow.Type (typeFunction, typeNumber)
+import Lunarbox.Data.Dataflow.Runtime.Class.Describable (toNativeExpression)
 import Lunarbox.Data.Editor.FunctionData (PinDoc, internal)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Math (pow, (%))
+import Math (pow, sqrt, (%))
 
 -- ALl the math native nodes
-mathNodes :: forall a s m. Array (NativeConfig a s m)
-mathNodes = [ add, substract, multiply, divide, raiseToPower, modulus ]
-
--- Type for functions of type Number -> Number -> Number
-binaryNumberType :: Scheme
-binaryNumberType = Forall [] $ typeFunction typeNumber $ typeFunction typeNumber typeNumber
-
--- Internal function used to perform the unwrapping and wrapping necessary for the binaryMathFUnction helper
-binaryMathFunction' :: (Number -> Number -> Number) -> RuntimeValue -> RuntimeValue -> RuntimeValue
-binaryMathFunction' function (Number first) (Number second) =
-  if isNaN result then
-    Null
-  else
-    Number result
-  where
-  result = function first second
-
-binaryMathFunction' _ _ _ = Null
+mathNodes :: Array (NativeConfig)
+mathNodes = [ add, subtract, multiply, divide, raiseToPower, modulus, squareRoot, pred, succ ]
 
 -- Documentation for an numeral value
 numberDoc :: String -> PinDoc
 numberDoc = { name: _, description: "Any numeric value" }
 
--- Helper for wrapping a purescript binary math operator into a runtime value
-binaryMathFunction :: (Number -> Number -> Number) -> RuntimeValue
-binaryMathFunction = binaryFunction <<< binaryMathFunction'
-
 -- The actual math functions
-add :: forall a s m. NativeConfig a s m
+add :: NativeConfig
 add =
   NativeConfig
     { name: FunctionName "add"
-    , expression: (NativeExpression binaryNumberType $ binaryMathFunction (+))
-    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments." }
-    , component: Nothing
+    , expression: toNativeExpression ((+) :: Number -> _)
+    , functionData: internal [ numberDoc "first number", numberDoc "second number" ] { name: "sum", description: "The result of adding both arguments" }
     }
 
-substract :: forall a s m. NativeConfig a s m
-substract =
+subtract :: NativeConfig
+subtract =
   NativeConfig
-    { name: FunctionName "substract"
-    , expression: (NativeExpression binaryNumberType $ binaryMathFunction (-))
+    { name: FunctionName "subtract"
+    , expression: toNativeExpression ((-) :: Number -> _)
     , functionData:
       internal [ numberDoc "first number", numberDoc "second number" ]
-        { name: "difference", description: "The result of substracting the second argument from the first" }
-    , component: Nothing
+        { name: "difference", description: "The result of subtracting the second argument from the first" }
     }
 
-multiply :: forall a s m. NativeConfig a s m
+multiply :: NativeConfig
 multiply =
   NativeConfig
     { name: FunctionName "multiply"
-    , expression: (NativeExpression binaryNumberType $ binaryMathFunction (*))
+    , expression: toNativeExpression ((*) :: Number -> _)
     , functionData:
       internal [ numberDoc "first number", numberDoc "second number" ]
-        { name: "product", description: "The result of multiplying the first number with the second" }
-    , component: Nothing
+        { name: "product", description: "The result of multiplying the first number by the second" }
     }
 
-divide :: forall a s m. NativeConfig a s m
+divide :: NativeConfig
 divide =
   NativeConfig
     { name: FunctionName "divide"
-    , expression: (NativeExpression binaryNumberType $ binaryMathFunction (/))
+    , expression: toNativeExpression ((/) :: Number -> _)
     , functionData:
       internal
         [ { name: "dividend", description: "The number to divide" }
@@ -87,30 +59,60 @@ divide =
         { name: "quotient"
         , description: "The result of dividng the first argument by the second"
         }
-    , component: Nothing
     }
 
-raiseToPower :: forall a s m. NativeConfig a s m
+raiseToPower :: NativeConfig
 raiseToPower =
   NativeConfig
     { name: FunctionName "raise to power"
-    , expression: (NativeExpression binaryNumberType $ binaryMathFunction pow)
+    , expression: toNativeExpression pow
     , functionData:
       internal [ numberDoc "base", numberDoc "exponend" ]
         { name: "base^exponent", description: "The result of raising the first argument to the power of the second" }
-    , component: Nothing
     }
 
-modulus :: forall a s m. NativeConfig a s m
+modulus :: NativeConfig
 modulus =
   NativeConfig
     { name: FunctionName "modulus"
-    , expression: (NativeExpression binaryNumberType $ binaryMathFunction (%))
+    , expression: toNativeExpression (%)
     , functionData:
       internal
         [ { name: "left side", description: "The number to take the modulus from" }
-        , { name: "right side", description: "The number to divide the first input by and find the reminder" }
+        , { name: "right side", description: "The number to divide the first input by and find the remainder" }
         ]
-        { name: "a % b", description: "The reminder of dividing the first number to the second" }
-    , component: Nothing
+        { name: "a % b", description: "The remainder of dividing the first number to the second" }
+    }
+
+squareRoot :: NativeConfig
+squareRoot =
+  NativeConfig
+    { name: FunctionName "square root"
+    , expression: toNativeExpression sqrt
+    , functionData:
+      internal
+        [ { name: "radicand", description: "The number to take the square root from" } ]
+        { name: "sqrt a", description: "The result of taking the square root of the number" }
+    }
+
+pred :: NativeConfig
+pred =
+  NativeConfig
+    { name: FunctionName "predecessor"
+    , expression: toNativeExpression (_ - 1.0)
+    , functionData:
+      internal [ { name: "number", description: "A number to get the predecessor of" } ]
+        { name: "a - 1", description: "The predecessor of the input"
+        }
+    }
+
+succ :: NativeConfig
+succ =
+  NativeConfig
+    { name: FunctionName "successor"
+    , expression: toNativeExpression (1.0 + _)
+    , functionData:
+      internal [ { name: "number", description: "A number to get the successor  of" } ]
+        { name: "a + 1", description: "The successor of the input"
+        }
     }

@@ -19,6 +19,7 @@ import Halogen.HTML (slot)
 import Halogen.HTML as HH
 import Lunarbox.Capability.Navigate (class Navigate)
 import Lunarbox.Capability.Resource.Project (class ManageProjects, getProject, saveProject)
+import Lunarbox.Data.Editor.State (State) as EditorState
 import Lunarbox.Component.Editor as Editor
 import Lunarbox.Component.Error (error)
 import Lunarbox.Component.HOC.Connect as Connect
@@ -29,29 +30,31 @@ import Lunarbox.Data.ProjectId (ProjectId)
 import Network.RemoteData (RemoteData(..), fromEither)
 import Record as Record
 
-type State m
-  = { id :: ProjectId
-    , projectData :: RemoteData String (Editor.EditorState m)
-    , currentUser :: Maybe Profile
+type Input r
+  = ( id :: ProjectId | r )
+
+type State
+  = { 
+    | Input
+      ( projectData :: RemoteData String EditorState.State
+      , currentUser :: Maybe Profile
+      )
     }
 
-type Input
-  = ( id :: ProjectId )
-
 -- Lenses
-_projectData :: forall m. Lens' (State m) (RemoteData String (Editor.EditorState m))
+_projectData :: Lens' State (RemoteData String EditorState.State)
 _projectData = prop (SProxy :: _ "projectData")
 
-_id :: forall m. Lens' (State m) ProjectId
+_id :: forall r. Lens' { | Input r } ProjectId
 _id = prop (SProxy :: _ "id")
 
 data Action
   = Init
   | Save Json
-  | Receive { | Connect.WithCurrentUser Input }
+  | Receive { | Connect.WithCurrentUser (Input ()) }
 
 type ChildSlots
-  = ( editor :: forall query. Slot query Editor.Output Unit )
+  = ( editor :: Slot Editor.Query Editor.Output Unit )
 
 component ::
   forall m q o.
@@ -61,7 +64,7 @@ component ::
   MonadReader Config m =>
   ManageProjects m =>
   Navigate m =>
-  Component HH.HTML q { | Input } o m
+  Component HH.HTML q { | Input () } o m
 component =
   Connect.component
     $ mkComponent
@@ -76,7 +79,7 @@ component =
                 }
         }
   where
-  handleAction :: Action -> HalogenM (State m) Action ChildSlots o m Unit
+  handleAction :: Action -> HalogenM State Action ChildSlots o m Unit
   handleAction = case _ of
     Init -> do
       id <- gets $ view _id
@@ -93,6 +96,7 @@ component =
   handleEditorOutput :: Editor.Output -> Maybe Action
   handleEditorOutput = case _ of
     Editor.Save state -> Just $ Save state
+    Editor.StateEmit _ -> Nothing
 
   render { projectData, currentUser } = case projectData of
     NotAsked -> loading
@@ -100,4 +104,4 @@ component =
     Failure text -> error text
     Success state -> case currentUser of
       Nothing -> error "not logged in"
-      Just { isAdmin } -> slot (SProxy :: _ "editor") unit Editor.component (Record.merge { isAdmin } state) handleEditorOutput
+      Just { isAdmin } -> slot (SProxy :: _ "editor") unit Editor.component (state { isAdmin = isAdmin }) handleEditorOutput

@@ -16,8 +16,8 @@ import Halogen.HTML.Events (onBlur, onClick, onInput, onKeyUp)
 import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Lunarbox.Component.Icon (icon)
-import Lunarbox.Component.Tooltip (maybeTooltip)
-import Lunarbox.Component.Utils (StaticHtml, className, container)
+import Lunarbox.Component.Tooltip as Tooltip
+import Lunarbox.Component.Utils (StaticHtml, className)
 import Lunarbox.Config (Config, shouldCancelOnBlur)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
 import Web.HTML.HTMLElement (blur, focus)
@@ -28,15 +28,14 @@ data ValidationError
   = Duplicate String
   | Empty
 
-validationErrorToHtml :: forall a b. ValidationError -> HTML a b
-validationErrorToHtml (Duplicate s) = HH.span_ [ HH.text "Function ", HH.strong_ [ HH.text s ], HH.text " already exists." ]
-
-validationErrorToHtml Empty = HH.text "Function names cannot be empty"
+instance showValidationError :: Show ValidationError where
+  show (Duplicate s) = "Function " <> s <> " already exists."
+  show Empty = "Function names cannot be empty"
 
 type State
   = { functions :: List FunctionName
     , creating :: Boolean
-    , selected :: Maybe FunctionName
+    , selected :: FunctionName
     , validationError :: Maybe ValidationError
     }
 
@@ -57,10 +56,11 @@ data Query a
 type ChildSlots
   = ()
 
+-- TODO: make State extend this
 type Input
   -- The initial function list and selected function
   = { functions :: List FunctionName
-    , selected :: Maybe FunctionName
+    , selected :: FunctionName
     }
 
 data Output
@@ -68,7 +68,7 @@ data Output
   = CreatedFunction
     FunctionName
   -- This notifies the parent when the selected function changed
-  | SelectedFunction (Maybe FunctionName)
+  | SelectedFunction FunctionName
 
 component :: forall m. MonadEffect m => MonadReader Config m => Component HH.HTML Query Input Output m
 component =
@@ -112,8 +112,8 @@ component =
       shouldCancel <- shouldCancelOnBlur
       when shouldCancel $ modify_ (_ { creating = false })
     SelectFunction name -> do
-      modify_ (_ { selected = Just name })
-      raise $ SelectedFunction $ Just name
+      modify_ (_ { selected = name })
+      raise $ SelectedFunction name
     ValidateFunctionName -> validate
     CreateFunction -> do
       -- validate in case the user pressed enter right away
@@ -135,7 +135,13 @@ component =
                 liftEffect $ traverse_ blur maybeElement
                 -- this saves the new function in the list
                 -- we also automatically select the new function
-                modify_ (_ { creating = false, functions = functions <> (pure functionName), selected = Just functionName })
+                modify_
+                  ( _
+                      { creating = false
+                      , functions = functions <> (pure functionName)
+                      , selected = functionName
+                      }
+                  )
                 -- this notifies the parent element we just created a new function
                 -- the parent ususally has to add the function to the graph
                 raise $ CreatedFunction functionName
@@ -153,12 +159,15 @@ component =
 
   -- renders an element in the list
   -- I'll have to update it when I'll add support for recursive functions
-  displayFunction :: forall a. Maybe FunctionName -> StaticHtml FunctionName a Action
+  displayFunction :: forall a. FunctionName -> StaticHtml FunctionName a Action
   displayFunction selected name =
     HH.div
       [ onClick $ const $ Just $ SelectFunction name
-      , classes $ ClassName <$> ("selected" <$ guard (Just name == selected))
-      , HP.id_ "function"
+      , classes $ ClassName
+          <$> [ "explorer__function" ]
+          <> ( "explorer__function--selected"
+                <$ guard (name == selected)
+            )
       ]
       [ icon "code"
       , HH.span
@@ -168,32 +177,41 @@ component =
       ]
 
   render :: forall a. State -> HTML a Action
-  render { functions, creating, selected, validationError } = container "functions" (existingFunctions <> newFunctionTextBox)
+  render { functions, creating, selected, validationError } =
+    HH.div [ className "explorer" ]
+      (existingFunctions <> newFunctionTextBox)
     where
     -- this is the html for the list of existing functions
     existingFunctions = List.toUnfoldable $ (displayFunction selected) <$> functions
 
+    inputAttribs =
+      [ className "explorer__input"
+      , onKeyUp \event -> do
+          -- when the user presses enter we create the function
+          guard (KE.key event == "Enter")
+          pure CreateFunction
+      -- if the user clicks outside the input we can cancel the creation
+      , onBlur $ const $ Just CancelCreation
+      -- this is called on each keystroke to validate the input
+      , onInput $ const $ Just ValidateFunctionName
+      -- this will only work for the first function creation, but it's still good to haves
+      , HP.autofocus true
+      -- the ref is necessary to solve focus issues
+      , HP.ref inputRef
+      -- we don't want autocomplete for function names
+      , HP.autocomplete false
+      ]
+
     -- this is a list which may contain the input box for creating new functions
     newFunctionTextBox =
       guard creating
-        $> container "create-function-input-container"
+        $> HH.div [ className "explorer__input-container" ]
             [ icon "code"
-            , maybeTooltip (validationErrorToHtml <$> validationError)
-                $ HH.input
-                    [ HP.id_ "create-function-input"
-                    , onKeyUp \event -> do
-                        -- when the user presses enter we create the function
-                        guard (KE.key event == "Enter")
-                        pure CreateFunction
-                    -- if the user clicks outside the input we can cancel the creation
-                    , onBlur $ const $ Just CancelCreation
-                    -- this is called on each keystroke to validate the input
-                    , onInput $ const $ Just ValidateFunctionName
-                    -- this will only work for the first function creation, but it's still good to haves
-                    , HP.autofocus true
-                    -- the ref is necessary to solve focus issues
-                    , HP.ref inputRef
-                    -- we don't want autocomplete for function names
-                    , HP.autocomplete false
-                    ]
+            , case validationError of
+                Nothing -> HH.input inputAttribs
+                Just err ->
+                  Tooltip.tooltip (show err)
+                    Tooltip.Bottom
+                    HH.input
+                    inputAttribs
             ]

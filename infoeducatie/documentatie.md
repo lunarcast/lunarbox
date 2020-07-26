@@ -3,7 +3,7 @@
 Proiectul a fost scis in [PureScript](https://www.purescript.org/), un limbaj de programare pur functional cu sintaxa aproape indentica cu Haskell dar care poate compila in JavaScript.
 
 - Pentru randare web am folosit [Halogen](https://github.com/purescript-halogen/purescript-halogen), o biblioteca care extinde arhitectura Elm cu suport pentru mai mult de un component, alegerea oricarui monad pentru rularea interfatei si multe altele.
-- Pentru pacakge managementul dependentelor de pe [npm](https://www.npmjs.com/) am folosit [pnpm](https://pnpm.js.org/) - un CLI care rezolva multe din problemele actuale aflate in npm, iar pentru (package managementul) dependentelor pentru purescript am folosit [Spago](https://github.com/purescript/spago).
+- Pentru pacakge managementul dependentelor de pe [npm](https://www.npmjs.com/) am folosit [yarn](https://yarnpkg.com/), iar pentru (package managementul) dependentelor pentru purescript am folosit [Spago](https://github.com/purescript/spago).
 - Pentru bundling-ul aplicatiei am folosit [Parcel](https://parceljs.org/) iar pentru stilizare am folosit [scss](https://sass-lang.com/).
 - Pentru deducerea tipurilor am implementat [algoritmul Hindley Milner de deducere a tipurilor](https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system) impreuna cu un sistem care transforma programele vizuale intr-o expresie lineara.
 - Proiectul foloseste [Hygen](https://www.hygen.io/) pentru creerea de template-uri ce pot fi refolosite.
@@ -44,7 +44,7 @@ In limaje cum ar fi F# sau Elm este destul de normal ca aplicarea functiilor sa 
 1 |> foo |> bar |> goo
 ```
 
-PureScript a mostenit o multime de lucrucri de la Haskell, si chiar daca este posibil sa facem acelasi lucru ca in F# este recomandat ca aplicarea functiilor sa fie  facut de la dreapa la stanga:
+PureScript a mostenit o multime de lucrucri de la Haskell, si chiar daca este posibil sa facem acelasi lucru ca in F# este recomandat ca aplicarea functiilor sa fie facut de la dreapa la stanga:
 
 ```haskell
 goo $ bar $ foo 1

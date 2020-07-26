@@ -3,154 +3,135 @@
 
 @import "../theme.scss";
 
-#projects-container .left {
+.projects .left {
   filter: contrast(105%) brightness(0.9);
 }
 
-#projects-container .left img {
+.projects .left img {
   width: 100%;
 }
 
-#projects {
-  background: darken($color: $primary, $amount: 4);
+.projects__container {
+  background: $very-dark;
 
   padding: 1rem;
   box-sizing: border-box;
   height: 100vh;
-
-  #project-search {
-    display: flex;
-    align-items: center;
-
-    #search-spacing {
-      flex-grow: 1;
-    }
-  }
-
-  #project-search > input {
-    border: none;
-    outline: none;
-
-    background: $very-dark;
-    color: $on-dark-pale;
-    transition: filter $transition-time;
-
-    padding: 0.5rem;
-
-    &:hover {
-      filter: brightness(1.7);
-    }
-  }
 }
 
-#projects #project-lists {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: calc(100% - 2rem);
+.projects__list {
+  display: flex;
+  flex-direction: column;
+
+  height: calc(100vh - 8rem);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-#projects #project-lists #project-list {
-  margin: 0.5rem;
+.projects__back {
+  @include utils.center;
+
+  padding: 1rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+
+  cursor: pointer;
+  color: $on-primary;
+
+  filter: brightness(0.8);
+  transition: filter $transition-time;
+}
+
+.projects__back:hover {
+  filter: brightness(1.3);
+}
+
+.projects__search-bar {
+  border: none;
+  outline: none;
+
+  background: $primary-dark;
+  color: $on-dark-pale;
+  transition: filter $transition-time;
+
   padding: 0.5rem;
+  margin: auto;
+  margin-right: 0;
 
-  margin-left: 0;
-
-  max-height: 100%;
-  overflow: hidden;
-
-  #list-header {
-    display: flex;
-    width: 100%;
-
-    * {
-      font-size: 1.5rem;
-      margin: 0.4rem;
-
-      color: $on-primary;
-    }
-
-    .list-button {
-      cursor: pointer;
-      transition: filter $transition-time, transform $transition-time;
-
-      &:hover {
-        filter: brightness(1.3);
-        transform: scale(1.3);
-      }
-    }
-
-    #list-title {
-      font-family: fonts.$oxanium;
-      font-weight: bold;
-      flex-grow: 1;
-      cursor: normal;
-    }
-  }
-
-  #list-items {
-    display: flex;
-    flex-direction: column;
-    height: calc(100% - 2rem);
-    overflow: auto;
-
-    .project {
-      display: flex;
-      user-select: none;
-      cursor: pointer;
-
-      margin: 0.4rem;
-
-      padding: 1rem;
-      box-sizing: border-box;
-
-      color: $on-primary;
-      background: $primary-dark;
-
-      .project-name {
-        flex-grow: 1;
-        text-transform: capitalize;
-        font-size: 1.4rem;
-      }
-
-      .project-data {
-        display: flex;
-
-        .function-count,
-        .node-count {
-          display: flex;
-          align-items: center;
-          margin-right: 1rem;
-
-          .material-icons {
-            margin-right: 0.2rem;
-            font-size: 1rem;
-          }
-        }
-      }
-
-      transition: filter $transition-time;
-
-      &:hover {
-        filter: brightness(1.2);
-      }
-    }
+  &:hover {
+    filter: brightness(1.7);
   }
 }
 
-@media only screen and (max-width: 1300px) {
-  #project-container .with-logo {
-    grid-template-columns: 1fr;
-  }
+// Stuff related to individual items in the projects list
+.project {
+  display: flex;
+  user-select: none;
+  cursor: pointer;
 
-  #project-container .left {
-    display: none !important;
+  margin: 0.4rem;
+
+  padding: 1rem;
+  box-sizing: border-box;
+
+  color: $on-primary;
+  box-shadow: 3px 3px 5px 3px $very-dark;
+
+  transition: transform $transition-time;
+
+  &:hover {
+    transform: scale(0.98);
   }
 }
 
-@media only screen and (max-width: 800px) {
-  #projects #project-lists {
-    display: flex;
-    flex-direction: column-reverse;
-    overflow: auto;
+.project__name {
+  flex-grow: 1;
+  text-transform: capitalize;
+  font-size: 1.4rem;
+}
+
+.project__data {
+  display: flex;
+}
+
+.project__data-item,
+.project__data-item {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+
+  .material-icons {
+    margin-right: 0.2rem;
+    font-size: 1rem;
   }
+}
+
+.project__data-icon {
+  margin-right: 1rem;
+}
+
+.project__data-icon--clickable {
+  @include utils.base-input;
+
+  color: inherit;
+  transition: transform $transition-time;
+}
+
+.project__data-icon--clickable:hover .material-icons {
+  transform: scale(1.2);
+}
+
+.project--new {
+  @include utils.center;
+  background: $primary;
+
+  transition: filter $transition-time;
+}
+
+.project--new:hover {
+  filter: brightness(1.2);
+}
+
+.project--new .material-icons {
+  font-size: 2.3rem;
 }

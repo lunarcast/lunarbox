@@ -1,101 +1,72 @@
 @import "../../theme.scss";
 
-#editor > #panel > #tree {
+.explorer {
+  display: flex;
+  flex-direction: column;
+
   overflow-x: hidden;
   overflow-y: auto;
   width: 100%;
+  height: 80vh;
+  max-height: 100%;
+}
 
-  // height: 100vh;
-  #tree-top {
-    display: flex;
-    justify-content: flex-end;
+.explorer__function,
+.explorer__input-container {
+  display: flex;
+  align-items: center;
 
-    #title {
-      flex-grow: 1;
-      border: none;
-    }
+  font-size: 1.5rem;
+  height: 2.5rem;
 
-    .material-icons {
-      font-size: 2rem;
-      margin: 0.5rem;
-      cursor: pointer;
-    }
+  padding-left: 1rem;
+  background: $primary-dark;
 
-    margin-bottom: 1rem;
-    border-bottom: solid 1px $disabled;
-  }
+  cursor: pointer;
+  user-select: none;
 
-  #functions {
-    display: flex;
-    flex-direction: column;
+  transition: filter $transition-time;
+}
 
-    overflow-x: hidden;
-    overflow-y: auto;
-    width: 100%;
-    height: 80vh;
-    max-height: 100%;
+.explorer__function:hover {
+  filter: brightness(1.2);
+}
 
-    #function,
-    #create-function-input-container {
-      display: flex;
-      align-items: center;
+.explorer__function.explorer__function--selected {
+  filter: brightness(1.4);
+}
 
-      font-size: 1.5rem;
-      height: 2.5rem;
+.explorer__function {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
 
-      padding-left: 1rem;
+.explorer__function .material-icons,
+.explorer__input-container .material-icons {
+  margin-right: 1.5rem;
+}
 
-      box-sizing: border-box;
-      background: $primary-dark;
+.explorer__input-container .material-icons {
+  margin-right: 1rem;
+}
 
-      .material-icons {
-        margin-right: 1.5rem;
-      }
+.explorer .tooltip__content {
+  background-color: #912f3f;
+  color: #fff;
 
-      cursor: pointer;
-      user-select: none;
+  font-size: 1rem;
+}
 
-      transition: filter $transition-time;
-    }
+.explorer__input {
+  background: $dark-input-bg;
+  color: white;
 
-    #function:hover {
-      filter: brightness(1.2);
-    }
+  border: none;
+  outline: none;
 
-    #function.selected {
-      filter: brightness(1.4);
-    }
+  height: 2.5rem;
+  width: 100%;
+  display: block;
 
-    #function {
-      padding-top: 0.5rem;
-      padding-bottom: 0.5rem;
-    }
-
-    #create-function-input-container > .material-icons {
-      margin-right: 1rem;
-    }
-
-    #create-function-input-container > .tooltip-container > .tooltip-content {
-      background-color: #912f3f;
-      color: #fff;
-
-      font-size: 1rem;
-    }
-
-    #create-function-input-container
-      > .tooltip-container
-      > #create-function-input {
-      background: $dark-input-bg;
-      color: white;
-
-      border: none;
-      outline: none;
-
-      height: 2.5rem;
-      width: 100%;
-      display: block;
-
-      padding-left: 0.5rem;
-    }
-  }
+  padding-left: 0.5rem;
 }

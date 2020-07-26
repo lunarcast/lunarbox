@@ -2,186 +2,251 @@ module Lunarbox.Component.Editor
   ( component
   , Action(..)
   , Output(..)
-  , EditorState
+  , Query(..)
+  , PendingConnectionAction(..)
+  , NodeEditingAction(..)
   , ChildSlots
   ) where
 
 import Prelude
-import Control.Monad.Reader (class MonadReader, asks)
-import Control.Monad.State (execState, get, gets, modify_, put)
+import Control.Monad.Reader (class MonadReader)
+import Control.Monad.State (get, gets, modify_, put)
 import Control.MonadZero (guard)
 import Data.Argonaut (Json)
 import Data.Array ((!!))
-import Data.Default (def)
-import Data.Foldable (find, foldr, for_, traverse_)
-import Data.Int (toNumber)
-import Data.Lens (_Just, over, preview, set, view)
-import Data.List.Lazy as List
+import Data.Array as Array
+import Data.Foldable (for_, traverse_)
+import Data.Lens (_Just, is, over, preview, set, view)
+import Data.Lens.At (at)
+import Data.Lens.Iso.Newtype (_Newtype)
+import Data.List ((:))
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
-import Data.Set as Set
+import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isNothing, maybe)
+import Data.Newtype (unwrap)
+import Data.Set (toUnfoldable) as Set
 import Data.String as String
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Data.Vec (vec2)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen (ClassName(..), Component, HalogenM, RefLabel(..), Slot, SubscriptionId, defaultEval, fork, getHTMLElementRef, mkComponent, mkEval, query, raise, subscribe, subscribe', tell)
 import Halogen.HTML (lazy, lazy2)
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick, onKeyUp, onValueInput)
-import Halogen.HTML.Properties (classes, id_)
+import Halogen.HTML.Events (onClick, onKeyUp, onMouseUp, onValueInput)
+import Halogen.HTML.Properties (classes)
 import Halogen.HTML.Properties as HP
 import Halogen.Query.EventSource as ES
-import Lunarbox.Capability.Navigate (class Navigate)
+import Lunarbox.Capability.Navigate (class Navigate, navigate)
+import Lunarbox.Component.Editor.Add as Add
 import Lunarbox.Component.Editor.Add as AddC
+import Lunarbox.Component.Editor.NodePreview as NodePreview
+import Lunarbox.Component.Editor.NodeUi (uiToRuntime)
+import Lunarbox.Component.Editor.Problems (problems, shouldRender)
 import Lunarbox.Component.Editor.Scene as Scene
 import Lunarbox.Component.Editor.Tree as TreeC
 import Lunarbox.Component.Icon (icon)
+import Lunarbox.Component.Modal as Modal
 import Lunarbox.Component.Switch (switch)
-import Lunarbox.Component.Utils (className, container, whenElem)
-import Lunarbox.Config (Config, _autosaveInterval)
-import Lunarbox.Data.Dataflow.Native.Prelude (loadPrelude)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
-import Lunarbox.Data.Editor.Camera (_CameraPosition, toWorldCoordinates, zoomOn)
-import Lunarbox.Data.Editor.ExtendedLocation (ExtendedLocation(..))
+import Lunarbox.Component.Tooltip as Tooltip
+import Lunarbox.Component.Utils (className, intervalEventSource, maybeElement, whenElem)
+import Lunarbox.Config (Config)
+import Lunarbox.Data.Class.GraphRep (toGraph)
+import Lunarbox.Data.Dataflow.Expression.Lint as LintError
+import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..))
+import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term(..))
+import Lunarbox.Data.Dataflow.Type as Type
+import Lunarbox.Data.Dataflow.TypeError as TypeError
+import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _NativeFunction)
+import Lunarbox.Data.Editor.EditNode as EditNode
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.Node.NodeData (NodeData(..), _NodeDataPosition, _NodeDataSelected, _NodeDataZPosition)
+import Lunarbox.Data.Editor.Location (Location(..))
+import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeDescriptor (onlyEditable)
-import Lunarbox.Data.Editor.Node.NodeId (NodeId(..))
-import Lunarbox.Data.Editor.Node.PinLocation (Pin(..))
-import Lunarbox.Data.Editor.Project (_projectNodeGroup)
+import Lunarbox.Data.Editor.Node.NodeId (NodeId)
+import Lunarbox.Data.Editor.Node.PinLocation (ScopedLocation(..))
+import Lunarbox.Data.Editor.Project as Project
 import Lunarbox.Data.Editor.Save (stateToJson)
-import Lunarbox.Data.Editor.State (State, Tab(..), _atCurrentNodeData, _atInputCount, _currentCamera, _currentFunction, _currentNodes, _currentTab, _functions, _isAdmin, _isExample, _isSelected, _lastMousePosition, _name, _nextId, _nodeData, _nodeSearchTerm, _panelIsOpen, _partialFrom, _partialTo, _sceneScale, _unconnectablePins, adjustSceneScale, compile, createNode, deleteFunction, deleteSelection, functionExists, getSceneMousePosition, initializeFunction, makeUnconnetacbleList, pan, removeConnection, resetNodeOffset, searchNode, setCurrentFunction, setRuntimeValue, tabIcon, tryConnecting)
-import Lunarbox.Data.Graph (wouldCreateCycle)
+import Lunarbox.Data.Editor.State (MovementStep(..), State, _atFunctionData, _atInputCount, _atNode, _currentFunction, _currentTab, _function, _functions, _isAdmin, _isExample, _isVisible, _name, _nodeSearchTerm, _panelIsOpen, _runtimeOverwrites, createConnection, createNode, deleteFunction, deleteNode, evaluate, functionExists, generateUnconnectableInputs, generateUnconnectableOutputs, getFunctionColorMap, getMaxInputs, getNodeType, initializeFunction, moveTo, removeConnection, searchNode, setCurrentFunction, tryCompiling, updateAll, withCurrentFunction_, withCurrentGeometries, withCurrentNode_)
 import Lunarbox.Data.Graph as G
-import Lunarbox.Data.MouseButton (MouseButton(..), isPressed)
-import Lunarbox.Page.Editor.EmptyEditor (emptyEditor)
-import Web.Event.Event (EventType(..), preventDefault, stopPropagation)
+import Lunarbox.Data.Route (Route(..))
+import Lunarbox.Data.Set (toNative) as Set
+import Lunarbox.Data.Tab (Tab(..), tabIcon)
+import Lunarbox.Foreign.Render (centerNode, centerOutput, setUnconnectableInputs, setUnconnectableOutputs)
+import Lunarbox.Foreign.Render as Native
+import Record as Record
+import Web.Event.Event (preventDefault, stopPropagation)
 import Web.Event.Event as Event
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement (focus)
 import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.HTML.Window (document) as Web
-import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
-import Web.UIEvent.MouseEvent (MouseEvent)
-import Web.UIEvent.MouseEvent as MouseEvent
 
 data Action
   = Init
   | HandleKey SubscriptionId KeyboardEvent
   | ChangeTab Tab
   | CreateFunction FunctionName
-  | SelectFunction (Maybe FunctionName)
+  | SelectFunction FunctionName
   | CreateNode FunctionName
   | StartFunctionCreation
-  | SceneMouseUp
-  | SceneMouseMove MouseEvent
-  | SelectInput NodeId Int
-  | SelectOutput NodeId
-  | SelectNode NodeId
-  | SceneZoom Number
-  | RemoveConnection NodeId (Tuple NodeId Int)
-  | SetRuntimeValue FunctionName NodeId RuntimeValue
-  | AdjustSceneScale
+  | RemoveConnection NodeId Int
   | TogglePanel
   | ChangeInputCount FunctionName Int
   | SetName String
   | SetExample Boolean
   | SearchNodes String
+  | SetVisibility Boolean
   | HandleAddPanelKeyPress KeyboardEvent
   | DeleteFunction FunctionName
+  | Navigate Route
+  | LoadScene
+  | Rerender
+  | DeleteNode NodeId
+  | UpdatePreview FunctionName
+  | UpdatePreviews
+  | MoveTo Location
+  | UpdateOverwrite NodeId FunctionName RuntimeValue
+  -- Handle foreign actions bubbled by the Scene component
+  | CreateConnection NodeId NodeId Int
+  | SelectInput NodeId Int
+  | SelectOutput NodeId
+  | HandleConnectionConfirmation PendingConnectionAction
+  | GotoId NodeId
+  | StartNodeEditing NodeId
+  -- This handles actions triggerd by the node editing modal
+  | HandleNodeEdits NodeEditingAction
+  -- Actions which run periodically
   | Autosave Json
+  | EmitState
 
 data Output
   = Save Json
+  | StateEmit State
 
-type ChildSlots
-  = ( tree :: Slot TreeC.Query TreeC.Output Unit
-    )
+type ChildSlots m
+  = Add.ChildSlots
+      ( tree :: Slot TreeC.Query TreeC.Output Unit
+      , scene :: Slot Scene.Query Scene.Output Unit
+      , pendingConnection :: Modal.Slot Action () PendingConnectionAction m Unit
+      , editNode :: Modal.Slot Action (EditNode.ChildSlots ()) NodeEditingAction m Unit
+      )
 
 -- Shorthand for manually passing the types of the actions and child slots
-type EditorState m
-  = State Action ChildSlots m
-
--- We use this to automatically focus on the correct elemtn when pressing S
+-- We use this to automatically focus on the correct element when pressing S
 searchNodeInputRef :: RefLabel
 searchNodeInputRef = RefLabel "search node"
 
 -- We need this to only trigger events when in focus
 searchNodeClassName :: String
-searchNodeClassName = "search-node"
+searchNodeClassName = "node-search__input"
 
--- Actions to run the scene component with
-sceneActions :: Scene.Actions Action
-sceneActions =
-  { mouseUp: Just SceneMouseUp
-  , zoom: Just <<< SceneZoom
-  , selectNode: Just <<< SelectNode
-  , selectOutput: Just <<< SelectOutput
-  , mouseMove: Just <<< SceneMouseMove
-  , selectInput: (Just <<< _) <<< SelectInput
-  , removeConnection: (Just <<< _) <<< RemoveConnection
-  , setValue: ((Just <<< _) <<< _) <<< SetRuntimeValue
+-- | Describes how we should color the problems icon tab
+data ProblemsIconVariant
+  = NoProblems
+  | Warnings
+  | Errors
+
+-- | Actions which can be triggered from the connection confirmation modal.
+data PendingConnectionAction
+  = AutofixConnection
+  | CancelConnecting
+  | ProceedConnecting
+
+-- | The actual config for how to display the connection confirmation modal
+pendingConnectionModal :: forall m. Modal.InputType () PendingConnectionAction Action m
+pendingConnectionModal =
+  { id: "confirm-connection"
+  , title: "Confirm connection"
+  , content:
+    const
+      $ HH.text
+          "Connecting those nodes would change the type of this function creating a type error."
+  , buttons:
+    [ { text: "Continue"
+      , primary: true
+      , value: ProceedConnecting
+      }
+    , { text: "Cancel"
+      , primary: false
+      , value: CancelConnecting
+      }
+    ]
+  , onClose: CancelConnecting
   }
 
--- Create a scene with the set of actions above
-createScene :: forall m. Scene.Input Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-createScene = Scene.scene sceneActions
+-- | Actions the user can perform in the node editing modal
+data NodeEditingAction
+  = NEDeleteNode
+  | NECloseModal
 
--- This is a helper monad which just generates an id
-createId :: forall m. HalogenM (EditorState m) Action ChildSlots Void m (Tuple NodeId (State Action ChildSlots m -> State Action ChildSlots m))
-createId = do
-  { nextId } <- get
-  pure $ Tuple (NodeId $ show nextId) $ over _nextId (_ + 1)
+data Query a
+  = GetState (State -> a)
 
-component :: forall m q. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML q (EditorState m) Output m
+-- | The config of the modal used for editing nodes
+nodeEditingModal :: forall m. Modal.InputType (EditNode.ChildSlots ()) NodeEditingAction Action m
+nodeEditingModal =
+  { id: "edit-node"
+  , title: "[Node name here]"
+  , content: \_ -> HH.text "[Content goes here]"
+  , buttons:
+    [ { text: "Delete"
+      , primary: false
+      , value: NEDeleteNode
+      }
+    , { text: "Back"
+      , primary: true
+      , value: NECloseModal
+      }
+    ]
+  , onClose: NECloseModal
+  }
+
+component :: forall m. MonadAff m => MonadEffect m => MonadReader Config m => Navigate m => Component HH.HTML Query State Output m
 component =
   mkComponent
-    { initialState: compile <<< loadPrelude <<< identity
+    { initialState: identity
     , render
     , eval:
       mkEval
         $ defaultEval
             { handleAction = handleAction
+            , handleQuery = handleQuery
             , initialize = Just Init
             }
     }
   where
-  handleAction :: Action -> HalogenM (EditorState m) Action ChildSlots Output m Unit
+  handleQuery :: forall a. Query a -> HalogenM State Action (ChildSlots m) Output m (Maybe a)
+  handleQuery = case _ of
+    GetState return -> Just <$> return <$> get
+
+  handleAction :: Action -> HalogenM State Action (ChildSlots m) Output m Unit
   handleAction = case _ of
     Init -> do
       window <- liftEffect Web.window
       document <- liftEffect $ Web.document window
-      -- Stuff which we need to run at the start
-      handleAction AdjustSceneScale
-      scale <- gets $ view _sceneScale
-      currentCameraPosition <- gets $ view $ _currentCamera <<< _CameraPosition
-      -- We pan only when the state generation was done without knowing the scale of the scene
-      when (currentCameraPosition == zero) $ modify_ $ pan $ (_ / 2.0) <$> scale
+      -- Generate geometries for the current function
+      handleAction LoadScene
       -- Register keybindings
       subscribe' \sid ->
         ES.eventListenerEventSource
           KET.keydown
           (HTMLDocument.toEventTarget document)
           (map (HandleKey sid) <<< KE.fromEvent)
-      -- Registr resize events
-      void $ subscribe
-        $ ES.eventListenerEventSource
-            (EventType "resize")
-            (Window.toEventTarget window)
-            (const $ Just AdjustSceneScale)
+      gets _.emitInterval
+        >>= traverse_ \interval ->
+            void $ subscribe $ EmitState <$ intervalEventSource interval
       void <<< fork <<< handleAction <<< Autosave <<< stateToJson =<< get
-    AdjustSceneScale -> adjustSceneScale
     HandleKey sid event
-      | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
-        modify_ deleteSelection
-      | KE.ctrlKey event && KE.key event == "b" -> handleAction TogglePanel
+      -- TODO: readd this with the new foreign system
+      -- | KE.key event == "Delete" || (KE.ctrlKey event && KE.key event == "Backspace") -> do
+      --   modify_ deleteSelection
+      | KE.ctrlKey event && KE.key event == "b" -> do
+        handleAction TogglePanel
       | KE.ctrlKey event && KE.key event == "i" -> handleAction $ CreateNode $ FunctionName "input"
       | KE.key event == "s" -> do
         let
@@ -190,9 +255,9 @@ component =
               =<< Event.target (KE.toEvent event)
         when (isNothing targetInput) do
           { currentTab, panelIsOpen } <- get
-          when (currentTab /= Add || not panelIsOpen) do
+          unless (currentTab == Add && panelIsOpen) do
             modify_ $ set _panelIsOpen true <<< set _currentTab Add
-            adjustSceneScale
+            void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
           liftEffect $ preventDefault $ KE.toEvent event
           getHTMLElementRef searchNodeInputRef >>= traverse_ (liftEffect <<< focus)
       | otherwise -> pure unit
@@ -200,10 +265,17 @@ component =
       | KE.key event == "Enter" -> do
         sortedFunctions <- gets searchNode
         currentFunction <- gets $ view _currentFunction
-        functionGraph <- gets $ view _functions
+        functionGraph <- gets $ toGraph <<< _.project
         let
           bestMatch = sortedFunctions !! 0
-        when (maybe false not $ wouldCreateCycle <$> bestMatch <*> currentFunction <*> pure functionGraph)
+
+          -- We take an argument because we don't need to compute this
+          -- if the first condition is true
+          wouldCycle _ =
+            maybe false not $ G.wouldCreateLongCycle <$> bestMatch <*> Just currentFunction
+              <*> Just functionGraph
+        when
+          (Just currentFunction == bestMatch || wouldCycle unit)
           $ for_ bestMatch (handleAction <<< CreateNode)
       | KE.ctrlKey event && KE.shiftKey event && KE.key event == " " -> do
         inputElement <- getHTMLElementRef searchNodeInputRef
@@ -214,23 +286,23 @@ component =
             inputFunctionName = FunctionName inputValue
 
             exists = functionExists inputFunctionName state
-          if inputValue /= "" && (not exists) then
-            modify_ $ initializeFunction inputFunctionName
+          if inputValue /= "" && (not exists) then do
+            initializeFunction inputFunctionName state >>= put
           else
             if exists then
-              handleAction $ SelectFunction $ Just inputFunctionName
+              handleAction $ SelectFunction inputFunctionName
             else
               pure unit
       | KE.ctrlKey event && KE.key event == " " -> do
         sortedFunctions <- gets searchNode
-        handleAction $ SelectFunction $ sortedFunctions !! 0
+        for_ (sortedFunctions !! 0) $ handleAction <<< SelectFunction
       | otherwise -> liftEffect $ stopPropagation $ KE.toEvent event
     CreateNode name -> do
-      modify_ $ execState $ createNode name
+      createNode name
+      handleAction Rerender
     TogglePanel -> do
       modify_ $ over _panelIsOpen not
-      -- Since this modifies the scale of the scene we also update that
-      adjustSceneScale
+      void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     ChangeTab newTab -> do
       oldTab <- gets $ view _currentTab
       panelWasOpen <- gets $ view _panelIsOpen
@@ -238,88 +310,32 @@ component =
         handleAction TogglePanel
       else do
         modify_ $ set _currentTab newTab <<< set _panelIsOpen true
-        when (not panelWasOpen) adjustSceneScale
+        void $ query (SProxy :: _ "scene") unit $ tell Scene.HandleResize
     CreateFunction name -> do
-      modify_ $ initializeFunction name
-    SelectFunction name -> do
-      oldFunction <- gets $ view _currentFunction
-      modify_ $ setCurrentFunction name
-      when (oldFunction == Nothing) adjustSceneScale
+      get >>= initializeFunction name >>= put
+      handleAction $ UpdatePreview name
+      handleAction LoadScene
+    SelectFunction name ->
+      withCurrentFunction_ \currentFunction ->
+        gets (join <<< preview (_function name))
+          >>= traverse_ case _ of
+              VisualFunction _ ->
+                unless (name == currentFunction) do
+                  modify_ $ setCurrentFunction name
+                  handleAction LoadScene
+              _ -> pure unit
     StartFunctionCreation -> do
       void $ query (SProxy :: _ "tree") unit $ tell TreeC.StartCreation
-    SceneMouseMove event -> do
-      let
-        bits = MouseEvent.buttons event
-
-        position = toNumber <$> vec2 (MouseEvent.clientX event) (MouseEvent.clientY event)
-      liftEffect $ preventDefault $ MouseEvent.toEvent event
-      state@{ lastMousePosition } <- get
-      state' <- getSceneMousePosition position
-      camera <- gets $ view _currentCamera
-      let
-        oldPosition = toWorldCoordinates camera lastMousePosition
-
-        newPosition = toWorldCoordinates camera $ view _lastMousePosition state'
-
-        offset = newPosition - oldPosition
-
-        update =
-          if isPressed RightButton bits then
-            pan offset
-          else
-            over _nodeData
-              $ map \node@(NodeData { selected }) ->
-                  if selected then
-                    over _NodeDataPosition (_ + offset) node
-                  else
-                    node
-      put $ update state'
-    SceneMouseUp -> do
-      modify_ $ resetNodeOffset <<< (over _nodeData $ map $ set _NodeDataSelected false)
-    SelectNode id -> do
-      maybeCurrentFunction <- gets $ view _currentFunction
-      nodes <- gets $ preview _currentNodes
-      state <- get
-      let
-        nodeIds = Set.toUnfoldable $ G.keys $ fromMaybe G.emptyGraph nodes
-
-        nodeData = List.catMaybes $ (\nodeId -> join $ preview (_atCurrentNodeData nodeId) state) <$> nodeIds
-
-        zPositions = (view _NodeDataZPosition) <$> nodeData
-
-        zPosition = 1 + foldr max (-1) zPositions
-      for_ maybeCurrentFunction \currentFunction -> do
-        modify_
-          $ set (_atCurrentNodeData id <<< _Just <<< _NodeDataZPosition) zPosition
-          <<< set (_isSelected currentFunction id) true
-    SelectInput id index -> do
-      unconnectableList <- gets $ view _unconnectablePins
-      let
-        setTo = set _partialTo $ Just $ Tuple id index
-
-        location = DeepLocation id $ InputPin index
-
-        shouldConnect = isNothing $ find (_ == location) unconnectableList
-      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setTo
-    SelectOutput id -> do
-      unconnectableList <- gets $ view _unconnectablePins
-      let
-        setFrom = set _partialFrom $ Just id
-
-        location = DeepLocation id OutputPin
-
-        shouldConnect = isNothing $ find (_ == location) unconnectableList
-      when shouldConnect $ modify_ $ tryConnecting <<< makeUnconnetacbleList <<< setFrom
-    RemoveConnection from to -> do
-      modify_ $ removeConnection from to
-    SetRuntimeValue functionName nodeId runtimeValue -> do
-      modify_ $ setRuntimeValue functionName nodeId runtimeValue
-    SceneZoom amount -> do
-      mousePosition <- gets $ view _lastMousePosition
-      modify_ $ over _currentCamera $ zoomOn mousePosition amount
+    RemoveConnection id index -> do
+      modify_ $ removeConnection $ Tuple id index
+      void updateAll
+      handleAction Rerender
     ChangeInputCount function amount -> do
       modify_ $ set (_atInputCount function) $ Just amount
+      handleAction $ UpdatePreview function
     SetName name -> modify_ $ set _name name
+    SetVisibility isVisible -> do
+      modify_ $ set _isVisible isVisible
     SetExample isExample -> do
       -- We only allow editing the example status when we are an admine
       isAdmin <- gets $ view _isAdmin
@@ -327,176 +343,443 @@ component =
     SearchNodes input -> modify_ $ set _nodeSearchTerm input
     DeleteFunction name -> modify_ $ deleteFunction name
     Autosave oldState -> do
-      interval <- asks $ view _autosaveInterval
-      liftAff $ delay interval
-      name <- gets $ view _name
-      if String.length name >= 2 then do
-        newState <- gets stateToJson
-        when (newState /= oldState) $ raise $ Save newState
-        handleAction $ Autosave newState
-      else
-        handleAction $ Autosave oldState
+      gets _.autosaveInterval
+        >>= traverse_ \interval -> do
+            liftAff $ delay interval
+            name <- gets $ view _name
+            --  TODO: do some actual validation here
+            if String.length name >= 2 then do
+              newState <- gets stateToJson
+              unless (newState == oldState) do
+                raise $ Save newState
+              handleAction $ Autosave newState
+            else
+              handleAction $ Autosave oldState
+    Navigate route -> navigate route
+    Rerender -> do
+      -- TODO: optimize this to not rerender the previews on each render
+      handleAction UpdatePreviews
+      void $ query (SProxy :: SProxy "scene") unit $ tell $ Scene.Rerender
+    LoadScene -> do
+      updateAll
+        >>= traverse_
+            ( void
+                <<< query (SProxy :: _ "scene") unit
+                <<< tell
+                <<< Scene.LoadScene
+            )
+    CreateConnection from toId toIndex -> do
+      state <- createConnection from toId toIndex <$> get
+      let
+        compilationResult = tryCompiling state
+      case compilationResult.typeErrors of
+        [] -> do
+          put $ evaluate $ Record.merge compilationResult state
+          void updateAll
+        _ -> do
+          modify_
+            _
+              { pendingConnection =
+                Just
+                  { from
+                  , toId
+                  , toIndex
+                  , compilationResult
+                  }
+              }
+          handleAction (HandleConnectionConfirmation ProceedConnecting)
+          void $ query (SProxy :: SProxy "pendingConnection") unit $ tell Modal.Open
+    SelectInput id index ->
+      void
+        $ withCurrentGeometries \cache -> do
+            state <- get
+            liftEffect $ setUnconnectableOutputs cache
+              $ Set.toNative
+              $ generateUnconnectableOutputs (Tuple id index) state
+            handleAction Rerender
+    SelectOutput id ->
+      void
+        $ withCurrentGeometries \cache -> do
+            state <- get
+            liftEffect $ setUnconnectableInputs cache $ Set.toNative
+              $ generateUnconnectableInputs id state
+            handleAction Rerender
+    HandleConnectionConfirmation CancelConnecting -> modify_ _ { pendingConnection = Nothing }
+    HandleConnectionConfirmation other -> do
+      p <- gets _.pendingConnection
+      gets _.pendingConnection
+        >>= traverse_ \{ from, toId, toIndex, compilationResult } -> case other of
+            ProceedConnecting -> do
+              state <- get
+              put
+                $ createConnection from toId toIndex
+                $ Record.merge compilationResult
+                $ state
+                    { pendingConnection = Nothing
+                    }
+              void updateAll
+              handleAction Rerender
+            AutofixConnection -> modify_ _ { pendingConnection = Nothing }
+            -- WARNING: this should never happen
+            _ -> pure unit
+    DeleteNode id ->
+      void
+        $ withCurrentGeometries \cache -> do
+            current <- gets $ view _currentFunction
+            modify_ $ deleteNode current id
+            liftEffect $ Native.deleteNode cache id
+            void updateAll
+            handleAction Rerender
+    UpdatePreview name -> do
+      state <- get
+      for_ (Map.lookup (AtFunction name) state.typeMap) \ty -> do
+        let
+          inputs =
+            fromMaybe' (\_ -> getMaxInputs name state) $ join
+              $ preview (_atInputCount name) state
+        void $ query (SProxy :: SProxy "nodePreview") name
+          $ tell
+          $ NodePreview.Rerender
+          $ getFunctionColorMap inputs ty
+    UpdatePreviews -> do
+      functions <- gets $ view _functions
+      for_ (Map.keys functions) $ handleAction <<< UpdatePreview
+    MoveTo location -> do
+      let
+        steps = moveTo location
+      for_ steps case _ of
+        MoveToFunction name -> handleAction $ SelectFunction name
+        CenterNode id -> void $ withCurrentGeometries \cache -> liftEffect $ centerNode cache id
+        CenterOutput -> void $ withCurrentGeometries \cache -> liftEffect $ centerOutput cache
+      -- TODO: don't do this when we didn't move the camera
+      unless (Array.null steps) $ handleAction Rerender
+    StartNodeEditing id ->
+      withCurrentFunction_ \currentFunction -> do
+        state <- get
+        gets (preview (_atNode currentFunction id))
+          >>= traverse_ case _ of
+              ComplexNode { function } -> do
+                modify_ _ { currentlyEditedNode = Just id }
+                mkQuery $ tell $ Modal.UpdateInput modal
+                mkQuery $ tell Modal.Open
+                where
+                mkQuery = void <<< query (SProxy :: SProxy "editNode") unit
+
+                functionData = preview (_atFunctionData function <<< _Just <<< _Newtype) state
+
+                -- | TODO: have the function data provide an actual description of the entire node.
+                description = _.output.description <$> functionData
+
+                type' = getNodeType id function state
+
+                inputs =
+                  fromMaybe []
+                    $ map (uncurry mkInput)
+                    <$> inputStuff
+                  where
+                  inputTypes = Array.fromFoldable <$> Type.inputs <$> type'
+
+                  inputDocs = _.inputs <$> functionData
+
+                  inputStuff = Array.zip <$> inputTypes <*> inputDocs
+
+                  mkInput type'' docs =
+                    { type': type''
+                    , name: docs.name
+                    , description: docs.description
+                    }
+
+                modal =
+                  nodeEditingModal
+                    { title = show function
+                    , content =
+                      \bubble ->
+                        EditNode.component
+                          { description
+                          , type'
+                          , inputs
+                          , id
+                          , function
+                          , setValue: map (bubble <<< UpdateOverwrite id currentFunction) <<< uiToRuntime function
+                          , value:
+                            case Map.lookup (InsideFunction currentFunction $ NodeLocation id)
+                                $ unwrap
+                                $ state.runtimeOverwrites of
+                              Just (Term v) -> v
+                              _ -> Null
+                          }
+                    }
+              _ -> pure unit
+    HandleNodeEdits action ->
+      withCurrentNode_ \id -> do
+        case action of
+          NEDeleteNode -> do
+            handleAction $ DeleteNode id
+          NECloseModal -> do
+            modify_ evaluate
+            void updateAll
+            handleAction Rerender
+        modify_ _ { currentlyEditedNode = Nothing }
+    GotoId id ->
+      withCurrentFunction_ \currentFunction ->
+        gets (preview (_atNode currentFunction id))
+          >>= traverse_ case _ of
+              ComplexNode { function } -> handleAction (SelectFunction function)
+              _ -> pure unit
+    UpdateOverwrite id function value -> do
+      modify_
+        $ set
+            ( _runtimeOverwrites
+                <<< _Newtype
+                <<< (at $ InsideFunction function $ NodeLocation id)
+            )
+        $ Just
+        $ Term value
+    EmitState -> do
+      state <- get
+      raise $ StateEmit state
 
   handleTreeOutput :: TreeC.Output -> Maybe Action
   handleTreeOutput = case _ of
     TreeC.CreatedFunction name -> Just $ CreateFunction name
     TreeC.SelectedFunction name -> Just $ SelectFunction name
 
-  sidebarIcon activeTab current =
-    HH.div
-      [ classes $ ClassName <$> [ "sidebar-icon" ] <> (guard isActive $> "active")
+  handleSceneOutput :: Scene.Output -> Maybe Action
+  handleSceneOutput (Scene.BubbleForeignAction action) = case action of
+    Native.CreateConnection from toId toIndex -> Just $ CreateConnection from toId toIndex
+    Native.SelectOutput id -> Just $ SelectOutput id
+    Native.SelectInput id index -> Just $ SelectInput id index
+    Native.DeleteConnection id index -> Just $ RemoveConnection id index
+    Native.EditNode id -> Just $ StartNodeEditing id
+    Native.Goto id -> Just $ GotoId id
+    _ -> Nothing
+
+  sidebarIcon text extraClasses activeTab current =
+    Tooltip.tooltip
+      text
+      Tooltip.Right
+      HH.div
+      [ classes $ ClassName <$> [ "editor__activity" ] <> (guard isActive $> "editor__activity--active") <> extraClasses
       , onClick $ const $ Just $ ChangeTab current
       ]
       [ icon $ tabIcon current ]
     where
     isActive = current == activeTab
 
-  tabs currentTab =
+  tabs variant currentTab =
     [ icon Settings
     , icon Add
     , icon Tree
+    , icon Problems
     ]
     where
-    icon = sidebarIcon currentTab
+    problemClasses = case variant of
+      Errors -> [ "editor__activity--error" ]
+      Warnings -> [ "editor__activity--warning" ]
+      NoProblems -> []
 
-  panel :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  panel { currentTab, project, currentFunction, functionData, typeMap, inputCountMap, name, isExample, isAdmin, nodeSearchTerm } = case currentTab of
+    classes Problems = problemClasses
+
+    classes _ = []
+
+    icon tab = sidebarIcon (show tab) (classes tab) currentTab tab
+
+  mkPanel :: _
+  mkPanel { title, actions, content, footer, header } =
+    [ HH.header [ className "panel__header" ]
+        [ HH.div [ className "panel__title-container" ]
+            $ [ HH.h1 [ className "panel__title" ] [ HH.text title ]
+              ]
+            <> ( ( \action ->
+                    HH.div [ className "panel__action", onClick $ const action.onClick ]
+                      [ icon action.icon
+                      ]
+                )
+                  <$> actions
+              )
+        , maybeElement header identity
+        ]
+    , HH.main [ className "panel__content" ]
+        content
+    , maybeElement footer \inner -> HH.footer [ className "panel__footer" ] [ inner ]
+    ]
+
+  isInternal functions functionName = maybe true (is _NativeFunction) $ Map.lookup functionName functions
+
+  panel :: State -> Array (HH.ComponentHTML Action (ChildSlots m) m)
+  panel { currentTab
+  , project: project@(Project.Project { functions })
+  , currentFunction
+  , functionData
+  , typeMap
+  , inputCountMap
+  , name
+  , isExample
+  , isVisible
+  , isAdmin
+  , nodeSearchTerm
+  , typeErrors
+  , lintingErrors
+  } = case currentTab of
     Settings ->
-      container "settings"
-        [ container "title" [ HH.text "Project settings" ]
-        , HH.div [ className "project-setting" ]
-            [ HH.div [ className "setting-label" ] [ HH.text "Name:" ]
-            , HH.input
-                [ HP.value name
-                , HP.placeholder "Project name"
-                , className "setting-text-input"
-                , onValueInput $ Just <<< SetName
+      mkPanel
+        { title: "Project settings"
+        , actions: []
+        , footer: Nothing
+        , header: Nothing
+        , content:
+          [ HH.div
+              [ className "setting" ]
+              [ HH.div [ className "setting__label" ] [ HH.text "Name:" ]
+              , HH.input
+                  [ HP.value name
+                  , HP.placeholder "Project name"
+                  , className "setting__text-input"
+                  , onValueInput $ Just <<< SetName
+                  ]
+              ]
+          , HH.div [ className "setting" ]
+              [ HH.div [ className "setting__label" ] [ HH.text "Visibility:" ]
+              , HH.div [ className "setting__switch-input" ]
+                  [ switch { checked: isVisible, round: true } (Just <<< SetVisibility)
+                  ]
+              ]
+          , whenElem isAdmin \_ ->
+              HH.div [ className "setting" ]
+                [ HH.div [ className "setting__label" ] [ HH.text "Example:" ]
+                , HH.div [ className "setting__switch-input" ]
+                    [ switch { checked: isExample, round: true } (Just <<< SetExample)
+                    ]
                 ]
-            ]
-        , whenElem isAdmin \_ ->
-            HH.div [ className "project-setting" ]
-              [ HH.div [ className "setting-label" ] [ HH.text "Example:" ]
-              , HH.div [ className "setting-switch-input" ]
-                  [ switch { checked: isExample, round: true } (Just <<< SetExample)
-                  ]
-              ]
-        ]
+          ]
+        }
     Tree ->
-      container
-        "tree"
-        [ container "tree-top"
-            [ container "title" [ HH.text "Explorer" ]
-            , HH.div [ onClick $ const $ Just StartFunctionCreation ] [ icon "note_add" ]
-            ]
-        , HH.slot (SProxy :: _ "tree") unit TreeC.component
-            { functions:
-              (maybe mempty pure currentFunction)
-                <> ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
-                  )
-            , selected: currentFunction
-            }
-            handleTreeOutput
-        ]
+      mkPanel
+        { title: "Explorer"
+        , actions: [ { icon: "note_add", onClick: Just StartFunctionCreation } ]
+        , footer: Nothing
+        , header: Nothing
+        , content:
+          [ HH.slot (SProxy :: _ "tree") unit TreeC.component
+              { functions:
+                currentFunction
+                  : ( Set.toUnfoldable $ Map.keys $ onlyEditable currentFunction project
+                    )
+              , selected: currentFunction
+              }
+              handleTreeOutput
+          ]
+        }
     Add ->
-      container "add-node-container"
-        [ container "title" [ HH.text "Add node" ]
-        , flip lazy nodeSearchTerm \nodeSearchTerm' ->
-            container "node-search-container"
-              [ HH.input
-                  [ HP.id_ "node-search-input"
-                  , HP.placeholder "Search nodes. Eg: add, greater than..."
-                  , HP.value nodeSearchTerm'
-                  , HP.ref searchNodeInputRef
-                  , className searchNodeClassName
-                  , onKeyUp $ Just <<< HandleAddPanelKeyPress
-                  , onValueInput $ Just <<< SearchNodes
+      mkPanel
+        { title: "Add node"
+        , actions: []
+        , header:
+          Just
+            $ flip lazy nodeSearchTerm \nodeSearchTerm' ->
+                HH.div [ className "node-search" ]
+                  [ HH.input
+                      [ HP.placeholder "Search nodes. Eg: add, greater than..."
+                      , HP.value nodeSearchTerm'
+                      , HP.ref searchNodeInputRef
+                      , className searchNodeClassName
+                      , onKeyUp $ Just <<< HandleAddPanelKeyPress
+                      , onValueInput $ Just <<< SearchNodes
+                      ]
+                  , icon "search"
                   ]
-              , icon "search"
-              ]
-        , lazy2 AddC.add
-            { project
-            , currentFunction
-            , functionData
-            , typeMap
-            , inputCountMap
-            , nodeSearchTerm
-            }
-            { edit: Just <<< SelectFunction <<< Just
-            , addNode: Just <<< CreateNode
-            , changeInputCount: (Just <<< _) <<< ChangeInputCount
-            , delete: Just <<< DeleteFunction
-            }
-        , container "create-input"
-            [ HH.button
-                [ className "unselectable"
+        , footer:
+          Just
+            $ HH.button
+                [ className "unselectable node-panel__create-input-button"
                 , onClick $ const $ Just $ CreateNode $ FunctionName "input"
                 ]
                 [ HH.text "Create input node"
                 ]
-            ]
-        ]
+        , content:
+          [ lazy2 AddC.add
+              { project
+              , currentFunction
+              , functionData
+              , typeMap
+              , inputCountMap
+              , nodeSearchTerm
+              }
+              { edit: Just <<< SelectFunction
+              , addNode: Just <<< CreateNode
+              , changeInputCount: (Just <<< _) <<< ChangeInputCount
+              , delete: Just <<< DeleteFunction
+              , updatePreview: Just <<< UpdatePreview
+              }
+          ]
+        }
+    Problems ->
+      mkPanel
+        { title: "Problems"
+        , actions: []
+        , footer: Nothing
+        , header: Nothing
+        , content:
+          [ problems
+              { typeErrors
+              , lintingErrors
+              , navigateTo: MoveTo
+              , isInternal: isInternal functions
+              }
+          ]
+        }
 
-  scene :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  scene { project
-  , currentFunction: maybeCurrentFunction
-  , typeMap
-  , lastMousePosition
-  , functionData
-  , nodeData
-  , colorMap
-  , cameras
-  , partialConnection
-  , valueMap
-  , functionUis
-  , sceneScale
-  , unconnectablePins
-  } =
-    fromMaybe
-      emptyEditor do
-      currentFunction <- maybeCurrentFunction
-      group <-
-        preview (_projectNodeGroup currentFunction) project
-      pure
-        $ createScene
-            { unconnectablePins
-            , project
-            , typeMap
-            , lastMousePosition
-            , functionData
-            , partialConnection
-            , valueMap
-            , functionUis
-            , scale: sceneScale
-            , typeColors: colorMap
-            , functionName: currentFunction
-            , camera: fromMaybe def $ Map.lookup currentFunction cameras
-            , nodeData:
-              Map.fromFoldable
-                $ (uncurry \(Tuple _ id) value -> Tuple id value)
-                <$> ( List.filter (uncurry \(Tuple name _) _ -> name == currentFunction)
-                      $ Map.toUnfoldable nodeData
-                  )
-            }
+  scene :: HH.ComponentHTML Action (ChildSlots m) m
+  scene = HH.slot (SProxy :: _ "scene") unit Scene.component unit handleSceneOutput
 
   logoElement =
-    container "sidebar-logo-container"
-      [ HH.img
-          [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
-          , HP.alt "Lunarbox logo"
-          , HP.id_ "sidebar-logo"
-          ]
+    HH.img
+      [ HP.src "https://cdn.discordapp.com/attachments/672889285438865453/708081533151477890/favicon.png"
+      , HP.alt "Lunarbox logo"
+      , className "editor__logo"
+      , onMouseUp $ const $ Just $ Navigate Home
       ]
 
-  render :: State Action ChildSlots m -> HH.ComponentHTML Action ChildSlots m
-  render state@{ currentTab, panelIsOpen } =
-    container "editor"
-      [ container "sidebar"
-          $ tabs currentTab
+  render :: State -> HH.ComponentHTML Action (ChildSlots m) m
+  render state@{ currentTab
+  , panelIsOpen
+  , typeErrors
+  , lintingErrors
+  , project: Project.Project ({ functions })
+  } =
+    HH.div [ className "editor" ]
+      [ HH.div [ className "editor__activity-bar" ]
+          $ tabs problemsIconVariant currentTab
           <> pure logoElement
       , HH.div
-          [ id_ "panel", classes $ ClassName <$> (guard panelIsOpen $> "active") ]
-          [ panel state ]
-      , container "scene"
-          [ scene state
+          [ classes $ ClassName
+              <$> [ "panel" ]
+              <> (guard panelIsOpen $> "panel--open")
           ]
+          $ panel state
+      , HH.div [ className "scene" ]
+          [ scene
+          ]
+      -- Modals
+      , HH.slot (SProxy :: SProxy "pendingConnection") unit Modal.component
+          pendingConnectionModal
+          handleConnectionConfirmation
+      , HH.slot (SProxy :: SProxy "editNode") unit Modal.component
+          nodeEditingModal
+          handleNodeSave
       ]
+    where
+    shouldRender' = shouldRender (isInternal functions)
+
+    problemsIconVariant
+      | Array.any (shouldRender' <<< TypeError.getLocation) typeErrors = Errors
+      | Array.any (shouldRender' <<< LintError.getLocation) lintingErrors = Warnings
+      | otherwise = NoProblems
+
+    handleConnectionConfirmation = case _ of
+      Modal.ClosedWith value -> Just $ HandleConnectionConfirmation value
+      Modal.BubbledAction action -> Just action
+
+    handleNodeSave = case _ of
+      Modal.ClosedWith value -> Just $ HandleNodeEdits value
+      Modal.BubbledAction action -> Just action

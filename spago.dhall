@@ -2,11 +2,13 @@
 , dependencies =
   [ "aff"
   , "aff-bus"
+  , "aff-promise"
   , "affjax"
   , "argonaut"
   , "argonaut-generic"
   , "arrays"
   , "colehaus-graphs"
+  , "colors"
   , "console"
   , "css"
   , "data-default"
@@ -18,8 +20,10 @@
   , "halogen"
   , "halogen-css"
   , "halogen-formless"
-  , "halogen-svg"
+  , "halogen-hooks"
+  , "halogen-select"
   , "halogen-vdom"
+  , "html-parser-halogen"
   , "lists"
   , "math"
   , "maybe"
@@ -27,6 +31,7 @@
   , "numbers"
   , "ordered-collections"
   , "profunctor-lenses"
+  , "proxy"
   , "psci-support"
   , "random"
   , "record"
@@ -40,6 +45,7 @@
   , "typelevel"
   , "typelevel-prelude"
   , "unsafe-coerce"
+  , "validation"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

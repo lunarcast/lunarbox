@@ -1,154 +1,78 @@
 @use "../utils/utils";
 @use "../fonts";
+
 @import "../theme.scss";
 
-#editor {
+// Sub components and stuff
+@import "./editor/scene.scss";
+@import "./editor/panel.scss";
+@import "./editor/settings.scss";
+@import "./editor/tree.scss";
+@import "./editor/add.scss";
+@import "./editor/problems.scss";
+@import "./editor/edit-node.scss";
+
+$icon-font-size: 2rem;
+
+.editor {
   display: flex;
   height: 100vh;
   overflow-y: hidden;
-
-  * > {
-    height: 100%;
-  }
 }
 
-#editor > #sidebar {
+.editor__activity-bar {
   @include utils.center;
-
-  $icon-font-size: 2rem;
-  $icon-size: 4rem;
 
   justify-content: start;
 
   background: $very-dark;
+}
 
-  .sidebar-icon,
-  #sidebar-logo-conainer {
-    @include utils.center;
-  }
+.editor__logo {
+  width: $icon-font-size;
 
-  #sidebar-logo-container {
-    display: flex;
-    justify-content: flex-end;
-    flex-direction: column;
-    flex-grow: 1;
+  margin: auto;
+  margin-bottom: 1rem;
+}
 
-    #sidebar-logo {
-      width: $icon-font-size;
-      height: $icon-font-size;
+.editor__activity {
+  @include utils.center;
 
-      margin-bottom: 1rem;
-    }
-  }
+  padding: 1rem;
+  user-select: none;
 
-  .sidebar-icon {
-    width: $icon-size;
-    height: $icon-size;
+  cursor: pointer;
 
-    user-select: none;
+  color: $disabled;
+  filter: brightness(0.7);
 
-    cursor: pointer;
-    color: $disabled;
-    filter: brightness(0.7);
+  margin-bottom: 1rem;
 
-    border: 0.2rem solid transparent;
-    margin-bottom: 1rem;
-    box-sizing: border-box;
+  transition: filter $transition-time, color $transition-time,
+    border-left $transition-time;
+}
 
-    transition: filter $transition-time, color $transition-time,
-      border-left $transition-time;
+.editor__activity--warning {
+  color: $warning-text;
+}
 
-    * {
-      font-size: $icon-font-size;
-    }
-  }
+.editor__activity--error {
+  color: $error-text;
+}
 
-  .sidebar-icon:hover,
-  .sidebar-icon.active {
-    filter: none;
+.editor__activity:hover,
+.editor__activity.editor__activity--active {
+  filter: none;
 
-    * {
-      color: $on-dark;
-    }
-  }
-
-  .sidebar-icon.active {
-    border-left: 0.2rem solid $on-dark;
+  &:not(.editor__activity--warning):not(.editor__activity--error) {
+    color: $on-dark;
   }
 }
 
-#editor > #panel {
-  width: 0;
-  height: 100vh;
-  max-height: 100vh;
-
-  box-sizing: border-box;
-  display: block;
-
-  color: $on-dark;
-  background: $primary-dark;
-
-  #title {
-    padding: 0.5rem;
-    font-size: 2rem;
-
-    padding-bottom: 1rem;
-    border-bottom: solid 1px $disabled;
-
-    user-select: none;
-    font-family: fonts.$montserrat;
-  }
+.editor__activity .material-icons {
+  font-size: $icon-font-size;
 }
 
-#editor > #panel.active {
-  width: 30rem;
-  overflow: hidden;
+.editor__activity--active {
+  border-left: 0.2rem solid $on-dark;
 }
-
-#editor > #panel:not(.active) .switch {
-  display: none;
-}
-
-.project-setting {
-  $margin: 1rem;
-
-  color: $on-primary;
-
-  margin: $margin;
-  margin-bottom: 2rem;
-
-  width: calc(100% - 2 * #{$margin});
-  display: flex;
-  align-items: center;
-
-  .setting-label {
-    margin-right: 0.5rem;
-  }
-
-  .setting-switch-input {
-    margin-left: 1rem;
-    flex-grow: 1;
-  }
-
-  .setting-text-input {
-    background: transparent;
-    color: inherit;
-
-    border: none;
-    outline: none;
-
-    margin-left: 2rem;
-    width: calc(100% - 2rem);
-    padding: 0.5rem;
-    box-sizing: border-box;
-
-    border-bottom: 3px solid $on-dark-pale;
-  }
-}
-
-// We import these at the end because some of theme overwrite some styles from this sheet
-@import "./editor/tree.scss";
-@import "./editor/scene.scss";
-@import "./editor/add.scss";
-
-@import "../components/node.scss";

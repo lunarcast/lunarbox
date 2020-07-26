@@ -1,13 +1,15 @@
 module Lunarbox.Data.Graph where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Array (foldr)
 import Data.Array as Array
 import Data.Array as Foldable
 import Data.Bifunctor (lmap, rmap)
-import Data.Filterable (filter)
+import Data.Filterable (filter, filterMap)
 import Data.Foldable (class Foldable, foldMap, foldlDefault, foldrDefault)
+import Data.Functor (voidLeft)
 import Data.Graph as CG
 import Data.Lens (lens, wander)
 import Data.Lens.At (class At)
@@ -50,8 +52,8 @@ instance monoidGraph :: (Ord k, Semigroup v) => Monoid (Graph k v) where
 
 instance foldableGraph :: Ord k => Foldable (Graph k) where
   foldMap f = foldMap (f <<< fst) <<< unwrap
-  foldr = foldrDefault
-  foldl = foldlDefault
+  foldr f = foldrDefault f
+  foldl f = foldlDefault f
 
 instance traversableGraph :: Ord k => Traversable (Graph k) where
   traverse f (Graph m) = Graph <$> traverse (uncurry f') m
@@ -140,9 +142,24 @@ isInCycle k' g = go mempty k'
     where
     dd = children k g
 
+-- | Same as isInCycle but doesn't return true for nodes referencing themselves
+isInOutsideCycle :: forall k v. Ord k => k -> Graph k v -> Boolean
+isInOutsideCycle k' g = go mempty k'
+  where
+  go seen k = case Tuple (dd == mempty) (k `Set.member` seen) of
+    Tuple true _ -> false
+    Tuple _ true -> k == k'
+    Tuple false false -> Foldable.any (go (Set.insert k seen)) dd
+    where
+    dd = children k g `Set.difference` Set.singleton k
+
 -- Checks if there any cycles in graph.
 isCyclic :: forall k v. Ord k => Graph k v -> Boolean
 isCyclic g = Foldable.any (flip isInCycle g) <<< keys $ g
+
+-- Checks if there are any cycles with at least 2 nodes in it 
+hasBigCycle :: forall k v. Ord k => Graph k v -> Boolean
+hasBigCycle g = Foldable.any (flip isInOutsideCycle g) <<< keys $ g
 
 -- no idea how to implement this so I'm using an implementation from another lib
 topologicalSort :: forall k v. Ord k => Graph k v -> List k
@@ -156,6 +173,26 @@ parents k (Graph graph) = Map.keys <<< Map.filter (Foldable.elem k <<< snd) $ gr
 wouldCreateCycle :: forall k v. Ord k => k -> k -> Graph k v -> Boolean
 wouldCreateCycle from to = isCyclic <<< insertEdge from to
 
+-- Check if adding an edge would create a long cycle
+wouldCreateLongCycle :: forall k v. Ord k => k -> k -> Graph k v -> Boolean
+wouldCreateLongCycle from to = hasBigCycle <<< insertEdge from to
+
 -- Count the number of vertices in a graph
 size :: forall k v. Ord k => Graph k v -> Int
 size = Map.size <<< unwrap
+
+-- Reverse all the edges in the graph
+-- TODO: make this only iterate trough the edgeList once.
+-- Curently this is O(N ^ 2) but in theory it could be O(N)
+invert :: forall k v. Ord k => Graph k v -> Graph k v
+invert graph@(Graph map) = Graph $ Map.mapMaybeWithKey go map
+  where
+  -- We need the type definition so purescript knows what Unfoldable instance to use
+  edgeList :: Array _
+  edgeList = edges graph
+
+  go key (Tuple value _) =
+    Just
+      $ Tuple value
+      $ Set.fromFoldable
+      $ filterMap (uncurry $ flip $ voidLeft <<< guard <<< eq key) edgeList

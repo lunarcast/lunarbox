@@ -1,6 +1,7 @@
 module Lunarbox.Data.Dataflow.Runtime
   ( RuntimeValue(..)
   , binaryFunction
+  , ternaryFunction
   , toBoolean
   , toNumber
   , toString
@@ -11,12 +12,15 @@ module Lunarbox.Data.Dataflow.Runtime
   ) where
 
 import Prelude
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (~>), (.:))
+import Control.Monad.Gen (oneOf)
+import Data.NonEmpty ((:|))
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (.:), (:=), (~>))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Lens (Prism', prism')
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
+import Test.QuickCheck (class Arbitrary, class Coarbitrary, arbitrary, coarbitrary)
 
 -- Representations of all possible runtime values
 data RuntimeValue
@@ -58,12 +62,28 @@ instance decodeJsonRuntimeValue :: DecodeJson RuntimeValue where
 
 instance showRuntimeValue :: Show RuntimeValue where
   show = case _ of
-    Null -> "null"
-    Bool value -> show value
+    Null -> ""
+    Bool value -> if value then "True" else "False"
     Number value -> show value
     String value -> show value
     NArray inner -> "[" <> joinWith ", " (show <$> inner) <> "]"
-    Function value -> "Function"
+    Function _ -> "Function"
+
+instance coarbitraryRuntimeValue :: Coarbitrary RuntimeValue where
+  coarbitrary (Number a) = coarbitrary a
+  coarbitrary (String a) = coarbitrary a
+  coarbitrary (Bool a) = coarbitrary a
+  coarbitrary (NArray arr) = coarbitrary arr
+  coarbitrary Null = coarbitrary unit
+  coarbitrary (Function a) = coarbitrary a
+
+instance arbitraryRuntimeValue :: Arbitrary RuntimeValue where
+  arbitrary =
+    oneOf $ pure Null
+      :| [ Number <$> arbitrary
+        , String <$> arbitrary
+        , Bool <$> arbitrary
+        ]
 
 instance eqRuntimeValue :: Eq RuntimeValue where
   eq (Number n) (Number n') = n == n'
@@ -83,6 +103,10 @@ instance ordRuntimeValue :: Ord RuntimeValue where
 -- helper to ease the creation of binary functions
 binaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue
 binaryFunction f = Function $ Function <<< f
+
+-- Same as binaryFunction but with 3 arguments
+ternaryFunction :: (RuntimeValue -> RuntimeValue -> RuntimeValue -> RuntimeValue) -> RuntimeValue
+ternaryFunction f = Function $ binaryFunction <<< f
 
 -- Turns any runtime value to a boolean
 toBoolean :: RuntimeValue -> Boolean

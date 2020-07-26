@@ -4,6 +4,7 @@ module Lunarbox.Component.Utils
   , className
   , container
   , busEventSource
+  , intervalEventSource
   , whenElem
   , maybeElement
   ) where
@@ -11,9 +12,9 @@ module Lunarbox.Component.Utils
 import Prelude
 import Control.Monad.Rec.Class (forever)
 import Data.Maybe (Maybe, maybe)
-import Effect.Aff (forkAff, killFiber, error)
+import Effect.Aff (Milliseconds, delay, error, forkAff, killFiber)
 import Effect.Aff.Bus as Bus
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Halogen (ClassName(..), Slot)
 import Halogen.HTML (HTML, IProp)
 import Halogen.HTML as HH
@@ -40,6 +41,17 @@ busEventSource :: forall m r act. MonadAff m => Bus.BusR' r act -> ES.EventSourc
 busEventSource bus =
   ES.affEventSource \emitter -> do
     fiber <- forkAff $ forever $ ES.emit emitter =<< Bus.read bus
+    pure (ES.Finalizer (killFiber (error "Event source closed") fiber))
+
+-- | Used so we can run an action at a certain interval
+intervalEventSource :: forall m. MonadAff m => Milliseconds -> ES.EventSource m Unit
+intervalEventSource time =
+  ES.affEventSource \emitter -> do
+    fiber <-
+      forkAff
+        $ forever do
+            liftAff $ delay time
+            ES.emit emitter unit
     pure (ES.Finalizer (killFiber (error "Event source closed") fiber))
 
 -- Conditional rendering helper

@@ -7,21 +7,20 @@ import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Default (class Default)
 import Data.Map as Map
 import Data.Newtype (class Newtype)
-import Lunarbox.Data.Dataflow.Runtime (RuntimeValue)
+import Lunarbox.Data.Dataflow.Runtime.TermEnvironment (Term)
 
 -- A map holding the runtime values of different locations
 newtype ValueMap l
-  = ValueMap (Map.Map l RuntimeValue)
+  = ValueMap (Map.Map l (Term l))
 
 derive instance eqValueMap :: Eq l => Eq (ValueMap l)
 
 derive instance newtypeValueMap :: Newtype (ValueMap l) _
 
-derive newtype instance semigroupValueMap :: Ord l => Semigroup (ValueMap l)
+instance semigroupValueMap :: Ord l => Semigroup (ValueMap l) where
+  append (ValueMap m) (ValueMap m') = ValueMap $ append m m'
 
 derive newtype instance monoidValueMap :: Ord l => Monoid (ValueMap l)
-
-derive newtype instance showValueMap :: Show l => Show (ValueMap l)
 
 derive newtype instance encodeJsonValueMap :: (EncodeJson l, Ord l) => EncodeJson (ValueMap l)
 

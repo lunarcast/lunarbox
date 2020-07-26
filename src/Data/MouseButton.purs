@@ -16,8 +16,8 @@ data MouseButton
 -- Turns a button into it's code
 buttonCode :: MouseButton -> Int
 buttonCode = case _ of
-  LeftButton -> 0
-  Wheel -> 1
+  LeftButton -> 1
+  Wheel -> -1 -- Todo: find the correct code for this
   RightButton -> 2
 
 -- Check if a button is pressed

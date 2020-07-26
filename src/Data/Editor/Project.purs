@@ -13,20 +13,26 @@ module Lunarbox.Data.Editor.Project
   ) where
 
 import Prelude
-import Data.Argonaut (class DecodeJson, class EncodeJson)
-import Data.Lens (Lens', Traversal', _Just, set, view)
+import Data.Argonaut (class DecodeJson, class EncodeJson, encodeJson, jsonEmptyObject, (:=), (~>))
+import Data.Filterable (filter)
+import Data.Foldable (foldr)
+import Data.Lens (Lens', Traversal', _Just, is, set, view)
 import Data.Lens.At (at)
 import Data.Lens.Record (prop)
+import Data.List as List
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple(..))
 import Data.Unfoldable (class Unfoldable)
-import Lunarbox.Data.Dataflow.Expression (Expression, optimize)
-import Lunarbox.Data.Dataflow.Graph (compileGraph)
+import Lunarbox.Data.Class.GraphRep (class GraphRep, toGraph)
+import Lunarbox.Data.Dataflow.Expression (Expression(..), VarName(..), isReferenced)
+import Lunarbox.Data.Dataflow.Expression.Optimize (inline)
 import Lunarbox.Data.Editor.DataflowFunction (DataflowFunction(..), _VisualFunction, compileDataflowFunction)
 import Lunarbox.Data.Editor.FunctionName (FunctionName(..))
-import Lunarbox.Data.Editor.Location (Location)
+import Lunarbox.Data.Editor.Location (Location(..))
 import Lunarbox.Data.Editor.Node (Node(..))
 import Lunarbox.Data.Editor.Node.NodeId (NodeId)
 import Lunarbox.Data.Editor.NodeGroup (NodeGroup(..), _NodeGroupNodes)
@@ -35,31 +41,75 @@ import Lunarbox.Data.Lens (newtypeIso)
 
 newtype Project
   = Project
-  { functions :: G.Graph FunctionName DataflowFunction
+  { functions :: Map.Map FunctionName DataflowFunction
   , main :: FunctionName
   }
 
 derive instance newtypeProject :: Newtype Project _
 
-derive newtype instance encodeJsonProject :: EncodeJson Project
+instance encodeJsonProject :: EncodeJson Project where
+  encodeJson (Project obj) =
+    "main" := encodeJson obj.main ~> "functions"
+      := encodeJson functions'
+      ~> jsonEmptyObject
+    where
+    functions' = filter (is _VisualFunction) obj.functions
 
 derive newtype instance decodeJsonProject :: DecodeJson Project
 
-_ProjectFunctions :: Lens' Project (G.Graph FunctionName DataflowFunction)
+instance graphRepProject :: GraphRep Project FunctionName DataflowFunction where
+  toGraph (Project { functions }) = toGraph functions
+
+_ProjectFunctions :: Lens' Project (Map.Map FunctionName DataflowFunction)
 _ProjectFunctions = newtypeIso <<< prop (SProxy :: _ "functions")
 
 _ProjectMain :: Lens' Project FunctionName
 _ProjectMain = newtypeIso <<< prop (SProxy :: _ "main")
 
+-- -- Takes a key and a graph and uses that to produce an Expression
+-- compileGraphNode :: forall k v l. Ord k => (v -> Expression l) -> Graph k v -> k -> Maybe (Tuple k (Expression (ExtendedLocation k l)))
+-- compileGraphNode toExpression graph key = Tuple key <$> Expression (Location key) <$> map (DeepLocation key) <$> toExpression <$> view (at key) graph
+-- | Compile a visual program into a linear expression
 compileProject :: Project -> Expression Location
-compileProject (Project { functions, main }) = optimize $ compileGraph compileDataflowFunction functions main
+compileProject project@(Project { main }) =
+  inline
+    $ foldr
+        ( \(Tuple key value) body ->
+            let
+              name = VarName $ show key
+
+              isRecursive = isReferenced name value
+
+              location = AtFunctionDeclaration key
+
+              value'
+                | isRecursive =
+                  FixPoint (FixpointOperator key)
+                    name
+                    value
+                | otherwise = value
+            in
+              Let location name value' body
+        )
+        (Variable UnknownLocation $ VarName $ show main)
+    $ List.catMaybes
+    $ compileFunction
+    <$> sorted
+  where
+  compileFunction name = Tuple name <$> Expression (AtFunction name) <$> map (InsideFunction name) <$> compileDataflowFunction <$> G.lookup name graph
+
+  graph = toGraph project
+
+  sorted =
+    G.topologicalSort
+      graph
 
 createEmptyFunction :: NodeId -> DataflowFunction
 createEmptyFunction id =
   VisualFunction
     $ NodeGroup
         { inputs: mempty
-        , nodes: G.singleton id $ OutputNode Nothing
+        , nodes: Map.singleton id $ OutputNode Nothing
         , output: id
         }
 
@@ -67,7 +117,7 @@ emptyProject :: NodeId -> Project
 emptyProject id =
   Project
     { main: FunctionName "main"
-    , functions: G.singleton (FunctionName "main") function
+    , functions: Map.singleton (FunctionName "main") function
     }
   where
   function = createEmptyFunction id
@@ -80,7 +130,7 @@ createFunction name outputId =
     $ createEmptyFunction outputId
 
 getFunctions :: forall u. Unfoldable u => Project -> u FunctionName
-getFunctions = Set.toUnfoldable <<< G.keys <<< view _ProjectFunctions
+getFunctions = Set.toUnfoldable <<< Map.keys <<< view _ProjectFunctions
 
 _atProjectFunction :: FunctionName -> Traversal' Project (Maybe DataflowFunction)
 _atProjectFunction name = _ProjectFunctions <<< at name

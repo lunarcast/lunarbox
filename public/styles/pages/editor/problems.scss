@@ -1,0 +1,59 @@
+@import "../../theme.scss";
+
+.problems__empty {
+  text-align: center;
+  color: darken($color: $on-primary, $amount: 4);
+}
+
+.problems__container {
+  display: flex;
+  flex-direction: column;
+}
+
+.problems__card-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.problems__card-location {
+  color: #73c0f3;
+  background: none;
+
+  text-decoration: underline;
+  text-align: right;
+
+  outline: none;
+  border: none;
+
+  font-size: 0.8rem;
+
+  transition: filter $transition-time;
+
+  &:hover {
+    filter: brightness(1.5);
+    cursor: pointer;
+  }
+}
+
+.problems__card {
+  width: 100%;
+  padding: 1rem;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.problems__card--error {
+  background: rgba($error-bg, 0.5);
+  color: $error-text;
+}
+
+.problems__card--warning {
+  background: rgba($warning-bg, 0.5);
+  color: $warning-text;
+}
+
+.problems__card-message {
+  grid-row-start: 2;
+  grid-column: 1 / 3;
+}
