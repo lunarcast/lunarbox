@@ -12,7 +12,7 @@ interface SavedData {
     position: Vec2Like
     hasOutput: boolean
     inputCount: number
-    name?: string
+    name: string | null
   }>
 }
 
@@ -74,7 +74,7 @@ export const geometryCacheToJson = (cache: GeometryCache): SavedData => {
         position: node.position as Vec2Like,
         inputCount: node.inputs[0].attribs!.selectable ? node.inputs.length : 0,
         hasOutput: node.output !== null,
-        name: node.name === null ? undefined : node.name.value
+        name: node.name === null ? null : node.name.value
       }
     })
   }

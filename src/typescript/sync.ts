@@ -37,7 +37,7 @@ export const createNode = (cache: GeometryCache) => (id: NodeId) => (
     [0, 0], // TODO: find a better way to place nodes
     inputCount,
     hasOutput,
-    name ?? undefined
+    name
   )
 
   cache.zOrder.push(id)

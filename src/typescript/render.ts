@@ -145,7 +145,7 @@ export const createNodeGeometry = (
   position: Vec2Like,
   numberOfInputs: number,
   hasOutput: boolean,
-  name?: string
+  name: string | null
 ): NodeGeometry => {
   const inputGeom =
     numberOfInputs === 0
@@ -186,7 +186,7 @@ export const createNodeGeometry = (
             fill: "#262335",
             padding: textPadding
           },
-          name,
+          name ?? undefined,
           font
         )
 

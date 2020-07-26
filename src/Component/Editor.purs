@@ -645,7 +645,7 @@ component =
                   ]
               ]
           , whenElem isAdmin \_ ->
-              HH.div [ className "project-setting" ]
+              HH.div [ className "setting" ]
                 [ HH.div [ className "setting__label" ] [ HH.text "Example:" ]
                 , HH.div [ className "setting__switch-input" ]
                     [ switch { checked: isExample, round: true } (Just <<< SetExample)
