@@ -17,29 +17,21 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Get yarn cache directory path
+          id: yarn-cache-dir-path
+          run: echo "::set-output name=dir::$(yarn cache dir)"
 
-      - name: Install pnpm
-        run: npm i -g pnpm
-      - name: Config pnpm for ci
-        run: pnpm config set verify-store-integrity false
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: ~/.pnpm-store
-          key: "I wonder if anyone sees this"
+      - uses: actions/cache@v1
+          id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+          with:
+            path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+            key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+            restore-keys: |
+              ${{ runner.os }}-yarn-
       - name: Install dependencies
-        run: pnpm i
-      # - name: Build project
-      #   run: pnpm run build
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpx semantic-release
-      # - name: Prepare for github pages deployment
-      #   run: cp dist/index.html dist/404.html
-      # - name: Deploy 🚀
-      #   uses: JamesIves/github-pages-deploy-action@releases/v3
-      #   with:
-      #     ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-      #     BRANCH: gh-pages
-      #     FOLDER: dist
+        run: yarn semantic-release
