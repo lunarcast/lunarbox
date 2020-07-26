@@ -33,8 +33,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
       - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
-        run: yarn
+        run: yarn --prefer-offline
       - name: Install purescript
         run: yarn add -g purescript spago
       - name: Build project
