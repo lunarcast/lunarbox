@@ -31,7 +31,6 @@ import Lunarbox.Capability.Resource.Project (class ManageProjects)
 import Lunarbox.Capability.Resource.Tutorial (class ManageTutorials)
 import Lunarbox.Capability.Resource.User (class ManageUser)
 import Lunarbox.Config (Config, _allowedNodes, _changeRoute, _currentUser, _userBus)
-import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..), loadNativeConfigs)
 import Lunarbox.Data.Dataflow.Native.Prelude as Prelude
 import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
@@ -149,7 +148,10 @@ instance manageTutorialsAppM :: ManageTutorials AppM where
         projectData
   deleteTutorial id = mkRequest { endpoint: Tutorial id, method: Delete }
   completeTutorial id = do
-    printString $ "Completed tutorial " <> show id
+    response :: Either String { message :: String } <-
+      mkRequest
+        { endpoint: CompleteTutorial id, method: Get
+        }
     pure $ Right unit
   saveTutorial id g =
     (voidRight unit)

@@ -23,6 +23,7 @@ data Endpoint
   | Project ProjectId
   | Clone ProjectId
   | Tutorial TutorialId
+  | CompleteTutorial TutorialId
   | Tutorials
 
 derive instance eqEndpoint :: Eq Endpoint
@@ -47,5 +48,6 @@ endpointCodec =
         , "Project": "projects" / projectId segment
         , "Clone": "projects" / "clone" / projectId segment
         , "Tutorial": "tutorials" / tutorialId segment
+        , "CompleteTutorial": "tutorials" / "complete" / tutorialId segment
         , "Tutorials": "tutorials" / noArgs
         }
