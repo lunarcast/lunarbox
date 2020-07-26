@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.0...v2.0.1) (2020-07-26)
+
+
+### Bug Fixes
+
+* removed some old mocks which made stuff broken ([64ccec7](https://github.com/Mateiadrielrafael/lunarbox/commit/64ccec742baafe22e9952d33c8ea0f24095c505e))
+
 # [2.0.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v1.16.2...v2.0.0) (2020-07-26)
 
 
