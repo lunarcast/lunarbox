@@ -13,7 +13,6 @@ import Data.HTTP.Method as Method
 import Data.Lens (view)
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
-import Data.Symbol (SProxy(..))
 import Data.Traversable (for)
 import Effect.Aff (Aff)
 import Effect.Aff.Bus as Bus
@@ -37,7 +36,6 @@ import Lunarbox.Data.Editor.Save (jsonToState, stateToJson)
 import Lunarbox.Data.Editor.State (compile)
 import Lunarbox.Data.Gist (GistId)
 import Lunarbox.Data.ProjectId (ProjectId)
-import Lunarbox.Data.ProjectList (ProjectOverview, TutorialOverview)
 import Lunarbox.Data.Route (routingCodec)
 import Lunarbox.Data.Route as Route
 import Lunarbox.Data.Tutorial (TutorialId)

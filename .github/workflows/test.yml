@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: yarn --prefer-offline
       - name: Install purescript
-        run: yarn add -g purescript spago
+        run: yarn global add purescript spago
       - name: Build project
         run: yarn build
       - name: Test project
