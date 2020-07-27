@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.1...v2.0.2) (2020-07-27)
+
+
+### Bug Fixes
+
+* you can only delete your own tutorials ([429335e](https://github.com/Mateiadrielrafael/lunarbox/commit/429335eaf6bdac85c8514bb0e71a429472e7b876))
+
 ## [2.0.1](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.0...v2.0.1) (2020-07-26)
 
 
