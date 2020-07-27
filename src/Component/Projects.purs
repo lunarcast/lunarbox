@@ -297,14 +297,15 @@ component =
                     , onClick $ Just <<< EditTutorial' id
                     ]
                     [ icon "edit" ]
-              , Tooltip.tooltip "Delete this tutorial"
-                  Tooltip.Bottom
-                  HH.button
-                  [ className "project__data-icon project__data-icon--clickable"
-                  , onClick $ Just <<< DeleteTutorial id
-                  ]
-                  [ icon "delete"
-                  ]
+              , whenElem own \_ ->
+                  Tooltip.tooltip "Delete this tutorial"
+                    Tooltip.Bottom
+                    HH.button
+                    [ className "project__data-icon project__data-icon--clickable"
+                    , onClick $ Just <<< DeleteTutorial id
+                    ]
+                    [ icon "delete"
+                    ]
               ]
           ]
 
