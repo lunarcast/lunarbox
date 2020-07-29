@@ -120,7 +120,7 @@ formComponent =
     HH.div [ className "form" ]
       [ maybeElement registerError \err ->
           HH.div
-            [ className "error-message form-message" ]
+            [ className "form__message form__message--error " ]
             [ HH.text err ]
       , HH.div_
           [ Field.input proxies.username form
