@@ -7,7 +7,4 @@ const marked = require("marked")
  *
  * @param {String} input The string to parse.
  */
-exports.parseMarkdown = (input) =>
-  marked(input, {
-    sanitize: true
-  })
+exports.parseMarkdown = (input) => marked(input, {})
