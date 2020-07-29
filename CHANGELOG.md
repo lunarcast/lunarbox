@@ -1,3 +1,10 @@
+## [2.0.4](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.3...v2.0.4) (2020-07-29)
+
+
+### Bug Fixes
+
+* form api errors have the correct color ([63c0360](https://github.com/Mateiadrielrafael/lunarbox/commit/63c0360e6e11003bb5fb7cced4225ea289171c3d))
+
 ## [2.0.3](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.2...v2.0.3) (2020-07-29)
 
 
