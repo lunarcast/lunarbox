@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.2...v2.0.3) (2020-07-29)
+
+
+### Bug Fixes
+
+* fixed some docs (Im making this a fix so netlify redeploys ([c9ca774](https://github.com/Mateiadrielrafael/lunarbox/commit/c9ca7748051373159c4a01794677473907c3a672))
+
 ## [2.0.2](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.1...v2.0.2) (2020-07-27)
 
 
