@@ -1,3 +1,10 @@
+## [2.0.5](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.4...v2.0.5) (2020-07-29)
+
+
+### Bug Fixes
+
+* allow html in markdown ([3150721](https://github.com/Mateiadrielrafael/lunarbox/commit/31507215e6d6f1a5b02b6e0877cedccddb708a3c))
+
 ## [2.0.4](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.3...v2.0.4) (2020-07-29)
 
 
