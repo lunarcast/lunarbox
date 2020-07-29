@@ -3,10 +3,6 @@
 @import "../theme.scss";
 
 #form-page {
-  * {
-    padding-left: 0;
-  }
-
   .right {
     @include utils.center;
   }
