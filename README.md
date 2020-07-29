@@ -1,7 +1,9 @@
 # Lunarbox
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+
 [![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=for-the-badge)](#contributors)
+
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com)
@@ -12,7 +14,7 @@
 
 Tool to help beginners learn functional programming
 
-Check out the beta [here](https://lunarbox.netlify.app/) or take a look at our trello board [here](https://trello.com/b/iCgkCsQo/lunarbox)
+Check out the beta [here](https://lunarbox.netlify.app/)
 
 Also check out [the lunarbox api](https://github.com/BlueGhostGH/lunarbox-api)
 
@@ -49,6 +51,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 <!-- markdownlint-enable -->
 <!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

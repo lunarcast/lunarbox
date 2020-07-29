@@ -2,10 +2,8 @@
 
 @import "../theme.scss";
 
-#form-page {
-  .right {
-    @include utils.center;
-  }
+#form-page .right {
+  @include utils.center;
 }
 
 #form-container {

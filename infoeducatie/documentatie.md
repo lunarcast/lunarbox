@@ -7,7 +7,6 @@ Proiectul a fost scis in [PureScript](https://www.purescript.org/), un limbaj de
 - Pentru bundling-ul aplicatiei am folosit [Parcel](https://parceljs.org/) iar pentru stilizare am folosit [scss](https://sass-lang.com/).
 - Pentru deducerea tipurilor am implementat [algoritmul Hindley Milner de deducere a tipurilor](https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system) impreuna cu un sistem care transforma programele vizuale intr-o expresie lineara.
 - Proiectul foloseste [Hygen](https://www.hygen.io/) pentru creerea de template-uri ce pot fi refolosite.
-- Pentru a recompila partea de PureScript si back-end-ul la fiecare schimbare am folosit [nodemon](https://nodemon.io/).
 - Proiectul respecta standardul [all-contributors](https://github.com/all-contributors/all-contributors)
 - Pentru CI & CD am folosit [semantic-release](https://semantic-release.gitbook.io/semantic-release/) impreuna cu [github-actions](https://github.com/features/actions)
 
