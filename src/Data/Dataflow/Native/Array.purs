@@ -17,7 +17,7 @@ import Math as Number
 
 -- List will all the native array nodes
 arrayNodes :: Array (NativeConfig)
-arrayNodes = [ emptyArray, cons, map', filter', flatMap, wrap', flat, match, concatArrays, lookup ]
+arrayNodes = [ emptyArray, cons, snoc, map', filter', flatMap, wrap', flat, match, concatArrays, lookup ]
 
 -- A constant equal to an array with 0 elements
 typeEmptyArray :: Scheme
@@ -50,11 +50,35 @@ cons =
     { name: FunctionName "cons"
     , expression: (NativeExpression typeCons $ binaryFunction evalCons)
     , functionData:
-      internal
-        [ { name: "element", description: "A single element to add at the beginning of an array" }
-        , { name: "array", description: "An array to add the given element at the start of" }
-        ]
-        { name: "array", description: "The resulting array which has the first argument as the first element and everything else after that" }
+        internal
+          [ { name: "element", description: "A single element to add at the beginning of an array" }
+          , { name: "array", description: "An array to add the given element at the start of" }
+          ]
+          { name: "array", description: "The resulting array which has the first argument as the first element and everything else after that" }
+    }
+
+-- Given [a] and a returns an array having a as the last element and everything else before that
+typeSnoc :: Scheme
+typeSnoc = Forall [ a ] $ typeFunction (typeArray typeA) $ typeFunction typeA $ (typeArray typeA)
+  where
+  Tuple a typeA = createTypeVariable "t0"
+
+evalSnoc :: RuntimeValue -> RuntimeValue -> RuntimeValue
+evalSnoc (NArray array) element = NArray $ array <> pure element
+
+evalSnoc _ _ = Null
+
+snoc :: NativeConfig
+snoc =
+  NativeConfig
+    { name: FunctionName "snoc"
+    , expression: (NativeExpression typeSnoc $ binaryFunction evalSnoc)
+    , functionData:
+        internal
+          [ { name: "array", description: "An array to add the given element at the end of" }
+          , { name: "element", description: "A single element to add at the end of an array" }
+          ]
+          { name: "array", description: "The resulting array which has the second argument as the last element and everything else before that" }
     }
 
 -- Mapping over arrays
@@ -76,12 +100,12 @@ map' =
     { name: FunctionName "map array"
     , expression: (NativeExpression typeMap $ binaryFunction evalMap)
     , functionData:
-      internal
-        [ { name: "mapper", description: "A function to run on each element of an array" }
-        , { name: "array", description: "An array to run a function on each element of"
-          }
-        ]
-        { name: "array", description: "The result of running the given function on each element of the given array" }
+        internal
+          [ { name: "mapper", description: "A function to run on each element of an array" }
+          , { name: "array", description: "An array to run a function on each element of"
+            }
+          ]
+          { name: "array", description: "The result of running the given function on each element of the given array" }
     }
 
 -- Filtering arrays
@@ -101,12 +125,12 @@ filter' =
     { name: FunctionName "filter array"
     , expression: (NativeExpression typeFilter $ binaryFunction evalFilter)
     , functionData:
-      internal
-        [ { name: "function", description: "A function to decide if an element should be kept in the array or not" }
-        , { name: "array", description: "The array to filter with the given function"
-          }
-        ]
-        { name: "filtered array", description: "An array which only contains the items the given function returned true for" }
+        internal
+          [ { name: "function", description: "A function to decide if an element should be kept in the array or not" }
+          , { name: "array", description: "The array to filter with the given function"
+            }
+          ]
+          { name: "filtered array", description: "An array which only contains the items the given function returned true for" }
     }
 
 -- Binding arrays basically
@@ -128,12 +152,12 @@ flatMap =
     { name: FunctionName "flatMap"
     , expression: (NativeExpression typeFlatMap $ binaryFunction evalFlatMap)
     , functionData:
-      internal
-        [ { name: "function", description: "A function which takes each element of an array and returns another array" }
-        , { name: "array", description: "The array to pass each element of to the given function"
-          }
-        ]
-        { name: "resulting array", description: "An array which contains the concatenated results of passing every element of the original array to the given function" }
+        internal
+          [ { name: "function", description: "A function which takes each element of an array and returns another array" }
+          , { name: "array", description: "The array to pass each element of to the given function"
+            }
+          ]
+          { name: "resulting array", description: "An array which contains the concatenated results of passing every element of the original array to the given function" }
     }
 
 -- Wrap an value in an array with one element
@@ -148,11 +172,11 @@ wrap' =
     { name: FunctionName "wrap in array"
     , expression: (NativeExpression typeWrap $ Function $ NArray <<< pure)
     , functionData:
-      internal
-        [ { name: "element", description: "A value to wrap in an array"
-          }
-        ]
-        { name: "array", description: "An array containing the input" }
+        internal
+          [ { name: "element", description: "A value to wrap in an array"
+            }
+          ]
+          { name: "array", description: "An array containing the input" }
     }
 
 -- Flatten a nested array
@@ -170,11 +194,11 @@ flat =
     { name: FunctionName "flatten array"
     , expression: (NativeExpression typeFlat $ Function evalFlat)
     , functionData:
-      internal
-        [ { name: "nested array", description: "An array of arrays"
-          }
-        ]
-        { name: "array", description: "An array containing all the elements of the nested arrays of the input." }
+        internal
+          [ { name: "nested array", description: "An array of arrays"
+            }
+          ]
+          { name: "array", description: "An array containing all the elements of the nested arrays of the input." }
     }
 
 -- Basically used to pattern match an array
@@ -211,20 +235,20 @@ match =
     { name: FunctionName "pattern match array"
     , expression: (NativeExpression typeMatch $ Function $ binaryFunction <<< evalMatch)
     , functionData:
-      internal
-        [ { name: "default value"
-          , description: "If the 3rd argument is an empty array this will become the result"
+        internal
+          [ { name: "default value"
+            , description: "If the 3rd argument is an empty array this will become the result"
+            }
+          , { name: "function"
+            , description: "A function which takes the first element of an array as the first argument and the rest of the array as the second"
+            }
+          , { name: "array"
+            , description: "Array to pattern match. If this is empty the defuault value will be returned. Else the head and the tail of this array will be based to the given function"
+            }
+          ]
+          { name: "array"
+          , description: "If the given array was empty this will equal the default value, else this will be the result of passing the head and the tail of the given array to the given function"
           }
-        , { name: "function"
-          , description: "A function which takes the first element of an array as the first argument and the rest of the array as the second"
-          }
-        , { name: "array"
-          , description: "Array to pattern match. If this is empty the defuault value will be returned. Else the head and the tail of this array will be based to the given function"
-          }
-        ]
-        { name: "array"
-        , description: "If the given array was empty this will equal the default value, else this will be the result of passing the head and the tail of the given array to the given function"
-        }
     }
 
 -- Concat 2 arrays into 1
@@ -250,11 +274,11 @@ concatArrays =
     { name: FunctionName "concat arrays"
     , expression: NativeExpression typeConcat $ binaryFunction evalConcat
     , functionData:
-      internal
-        [ { name: "first array", description: "Any array" }
-        , { name: "second array", description: "Any array" }
-        ]
-        { name: "a ++ b", description: "An arrray containing the elements of both inputs" }
+        internal
+          [ { name: "first array", description: "Any array" }
+          , { name: "second array", description: "Any array" }
+          ]
+          { name: "a ++ b", description: "An arrray containing the elements of both inputs" }
     }
 
 -- Lookup an index of an array with e falback value
@@ -285,11 +309,11 @@ lookup =
     { name: FunctionName "array lookup"
     , expression: NativeExpression typeLookup $ ternaryFunction evalLookup
     , functionData:
-      internal
-        [ { name: "array", description: "An array to lookup any index of." }
-        , { name: "index", description: "An index to get from an array."
-          }
-        , { name: "default value", description: "A value to return in case the index isn't an integer or the index is out of bounds." }
-        ]
-        { name: "value at index", description: "The value at the fiven index in the array or the default value if the index is not an int or is out of bounds." }
+        internal
+          [ { name: "array", description: "An array to lookup any index of." }
+          , { name: "index", description: "An index to get from an array."
+            }
+          , { name: "default value", description: "A value to return in case the index isn't an integer or the index is out of bounds." }
+          ]
+          { name: "value at index", description: "The value at the fiven index in the array or the default value if the index is not an int or is out of bounds." }
     }

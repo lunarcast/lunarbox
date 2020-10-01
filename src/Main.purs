@@ -64,9 +64,9 @@ main production =
           , pushStateInterface: nav
           , allowedNodes: Nothing
           , user:
-            { currentUser
-            , userBus
-            }
+              { currentUser
+              , userBus
+              }
           }
 
       rootComponent :: Component HTML Router.Query {} Void Aff
