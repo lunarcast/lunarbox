@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.5...v2.1.0) (2020-10-01)
+
+
+### Features
+
+* snoc node ([93ae7c8](https://github.com/Mateiadrielrafael/lunarbox/commit/93ae7c8e40748cda5aa07b578deeb8b4afe5fd1c))
+
 ## [2.0.5](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.4...v2.0.5) (2020-07-29)
 
 
