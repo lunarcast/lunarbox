@@ -1,14 +1,17 @@
 module Lunarbox.Data.Dataflow.Native.Array (arrayNodes) where
 
 import Prelude
+import Data.Array (cons, snoc)
 import Data.Array as Array
 import Data.Filterable (filter)
 import Data.Int (floor)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Lunarbox.Data.Dataflow.Expression (NativeExpression(..))
 import Lunarbox.Data.Dataflow.Native.NativeConfig (NativeConfig(..))
 import Lunarbox.Data.Dataflow.Runtime (RuntimeValue(..), binaryFunction, ternaryFunction, toArray, toBoolean)
+import Lunarbox.Data.Dataflow.Runtime.Class.Describable (DProxy(..), toNativeExpression)
 import Lunarbox.Data.Dataflow.Scheme (Scheme(..))
 import Lunarbox.Data.Dataflow.Type (createTypeVariable, multiArgumentFuncion, typeArray, typeBool, typeFunction, typeNumber)
 import Lunarbox.Data.Editor.FunctionData (internal)
@@ -17,7 +20,7 @@ import Math as Number
 
 -- List will all the native array nodes
 arrayNodes :: Array (NativeConfig)
-arrayNodes = [ emptyArray, cons, snoc, map', filter', flatMap, wrap', flat, match, concatArrays, lookup ]
+arrayNodes = [ emptyArray, cons', snoc', map', filter', flatMap, wrap', flat, match, concatArrays, lookup ]
 
 -- A constant equal to an array with 0 elements
 typeEmptyArray :: Scheme
@@ -34,21 +37,11 @@ emptyArray =
     }
 
 -- Given a and [a] returns an array having a as the first element and everything else afte that
-typeCons :: Scheme
-typeCons = Forall [ a ] $ typeFunction typeA $ typeFunction (typeArray typeA) (typeArray typeA)
-  where
-  Tuple a typeA = createTypeVariable "t0"
-
-evalCons :: RuntimeValue -> RuntimeValue -> RuntimeValue
-evalCons element (NArray array) = NArray $ pure element <> array
-
-evalCons _ _ = Null
-
-cons :: NativeConfig
-cons =
+cons' :: NativeConfig
+cons' =
   NativeConfig
     { name: FunctionName "cons"
-    , expression: (NativeExpression typeCons $ binaryFunction evalCons)
+    , expression: toNativeExpression proxy
     , functionData:
         internal
           [ { name: "element", description: "A single element to add at the beginning of an array" }
@@ -56,23 +49,19 @@ cons =
           ]
           { name: "array", description: "The resulting array which has the first argument as the first element and everything else after that" }
     }
+  where
+  proxy :: DProxy (SProxy "a" -> Array (SProxy "a") -> Array (SProxy "a")) _
+  proxy = DProxy eval
+
+  eval :: RuntimeValue -> Array RuntimeValue -> Array RuntimeValue
+  eval = cons
 
 -- Given [a] and a returns an array having a as the last element and everything else before that
-typeSnoc :: Scheme
-typeSnoc = Forall [ a ] $ typeFunction (typeArray typeA) $ typeFunction typeA $ (typeArray typeA)
-  where
-  Tuple a typeA = createTypeVariable "t0"
-
-evalSnoc :: RuntimeValue -> RuntimeValue -> RuntimeValue
-evalSnoc (NArray array) element = NArray $ array <> pure element
-
-evalSnoc _ _ = Null
-
-snoc :: NativeConfig
-snoc =
+snoc' :: NativeConfig
+snoc' =
   NativeConfig
     { name: FunctionName "snoc"
-    , expression: (NativeExpression typeSnoc $ binaryFunction evalSnoc)
+    , expression: toNativeExpression proxy
     , functionData:
         internal
           [ { name: "array", description: "An array to add the given element at the end of" }
@@ -80,6 +69,12 @@ snoc =
           ]
           { name: "array", description: "The resulting array which has the second argument as the last element and everything else before that" }
     }
+  where
+  proxy :: DProxy (Array (SProxy "a") -> SProxy "a" -> Array (SProxy "a")) _
+  proxy = DProxy eval
+
+  eval :: Array RuntimeValue -> RuntimeValue -> Array RuntimeValue
+  eval = snoc
 
 -- Mapping over arrays
 typeMap :: Scheme
