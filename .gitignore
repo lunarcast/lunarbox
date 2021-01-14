@@ -11,6 +11,7 @@ yarn-error.log
 output
 dce-output
 dist
+generated-docs
 public/index.js
 
 .env.*

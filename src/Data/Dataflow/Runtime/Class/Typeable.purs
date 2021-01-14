@@ -1,8 +1,10 @@
 module Lunarbox.Data.Dataflow.Runtime.Class.Typeable where
 
 import Prelude
+
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
-import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeArray, typeBool, typeFunction, typeNumber, typeString)
+import Data.Tuple (Tuple)
+import Lunarbox.Data.Dataflow.Type (TVarName(..), Type(..), typeArray, typeBool, typeFunction, typeNumber, typePair, typeString)
 import Type.Proxy (Proxy(..))
 
 class Typeable (a :: Type) where
@@ -22,6 +24,15 @@ instance typeableBool :: Typeable Boolean where
 
 instance typeableArray :: Typeable a => Typeable (Array a) where
   typeof _ = typeArray (typeof (Proxy :: Proxy a))
+
+instance typePair :: (Typeable a, Typeable b) => Typeable (Tuple a b) where
+  typeof _ = typePair (typeof _a) (typeof _b)
+    where
+    _a :: Proxy a
+    _a = Proxy
+    
+    _b :: Proxy b
+    _b = Proxy
 
 instance typeableSymbol :: IsSymbol sym => Typeable (SProxy sym) where
   typeof _ = TVariable true $ TVarName $ reflectSymbol (SProxy :: SProxy sym)

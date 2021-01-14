@@ -8,6 +8,7 @@ module Lunarbox.Data.Dataflow.Type
   , typeString
   , typeArray
   , typeFunction
+  , typePair
   , numberOfInputs
   , createTypeVariable
   , isArrow
@@ -56,6 +57,9 @@ typeFunction from to = TConstant "Function" [ from, to ]
 
 typeArray :: Type -> Type
 typeArray content = TConstant "Array" [ content ]
+
+typePair :: Type -> Type -> Type
+typePair a b = TConstant "Pair" [ a, b ]
 
 -- Create a variable and a type for it
 createTypeVariable :: String -> Tuple TVarName Type
@@ -109,15 +113,12 @@ instance typeShow :: Show Type where
 
 printType :: Boolean -> Type -> String
 printType _ (TVariable _ v) = show v
-
 printType _ (TConstant name []) = name
-
 printType _ (TConstant "Array" [ inner ]) = "[" <> printType false inner <> "]"
-
+printType _ (TConstant "Pair" [ a, b ]) = "(" <> printType false a <> ", " <> printType false b <> ")"
 printType p (TConstant "Function" [ from, to ]) = if p then "(" <> result <> ")" else result
   where
   prefix = printType (isArrow from) from
 
   result = prefix <> spaced arrow <> show to
-
 printType _ (TConstant name vars) = name <> " " <> (joinWith " " $ show <$> vars)
