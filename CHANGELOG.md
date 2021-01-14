@@ -1,3 +1,11 @@
+# [2.2.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.1.0...v2.2.0) (2021-01-14)
+
+
+### Features
+
+* pair-related helpers ([abc5002](https://github.com/Mateiadrielrafael/lunarbox/commit/abc5002bb613143c7d746c1f6446ae98e0c878ed))
+* pairs & runtime defaulting system ([c57802a](https://github.com/Mateiadrielrafael/lunarbox/commit/c57802a8d0bffb70294b79b791a5507f68a7e264))
+
 # [2.1.0](https://github.com/Mateiadrielrafael/lunarbox/compare/v2.0.5...v2.1.0) (2020-10-01)
 
 
