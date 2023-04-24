@@ -1,12 +1,14 @@
 module Main (main) where
 
 import Prelude
+
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Aff.Bus as Bus
 import Effect.Class (liftEffect)
+import Effect.Class.Console (log)
 import Effect.Ref as Ref
 import Halogen (Component, hoist, tell)
 import Halogen.Aff (awaitBody, runHalogenAff)
@@ -20,23 +22,14 @@ import Lunarbox.Control.Monad.Effect (printString)
 import Lunarbox.Data.Route (parseRoute)
 import Routing.PushState (makeInterface, matchesWith)
 
-devUrl :: BaseUrl
-devUrl = BaseUrl "http://localhost:8090" true
-
-prodUrl :: BaseUrl
-prodUrl = BaseUrl "https://lunarbox-api.herokuapp.com" false
-
-main :: Boolean -> Effect Unit
-main production =
+main :: Boolean -> String -> Effect Unit
+main production apiUrl =
   runHalogenAff do
     -- Url to make requests to
     let
       baseUrl :: BaseUrl
-      baseUrl =
-        if production then
-          prodUrl
-        else
-          devUrl
+      baseUrl = BaseUrl apiUrl production
+
     -- Ref for the current user
     currentUser <- liftEffect $ Ref.new Nothing
     -- Bus to store the current user profile
