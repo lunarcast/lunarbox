@@ -41,7 +41,7 @@
     "parcel-bundler": "^1.12.4",
     "sass": "^1.26.11",
     "semantic-release": "^17.0.8",
-    "terser": "^4.7.0",
+    "terser": "^4.8.1",
     "typescript": "^3.9.7"
   },
   "license": "GPL-3.0",
