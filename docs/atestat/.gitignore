@@ -1,0 +1,12 @@
+# Latex stuf
+*.aux
+*.log
+*.out
+*.fls
+*.toc
+*.thm
+*.synctex*
+*.fdb_latexmk
+node_modules
+_minted-*
+
