@@ -2,13 +2,15 @@
 
 ## NOTE: due to heroku ending their free tier, the api is currently down, rendering the online demo unusable.
 
+### NOTE 2: if you found this on my resume, I can show off a local instance during a potential interview :)
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
 [![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=for-the-badge)](#contributors)
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-[![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com)
+<!-- [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/powered-by-water.svg)](https://forthebadge.com) -->
 
 ![](https://img.shields.io/github/release-date/Mateiadrielrafael/lunarbox?label=Last%20release&style=for-the-badge) ![](https://img.shields.io/github/v/release/Mateiadrielrafael/lunarbox?style=for-the-badge) ![](https://img.shields.io/github/languages/top/Mateiadrielrafael/lunarbox?color=yellow&style=for-the-badge)
 
